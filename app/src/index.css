@@ -1,0 +1,184 @@
+@import 'tailwindcss';
+
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-bindle-50: #f0f4ff;
+  --color-bindle-100: #dbe4ff;
+  --color-bindle-200: #bac8ff;
+  --color-bindle-300: #91a7ff;
+  --color-bindle-400: #748ffc;
+  --color-bindle-500: #5c7cfa;
+  --color-bindle-600: #4c6ef5;
+  --color-bindle-700: #4263eb;
+  --color-bindle-800: #3b5bdb;
+  --color-bindle-900: #364fc7;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* ======== Custom Scrollbar ======== */
+.bindle-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.bindle-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.bindle-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+.bindle-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Global scrollbar for all overflow-auto containers */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+/* ======== Bindle Prose Overrides (use WITH prose class) ======== */
+.prose.bindle-prose {
+  font-size: 1rem;
+  color: #1f2937;
+  max-width: none;
+}
+
+.prose.bindle-prose h1 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+.prose.bindle-prose h2 { font-size: 1.3rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.prose.bindle-prose h3 { font-size: 1.15rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+
+/* Tighter paragraph and list spacing */
+.prose.bindle-prose :where(p) { margin-top: 0.5em; margin-bottom: 0.5em; }
+.prose.bindle-prose :where(li) { margin-top: 0.125em; margin-bottom: 0.125em; }
+.prose.bindle-prose :where(ul), .prose.bindle-prose :where(ol) { margin-top: 0.25em; margin-bottom: 0.25em; }
+
+/* Inline code: match body font size */
+.prose.bindle-prose :where(code):not(pre code) {
+  font-size: 0.9em;
+  background: #f3f4f6;
+  padding: 0.125em 0.375em;
+  border-radius: 0.25rem;
+  font-weight: normal;
+}
+
+/* Code blocks: same font size as body */
+.prose.bindle-prose :where(pre) {
+  font-size: 1em;
+  background: #1e1e2e;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+.prose.bindle-prose :where(pre code) {
+  font-size: 1em;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: #cdd6f4;
+  font-weight: normal;
+}
+
+/* Language label on code blocks (via data-language attr set by JS) */
+.prose.bindle-prose pre[data-language] {
+  position: relative;
+  padding-top: 2.25rem;
+}
+.prose.bindle-prose pre[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.7rem;
+  color: #a0a0b8;
+  background: rgba(255,255,255,0.05);
+  border-bottom-left-radius: 0.375rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+/* ======== Task List (TipTap) ======== */
+.prose.bindle-prose ul[data-type="taskList"] {
+  list-style: none !important;
+  padding-left: 0 !important;
+}
+.prose.bindle-prose ul[data-type="taskList"] li {
+  list-style: none !important;
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+.prose.bindle-prose ul[data-type="taskList"] li::before {
+  display: none !important;
+}
+.prose.bindle-prose ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  padding-top: 0.15em;
+}
+.prose.bindle-prose ul[data-type="taskList"] li > label input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #4c6ef5;
+}
+.prose.bindle-prose ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+.prose.bindle-prose ul[data-type="taskList"] li p {
+  margin: 0;
+}
+
+/* Markdown rendered checkboxes (split preview via marked) */
+.prose.bindle-prose li:has(> input[type="checkbox"]) {
+  list-style: none !important;
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.prose.bindle-prose li:has(> input[type="checkbox"])::before {
+  display: none !important;
+}
+.prose.bindle-prose li > input[type="checkbox"]:first-child {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  margin-top: 0.3em;
+  flex-shrink: 0;
+  accent-color: #4c6ef5;
+}
+
+/* ======== Code Highlight (Catppuccin Mocha) ======== */
+.prose.bindle-prose pre code .hljs-keyword  { color: #cba6f7; }
+.prose.bindle-prose pre code .hljs-string   { color: #a6e3a1; }
+.prose.bindle-prose pre code .hljs-number   { color: #fab387; }
+.prose.bindle-prose pre code .hljs-comment  { color: #6c7086; font-style: italic; }
+.prose.bindle-prose pre code .hljs-function { color: #89b4fa; }
+.prose.bindle-prose pre code .hljs-built_in { color: #89b4fa; }
+.prose.bindle-prose pre code .hljs-title    { color: #89b4fa; }
+.prose.bindle-prose pre code .hljs-type     { color: #f9e2af; }
+.prose.bindle-prose pre code .hljs-attr     { color: #89dceb; }
+.prose.bindle-prose pre code .hljs-params   { color: #cdd6f4; }
+.prose.bindle-prose pre code .hljs-meta     { color: #f38ba8; }
+.prose.bindle-prose pre code .hljs-literal  { color: #fab387; }
+.prose.bindle-prose pre code .hljs-variable { color: #cdd6f4; }
+.prose.bindle-prose pre code .hljs-selector-class { color: #a6e3a1; }
+.prose.bindle-prose pre code .hljs-selector-tag   { color: #cba6f7; }
+
+/* Table styling */
+.prose.bindle-prose table { font-size: 0.95em; }
+.prose.bindle-prose th { font-weight: 600; }
+.prose.bindle-prose td, .prose.bindle-prose th { padding: 0.5rem 0.75rem; }
