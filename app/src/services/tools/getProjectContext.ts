@@ -1,11 +1,9 @@
 import { tool } from 'ai'
-import { z } from 'zod'
 import { useProjectStore } from '@/stores/projectStore'
-import type { Project } from '@/types/project'
 
 export const getProjectContext = tool({
   description: '获取当前项目的基本信息和背景。返回项目名称、背景描述和状态。',
-  parameters: z.object({}),
+  parameters: { type: 'object' as const, properties: {}, required: [], additionalProperties: false },
   execute: async () => {
     const project = useProjectStore.getState().currentProject
     if (!project) return '当前没有打开的项目。'
