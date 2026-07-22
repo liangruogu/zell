@@ -121,7 +121,7 @@ pub fn sync_link(
             Ok(ExternalLink {
                 id: row.get(0)?, project_id: row.get(1)?, title: row.get(2)?,
                 url: row.get(3)?, description: row.get(4)?, link_type: row.get(5)?,
-                favicon: row.get(6)?, sort_order: row.get(7)?,
+                favicon: row.get(6)?, ai_skill: String::new(), sort_order: row.get(7)?,
                 sync_status: row.get(8)?, last_synced_at: row.get(9)?,
                 last_snapshot: row.get(10)?, created_at: row.get(11)?,
                 updated_at: row.get(12)?, deleted_at: row.get(13)?,
@@ -151,7 +151,7 @@ pub fn sync_link(
         Ok(ExternalLink {
             id: row.get(0)?, project_id: row.get(1)?, title: row.get(2)?,
             url: row.get(3)?, description: row.get(4)?, link_type: row.get(5)?,
-            favicon: row.get(6)?, sort_order: row.get(7)?,
+            favicon: row.get(6)?, ai_skill: String::new(), sort_order: row.get(7)?,
             sync_status: row.get(8)?, last_synced_at: row.get(9)?,
             last_snapshot: row.get(10)?, created_at: row.get(11)?,
             updated_at: row.get(12)?, deleted_at: row.get(13)?,

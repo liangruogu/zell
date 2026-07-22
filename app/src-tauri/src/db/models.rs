@@ -38,6 +38,9 @@ pub struct ExternalLink {
     pub favicon: String,
     pub ai_skill: String,
     pub sort_order: i32,
+    pub sync_status: String,
+    pub last_synced_at: Option<String>,
+    pub last_snapshot: Option<String>,
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
@@ -83,4 +86,20 @@ pub struct AppSetting {
     pub key: String,
     pub value: String,
     pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectFile {
+    pub id: String,
+    pub project_id: String,
+    pub file_name: String,
+    pub original_name: String,
+    pub file_type: String,
+    pub file_size: i64,
+    pub extracted_text: String,
+    pub description: String,
+    pub sort_order: i32,
+    pub created_at: String,
+    pub updated_at: String,
+    pub deleted_at: Option<String>,
 }

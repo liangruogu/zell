@@ -35,6 +35,7 @@ pub fn create_external_link(
     Ok(ExternalLink {
         id, project_id, title, url, description, link_type,
         favicon: String::new(), ai_skill, sort_order: max_order + 1,
+        sync_status: "idle".to_string(), last_synced_at: None, last_snapshot: None,
         created_at: now.clone(), updated_at: now, deleted_at: None,
     })
 }
@@ -55,6 +56,7 @@ pub fn get_external_links(
                 id: row.get(0)?, project_id: row.get(1)?, title: row.get(2)?,
                 url: row.get(3)?, description: row.get(4)?, link_type: row.get(5)?,
                 favicon: row.get(6)?, ai_skill: row.get(7)?, sort_order: row.get(8)?,
+                sync_status: "idle".to_string(), last_synced_at: None, last_snapshot: None,
                 created_at: row.get(9)?, updated_at: row.get(10)?, deleted_at: row.get(11)?,
             })
         })
