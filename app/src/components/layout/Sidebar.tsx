@@ -52,7 +52,7 @@ export function Sidebar() {
           <button
             onClick={toggle}
             className="p-1.5 rounded hover:bg-bindle-200 transition-colors text-bindle-500 shrink-0"
-            title={collapsed ? '灞曞紑渚ц竟鏍? : '鏀惰捣渚ц竟鏍?}
+            title={collapsed ? '展开侧边栏' : '收起侧边栏'}
           >
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>

@@ -25,16 +25,10 @@ export const format = {
     const hours = Math.floor(diff / 3600000)
     const days = Math.floor(diff / 86400000)
 
-    if (minutes < 1) return '鍒氬垰'
-    if (minutes < 60) return `${minutes} 鍒嗛挓鍓峘
-    if (hours < 24) return `${hours} 灏忔椂鍓峘
-    if (days < 30) return `${days} 澶╁墠`
+    if (minutes < 1) return '刚刚'
+    if (minutes < 60) return `${minutes} 分钟前`
+    if (hours < 24) return `${hours} 小时前`
+    if (days < 30) return `${days} 天前`
     return new Date(iso).toLocaleDateString('zh-CN')
-  },
-
-  fileSize: (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / 1048576).toFixed(1)} MB`
   },
 }
