@@ -1,8 +1,17 @@
 use crate::db::models::KnowledgeArticle;
 use crate::db::Database;
 use chrono::Utc;
+use serde::Serialize;
 use tauri::State;
 use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ArticleSummary {
+    pub id: String,
+    pub title: String,
+    pub preview: String,
+    pub updated_at: String,
+}
 
 #[tauri::command]
 pub fn create_knowledge_article(
@@ -29,6 +38,13 @@ pub fn create_knowledge_article(
         rusqlite::params![id, project_id, title, content, parent_id, max_order + 1, now, now],
     )
     .map_err(|e| e.to_string())?;
+
+    drop(conn);
+
+    // Index in FTS5
+    let _ = crate::commands::resource::index_document(
+        &db, &project_id, "knowledge", &id, &title, &content,
+    );
 
     Ok(KnowledgeArticle {
         id,
@@ -114,6 +130,14 @@ pub fn update_knowledge_article(
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
 
+    let project_id: String = conn
+        .query_row(
+            "SELECT project_id FROM knowledge_articles WHERE id = ?1",
+            rusqlite::params![id],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
     conn.execute(
         "UPDATE knowledge_articles SET title = ?1, content = ?2, content_json = ?3, updated_at = ?4 WHERE id = ?5",
         rusqlite::params![title, content, content_json, now, id],
@@ -121,6 +145,11 @@ pub fn update_knowledge_article(
     .map_err(|e| e.to_string())?;
 
     drop(conn);
+
+    let _ = crate::commands::resource::index_document(
+        &db, &project_id, "knowledge", &id, &title, &content,
+    );
+
     get_knowledge_article(db, id)
 }
 
@@ -136,6 +165,11 @@ pub fn delete_knowledge_article(
         rusqlite::params![now, id],
     )
     .map_err(|e| e.to_string())?;
+
+    drop(conn);
+
+    let _ = crate::commands::resource::delete_document_index(&db, "knowledge", &id);
+
     Ok(())
 }
 
@@ -153,4 +187,59 @@ pub fn reorder_knowledge_articles(
         .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_article_summaries(
+    db: State<'_, Database>,
+    project_id: String,
+) -> Result<Vec<ArticleSummary>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, title, content, updated_at
+             FROM knowledge_articles
+             WHERE project_id = ?1 AND deleted_at IS NULL
+             ORDER BY sort_order ASC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let summaries = stmt
+        .query_map(rusqlite::params![project_id], |row| {
+            let content: String = row.get(2)?;
+            // Strip common Markdown markers and truncate to 300 chars
+            let plain = content
+                .replace('#', " ")
+                .replace('*', "")
+                .replace('`', "")
+                .replace('[', "")
+                .replace(']', "")
+                .replace('(', "")
+                .replace(')', "")
+                .replace("___", "")
+                .replace("---", "")
+                .replace('>', " ");
+            let preview: String = plain
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+                .chars()
+                .take(300)
+                .collect();
+            Ok(ArticleSummary {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                preview: if preview.len() >= 300 {
+                    format!("{}...", preview)
+                } else {
+                    preview
+                },
+                updated_at: row.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(summaries)
 }
