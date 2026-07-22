@@ -1,6 +1,15 @@
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
+  toolInvocations?: ToolInvocation[]
+}
+
+export interface ToolInvocation {
+  toolCallId: string
+  toolName: string
+  state: 'call' | 'result'
+  args?: Record<string, unknown>
+  result?: unknown
 }
 
 export interface AIChatOptions {
