@@ -1,6 +1,6 @@
-mod db;
 mod commands;
 mod crypto;
+mod db;
 
 use tauri::Manager;
 
@@ -27,7 +27,7 @@ pub fn run() {
             log::info!("Database path: {:?}", app_dir.join("bindle.db"));
 
             let database =
-                db::Database::new(app_dir).expect("failed to initialize database");
+                db::Database::new(app_dir.clone()).expect("failed to initialize database");
 
             app.manage(database);
 
@@ -47,6 +47,7 @@ pub fn run() {
             commands::knowledge::update_knowledge_article,
             commands::knowledge::delete_knowledge_article,
             commands::knowledge::reorder_knowledge_articles,
+            commands::knowledge::get_article_summaries,
             commands::whiteboard::create_whiteboard,
             commands::whiteboard::get_whiteboards,
             commands::whiteboard::get_whiteboard,
@@ -57,6 +58,20 @@ pub fn run() {
             commands::link::get_external_links,
             commands::link::update_external_link,
             commands::link::delete_external_link,
+            commands::image::save_project_image,
+            commands::image::resolve_project_image,
+            commands::image::delete_project_image,
+            commands::image::read_file_base64,
+            commands::image::import_whiteboard_media,
+            commands::file::import_project_file,
+            commands::file::get_project_files,
+            commands::file::resolve_project_file,
+            commands::file::get_project_file_path,
+            commands::file::update_project_file,
+            commands::file::delete_project_file,
+            commands::file::re_extract_file_text,
+            commands::resource::sync_link,
+            commands::resource::search_documents,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
