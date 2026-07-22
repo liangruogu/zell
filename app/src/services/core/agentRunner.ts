@@ -84,6 +84,13 @@ export async function runAgent(
     }
   } catch (e: any) {
     if (e.name === 'AbortError') return
-    callbacks.onError?.(`AI 请求失败: ${e.message || String(e)}`)
+    let msg = e.message || String(e)
+    if (e.responseBody) {
+      try { msg += ' | ' + JSON.stringify(JSON.parse(e.responseBody)) } catch { msg += ' | ' + e.responseBody }
+    }
+    if (e.url) msg += ' | url: ' + e.url
+    if (e.statusCode) msg += ' | status: ' + e.statusCode
+    console.error('[agentRunner] Full error:', e)
+    callbacks.onError?.(`AI 请求失败: ${msg}`)
   }
 }

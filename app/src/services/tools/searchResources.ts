@@ -1,5 +1,4 @@
 import { tool } from 'ai'
-import { z } from 'zod'
 import { invoke } from '@tauri-apps/api/core'
 import { useProjectStore } from '@/stores/projectStore'
 
@@ -7,8 +6,13 @@ interface SearchResult { title: string; snippet: string; source_type: string; so
 
 export const searchResources = tool({
   description: '搜索外部资源（PDF、Word文档、PPT、网页提取文本）的内容。用于查找项目文件中的信息。',
-  parameters: z.object({ query: z.string().describe('搜索关键词') }),
-  execute: async ({ query }) => {
+  parameters: {
+    type: 'object' as const,
+    properties: { query: { type: 'string', description: '搜索关键词' } },
+    required: ['query'],
+    additionalProperties: false,
+  },
+  execute: async ({ query }: { query: string }) => {
     const project = useProjectStore.getState().currentProject
     if (!project) return '当前没有打开的项目。'
     const results = await invoke<SearchResult[]>('search_resources', { projectId: project.id, query, limit: 5 })
