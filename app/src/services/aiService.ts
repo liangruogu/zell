@@ -32,14 +32,13 @@ export async function testProviderConnection(provider: AIProvider): Promise<{ ok
 }
 
 export async function sendMessage(userContent: string) {
-  const store = useAIStore.getState()
   const providers = getProviders()
   if (providers.length === 0) {
-    store.addMessage({ role: 'assistant', content: '请先在设置中配置 AI 服务。' })
+    useAIStore.getState().addMessage({ role: 'assistant', content: '请先在设置中配置 AI 服务。' })
     return
   }
 
-  const refText = store.selectedText
+  const refText = useAIStore.getState().selectedText
   const apiContent = refText
     ? `用户选择了以下内容：\n"""\n${refText}\n"""\n\n${userContent}`
     : userContent
@@ -47,18 +46,19 @@ export async function sendMessage(userContent: string) {
     ? `\`\`\`quote\n${refText}\n\`\`\`\n\n${userContent}`
     : userContent
 
-  store.addMessage({ role: 'user', content: displayContent })
-  store.setStreaming(true)
-  if (refText) store.setSelectedText('')
+  useAIStore.getState().addMessage({ role: 'user', content: displayContent })
+  useAIStore.getState().setStreaming(true)
+  if (refText) useAIStore.getState().setSelectedText('')
 
-  store.addMessage({ role: 'assistant', content: '' })
-  const msgIdx = store.messages.length - 1
+  useAIStore.getState().addMessage({ role: 'assistant', content: '' })
+  const msgIdx = useAIStore.getState().messages.length - 1
 
-  const messages = store.messages
+  const storeSnapshot = useAIStore.getState().messages
+  const messages = storeSnapshot
     .slice(0, -1)
-    .map(m => ({
+    .map((m, i) => ({
       role: m.role as 'user' | 'assistant',
-      content: m.role === 'user' ? (m === store.messages[store.messages.length - 2] ? apiContent : m.content) : m.content,
+      content: m.role === 'user' && i === storeSnapshot.length - 2 ? apiContent : m.content,
     }))
 
   const config = createKnowledgeAgentConfig()
@@ -70,22 +70,17 @@ export async function sendMessage(userContent: string) {
       accumulated += delta
       useAIStore.getState().updateMessage(msgIdx, accumulated)
     },
-    onToolCall(tc: AgentToolCall) {
-      const status = `\n\n🛠 正在调用工具: \`${tc.toolName}\`...\n`
-      useAIStore.getState().updateMessage(msgIdx, accumulated + status)
-    },
     onToolResult(tc: AgentToolCall) {
-      const status = `\n✅ 工具 \`${tc.toolName}\` 完成\n`
-      useAIStore.getState().updateMessage(msgIdx, accumulated + status)
+      useAIStore.getState().updateMessage(msgIdx, accumulated)
     },
     onError(error) {
-      useAIStore.getState().updateMessage(msgIdx, accumulated || error)
+      useAIStore.getState().updateMessage(msgIdx, error)
     },
   })
 
   if (!accumulated) {
-    useAIStore.getState().updateMessage(msgIdx, '(空响应)')
+    useAIStore.getState().updateMessage(msgIdx, '(没有返回内容)')
   }
 
-  store.setStreaming(false)
+  useAIStore.getState().setStreaming(false)
 }

@@ -43,7 +43,7 @@ export async function runAgent(
 ) {
   const providersRaw = useSettingsStore.getState().settings['ai_providers']
   let providers: Array<{ id: string; name: string; baseUrl: string; apiKey: string; model: string }> = []
-  try { providers = JSON.parse(providersRaw || '[]') } catch { /* empty */ }
+  try { providers = JSON.parse(providersRaw || '[]') } catch (e) { console.error('[agentRunner] failed to parse providers:', e) }
 
   const activeId = useSettingsStore.getState().settings['ai_active_provider']
   const provider = activeId
