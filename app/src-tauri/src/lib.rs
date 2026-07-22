@@ -72,6 +72,9 @@ pub fn run() {
             commands::file::re_extract_file_text,
             commands::resource::sync_link,
             commands::resource::search_documents,
+            commands::resource::search_knowledge,
+            commands::resource::search_resources,
+            commands::resource::get_resource_content,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
