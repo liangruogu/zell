@@ -55,7 +55,6 @@ export function AppShell({ children }: AppShellProps) {
       </main>
       {isAIOpen && (
         <>
-          {/* Resize handle */}
           <div
             onMouseDown={handleAIDragStart}
             className="w-1.5 shrink-0 cursor-col-resize bg-transparent hover:bg-bindle-300 transition-colors z-10"

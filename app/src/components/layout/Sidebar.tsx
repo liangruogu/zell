@@ -19,7 +19,7 @@ import { SettingsDialog } from '@/components/share/SettingsDialog'
 import { CreateProjectDialog } from '@/components/project/CreateProjectDialog'
 
 const navItems = [
-  { to: '/', icon: FolderOpen, label: '椤圭洰', end: true },
+  { to: '/', icon: FolderOpen, label: '项目', end: true },
 ]
 
 export function Sidebar() {
@@ -33,10 +33,10 @@ export function Sidebar() {
 
   const projectNavItems = projectId
     ? [
-        { to: `/project/${projectId}`, icon: LayoutDashboard, label: '姒傝', end: true },
-        { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '鐭ヨ瘑搴? },
-        { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '鍒涙剰鐧芥澘' },
-        { to: `/project/${projectId}/links`, icon: Link2, label: '澶栭儴璧勬簮' },
+        { to: `/project/${projectId}`, icon: LayoutDashboard, label: '概览', end: true },
+        { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '知识库' },
+        { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '创意白板' },
+        { to: `/project/${projectId}/links`, icon: Link2, label: '外部资源' },
       ]
     : []
 
