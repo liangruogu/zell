@@ -129,13 +129,21 @@ export function AIPanel() {
 
   // Token estimation: ~1.5 chars per token for mixed zh/en
   const estimateTokens = useMemo(() => {
-    const SYSTEM_BASE = 800 // rough estimate for system prompt + tools
+    const SYSTEM_BASE = 800 // rough estimate for system prompt + tools + context
     let chars = SYSTEM_BASE * 1.5
     for (const m of messages) chars += m.content.length
     return Math.ceil(chars / 1.5)
   }, [messages])
 
-  const TOKEN_LIMIT = 65536 // DeepSeek v4 context window
+  // Default context window sizes by model family
+  const TOKEN_LIMIT = useMemo(() => {
+    const model = activeProvider?.model?.toLowerCase() || ''
+    if (model.includes('deepseek')) return model.includes('v4') ? 65536 : 65536
+    if (model.includes('gpt-4')) return 128000
+    if (model.includes('gpt-3.5')) return 16385
+    if (model.includes('claude')) return 200000
+    return 65536 // default
+  }, [activeProvider])
   const tokenPct = Math.min(100, Math.round((estimateTokens / TOKEN_LIMIT) * 100))
 
   const handleEdit = (index: number, content: string) => {
@@ -166,7 +174,31 @@ export function AIPanel() {
   if (!isOpen) return null
 
   return (
-    <div className="border-l border-gray-200 bg-white flex flex-col h-full">
+    <div className="border-l border-gray-200 bg-white flex flex-col h-full relative">
+      {/* Token usage — circle indicator, shown on hover */}
+      <div className="absolute top-2 right-3 group z-10">
+        <div
+          className="w-2.5 h-2.5 rounded-full cursor-pointer"
+          style={{
+            background: tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e',
+          }}
+          title={`${estimateTokens.toLocaleString()} / ${TOKEN_LIMIT.toLocaleString()} tokens (${tokenPct}%)`}
+        />
+        <div className="absolute top-full right-0 mt-1 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-xs w-48">
+          <div className="flex justify-between text-gray-500 mb-1">
+            <span>上下文用量</span>
+            <span>{tokenPct}%</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1">
+            <div className="h-full rounded-full transition-all" style={{
+              width: `${tokenPct}%`,
+              background: tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e',
+            }} />
+          </div>
+          <span className="text-gray-400">{estimateTokens.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens</span>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
         <div className="flex items-center gap-2">
@@ -218,23 +250,6 @@ export function AIPanel() {
           >
             <X size={16} />
           </button>
-        </div>
-      </div>
-
-      {/* Token usage bar */}
-      <div className="px-4 py-1.5 border-b border-gray-100 shrink-0">
-        <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
-          <span>上下文 {estimateTokens.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens</span>
-          <span>{tokenPct}%</span>
-        </div>
-        <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{
-              width: `${tokenPct}%`,
-              background: tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e',
-            }}
-          />
         </div>
       </div>
 
