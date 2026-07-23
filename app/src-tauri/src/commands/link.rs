@@ -84,7 +84,20 @@ async fn fetch_page_markdown(url: &str) -> Result<String, String> {
         .text()
         .await
         .map_err(|e| format!("Read response body failed: {}", e))?;
-    let result = html_to_markdown_rs::convert(&html, None)
+    // Extract body content only to avoid <head> meta/title noise
+    let body_html = {
+        let doc = Html::parse_document(&html);
+        if let Ok(body_sel) = Selector::parse("body") {
+            if let Some(body) = doc.select(&body_sel).next() {
+                body.inner_html()
+            } else {
+                html
+            }
+        } else {
+            html
+        }
+    };
+    let result = html_to_markdown_rs::convert(&body_html, None)
         .map_err(|e| format!("HTML to Markdown conversion failed: {}", e))?;
     Ok(result.content.unwrap_or_default())
 }

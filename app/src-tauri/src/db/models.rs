@@ -51,7 +51,7 @@ pub struct Whiteboard {
     pub id: String,
     pub project_id: String,
     pub name: String,
-    pub snapshot: Option<Vec<u8>>,
+    pub snapshot: Option<String>,
     pub update_log: Option<Vec<u8>>,
     pub created_at: String,
     pub updated_at: String,

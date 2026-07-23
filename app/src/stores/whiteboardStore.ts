@@ -49,8 +49,8 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
 
   setCurrentWhiteboard: (wb) => set({ currentWhiteboard: wb }),
 
-  saveSnapshot: async (id: string, snapshotJson: string) => {
-    await invoke('save_whiteboard_snapshot', { id, snapshotJson })
+  saveSnapshot: async (id: string, snapshot: string) => {
+    await invoke('save_whiteboard_snapshot', { id, snapshot })
   },
 
   renameWhiteboard: async (id: string, name: string) => {

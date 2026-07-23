@@ -20,6 +20,8 @@ pub fn create_whiteboard(
     )
     .map_err(|e| e.to_string())?;
 
+    drop(conn);
+
     crate::commands::project::touch_project(&db, &project_id);
 
     Ok(Whiteboard {
@@ -93,7 +95,7 @@ pub fn get_whiteboard(
 pub fn save_whiteboard_snapshot(
     db: State<'_, Database>,
     id: String,
-    snapshot: Vec<u8>,
+    snapshot: String,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();

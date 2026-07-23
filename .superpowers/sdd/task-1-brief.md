@@ -1,43 +1,28 @@
-﻿### Task 1: Install Vercel AI SDK dependencies
+﻿### Task 1: Add Rust Dependencies
 
 **Files:**
-- Modify: `app/package.json`
+- Modify: `app/src-tauri/Cargo.toml`
 
 **Interfaces:**
-- Consumes: none
-- Produces: npm packages `ai`, `@ai-sdk/openai`, `@ai-sdk/openai-compatible` available for import
+- Produces: `reqwest` (HTTP client), `scraper` (HTML parsing) available to all subsequent Rust tasks
 
-- [ ] **Step 1: Add dependencies to package.json**
+- [ ] **Step 1: Add `reqwest` and `scraper` to Cargo.toml**
 
-Read the current `app/package.json` dependencies, then add:
-
-```json
-"ai": "^4.3.0",
-"@ai-sdk/openai": "^1.3.0",
-"@ai-sdk/openai-compatible": "^0.2.0"
+```toml
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
+scraper = "0.21"
 ```
 
-- [ ] **Step 2: Install packages**
+Add after `uuid` dependency line in `Cargo.toml`.
+
+- [ ] **Step 2: Verify compilation**
+
+Run: `cargo check --manifest-path app/src-tauri/Cargo.toml`
+Expected: `Finished dev profile ...` (no errors)
+
+- [ ] **Step 3: Commit**
 
 ```bash
-cd app && pnpm install
+git add app/src-tauri/Cargo.toml app/src-tauri/Cargo.lock
+git commit -m "chore: add reqwest and scraper dependencies"
 ```
-
-- [ ] **Step 3: Verify installation**
-
-```bash
-cd app && pnpm ls ai @ai-sdk/openai @ai-sdk/openai-compatible
-```
-
-Expected: all three packages listed with versions.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add app/package.json app/pnpm-lock.yaml
-git commit -m "chore: add vercel ai sdk dependencies"
-```
-
----
-
-

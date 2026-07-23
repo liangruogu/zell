@@ -175,11 +175,13 @@ pub fn delete_knowledge_article(
     // Need project_id for touch_project
     {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
-        if let Ok(pid) = conn.query_row(
+        let pid: Option<String> = conn.query_row(
             "SELECT project_id FROM knowledge_articles WHERE id = ?1",
             rusqlite::params![id],
-            |row| row.get::<_, String>(0),
-        ) {
+            |row| row.get(0),
+        ).ok();
+        drop(conn);
+        if let Some(pid) = pid {
             crate::commands::project::touch_project(&db, &pid);
         }
     }
