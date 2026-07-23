@@ -120,45 +120,6 @@ export function MarkdownEditor({
   const [internalMode, setInternalMode] = useState<EditorMode>('wysiwyg')
   const mode = externalMode ?? internalMode
 
-  const pageBreakRef = useRef<HTMLDivElement>(null)
-
-  // Update page break lines when content changes
-  useEffect(() => {
-    if (!showPageBreaks || mode !== 'wysiwyg' || !editor) return
-
-    const updateBreaks = () => {
-      const container = pageBreakRef.current
-      if (!container) return
-      const old = container.querySelector('.page-break-overlay')
-      old?.remove()
-
-      const overlay = document.createElement('div')
-      overlay.className = 'page-break-overlay absolute inset-0 pointer-events-none z-10'
-      const pxPerMm = 3.779
-      const count = Math.floor(container.scrollHeight / (297 * pxPerMm))
-      for (let i = 1; i <= count; i++) {
-        const y = i * 297 * pxPerMm
-        const line = document.createElement('div')
-        line.className = 'absolute left-4 right-4 border-t border-dashed border-gray-300 flex items-center justify-end'
-        line.style.top = `${y}px`
-        const label = document.createElement('span')
-        label.className = 'text-[10px] text-gray-300 bg-white px-1 rounded'
-        label.style.transform = 'translateY(-50%)'
-        label.textContent = `第 ${i + 1} 页`
-        line.appendChild(label)
-        overlay.appendChild(line)
-      }
-      container.appendChild(overlay)
-    }
-
-    const timer = setTimeout(updateBreaks, 100)
-    editor.on('update', updateBreaks)
-    return () => {
-      clearTimeout(timer)
-      editor.off('update', updateBreaks)
-    }
-  }, [showPageBreaks, mode, editor])
-
   const initialHtml = useMemo(() => {
     const html = markdownToHtml(content || '')
     return html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
@@ -319,6 +280,45 @@ export function MarkdownEditor({
   })
 
   editorRef.current = editor
+
+  const pageBreakRef = useRef<HTMLDivElement>(null)
+
+  // Update page break lines when content changes
+  useEffect(() => {
+    if (!showPageBreaks || mode !== 'wysiwyg' || !editor) return
+
+    const updateBreaks = () => {
+      const container = pageBreakRef.current
+      if (!container) return
+      const old = container.querySelector('.page-break-overlay')
+      old?.remove()
+
+      const overlay = document.createElement('div')
+      overlay.className = 'page-break-overlay absolute inset-0 pointer-events-none z-10'
+      const pxPerMm = 3.779
+      const count = Math.floor(container.scrollHeight / (297 * pxPerMm))
+      for (let i = 1; i <= count; i++) {
+        const y = i * 297 * pxPerMm
+        const line = document.createElement('div')
+        line.className = 'absolute left-4 right-4 border-t border-dashed border-gray-300 flex items-center justify-end'
+        line.style.top = `${y}px`
+        const label = document.createElement('span')
+        label.className = 'text-[10px] text-gray-300 bg-white px-1 rounded'
+        label.style.transform = 'translateY(-50%)'
+        label.textContent = `第 ${i + 1} 页`
+        line.appendChild(label)
+        overlay.appendChild(line)
+      }
+      container.appendChild(overlay)
+    }
+
+    const timer = setTimeout(updateBreaks, 100)
+    editor.on('update', updateBreaks)
+    return () => {
+      clearTimeout(timer)
+      editor.off('update', updateBreaks)
+    }
+  }, [showPageBreaks, mode, editor])
 
   const prevContentRef = useRef(content)
   useEffect(() => {
