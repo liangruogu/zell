@@ -90,6 +90,7 @@ export function MarkdownEditor({
   } catch { /* use default */ }
 
   const [justSaved, setJustSaved] = useState(false)
+  const [saveMessage, setSaveMessage] = useState('✓ 已保存')
   const [showExport, setShowExport] = useState(false)
 
   const handleExport = useCallback(async (format: 'pdf' | 'docx') => {
@@ -107,6 +108,9 @@ export function MarkdownEditor({
     const markdown = htmlToMarkdown(content)
     try {
       await invoke('export_article', { markdown, outputPath, format })
+      setSaveMessage('✓ 导出成功')
+      setJustSaved(true)
+      setTimeout(() => setJustSaved(false), 2000)
     } catch (e: any) {
       alert(`导出失败: ${e}`)
     }
@@ -443,6 +447,7 @@ export function MarkdownEditor({
     const html = ed.getHTML()
     const md = htmlToMarkdown(html)
     onSave?.(html, md)
+    setSaveMessage('✓ 已保存')
     setJustSaved(true)
     setTimeout(() => setJustSaved(false), 2000)
   }, [onSave])
@@ -673,7 +678,7 @@ export function MarkdownEditor({
             <span className="ml-3 text-bindle-500 font-medium">{codeBlockLang}</span>
           )}
           {justSaved && (
-            <span className="ml-3 text-green-500">✓ 已保存</span>
+            <span className="ml-3 text-green-500">{saveMessage}</span>
           )}
           {updatedAt && !justSaved && (
             <span className="ml-3">· 更新于 {format.relativeTime(updatedAt)}</span>

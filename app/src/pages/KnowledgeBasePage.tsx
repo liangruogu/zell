@@ -146,7 +146,7 @@ export default function KnowledgeBasePage() {
     try {
       await invoke('export_article', { markdown: article.content, outputPath, format })
     } catch (e: any) {
-      alert(`导出失败: ${e}`)
+      alert(`导出失败: ${e}\n\n请确认已安装 Pandoc：https://pandoc.org/installing.html`)
     }
   }, [])
 
