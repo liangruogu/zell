@@ -394,33 +394,14 @@ export function MarkdownEditor({
     setTimeout(() => setJustSaved(false), 2000)
   }, [onSave])
 
-  // Typora-style: show # markers on active heading
+  // Keyboard: edit # markers at heading start
   useEffect(() => {
     if (!editor) return
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      const heading = target.closest?.('h1,h2,h3') as HTMLElement | null
-      if (!heading || !editor.view.dom.contains(heading)) return
-      const rect = heading.getBoundingClientRect()
-      const clickX = e.clientX - rect.left
-      if (clickX > 36) return
-      e.preventDefault()
-      e.stopPropagation()
-      const level = heading.tagName === 'H1' ? 1 : heading.tagName === 'H2' ? 2 : 3
-      const nextLevel = level >= 3 ? 0 : level + 1
-      if (nextLevel === 0) {
-        editor.chain().focus().setParagraph().run()
-      } else {
-        editor.chain().focus().toggleHeading({ level: nextLevel as 1 | 2 | 3 }).run()
-      }
-    }
-
-    // Keyboard: edit # markers at heading start
     const keyHandler = (e: KeyboardEvent) => {
       if (!editor.isEditable) return
       if (!editor.isActive('heading')) return
       const { $from } = editor.state.selection
-      if ($from.parentOffset !== 0) return // only at position 0
+      if ($from.parentOffset !== 0) return
 
       if (e.key === '#') {
         e.preventDefault()
@@ -442,10 +423,8 @@ export function MarkdownEditor({
     }
 
     const dom = editor.view.dom
-    dom.addEventListener('click', handler, true)
     dom.addEventListener('keydown', keyHandler, true)
     return () => {
-      dom.removeEventListener('click', handler, true)
       dom.removeEventListener('keydown', keyHandler, true)
     }
   }, [editor])
