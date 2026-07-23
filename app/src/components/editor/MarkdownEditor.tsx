@@ -105,7 +105,12 @@ export function MarkdownEditor({
   const [internalMode, setInternalMode] = useState<EditorMode>('wysiwyg')
   const mode = externalMode ?? internalMode
 
-  const initialHtml = useMemo(() => markdownToHtml(content || ''), [])
+  const initialHtml = useMemo(() => {
+    const html = markdownToHtml(content || '')
+    return html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
+      return open + body.replace(/\n+$/, '') + close
+    })
+  }, [])
 
   const handleModeToggle = useCallback(() => {
     const next = mode === 'wysiwyg' ? 'split' : 'wysiwyg'
