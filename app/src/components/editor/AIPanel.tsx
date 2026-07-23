@@ -138,11 +138,11 @@ export function AIPanel() {
   // Default context window sizes by model family
   const TOKEN_LIMIT = useMemo(() => {
     const model = activeProvider?.model?.toLowerCase() || ''
-    if (model.includes('deepseek')) return model.includes('v4') ? 65536 : 65536
+    if (model.includes('deepseek')) return 1000000  // 1M
     if (model.includes('gpt-4')) return 128000
     if (model.includes('gpt-3.5')) return 16385
     if (model.includes('claude')) return 200000
-    return 65536 // default
+    return 65536
   }, [activeProvider])
   const tokenPct = Math.min(100, Math.round((estimateTokens / TOKEN_LIMIT) * 100))
 
@@ -174,30 +174,7 @@ export function AIPanel() {
   if (!isOpen) return null
 
   return (
-    <div className="border-l border-gray-200 bg-white flex flex-col h-full relative">
-      {/* Token usage — circle indicator, shown on hover */}
-      <div className="absolute top-2 right-3 group z-10">
-        <div
-          className="w-2.5 h-2.5 rounded-full cursor-pointer"
-          style={{
-            background: tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e',
-          }}
-          title={`${estimateTokens.toLocaleString()} / ${TOKEN_LIMIT.toLocaleString()} tokens (${tokenPct}%)`}
-        />
-        <div className="absolute top-full right-0 mt-1 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-xs w-48">
-          <div className="flex justify-between text-gray-500 mb-1">
-            <span>上下文用量</span>
-            <span>{tokenPct}%</span>
-          </div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1">
-            <div className="h-full rounded-full transition-all" style={{
-              width: `${tokenPct}%`,
-              background: tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e',
-            }} />
-          </div>
-          <span className="text-gray-400">{estimateTokens.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens</span>
-        </div>
-      </div>
+    <div className="border-l border-gray-200 bg-white flex flex-col h-full">
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
@@ -237,6 +214,18 @@ export function AIPanel() {
           )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Token ring */}
+          <div className="relative w-5 h-5" title={`${estimateTokens.toLocaleString()} / ${TOKEN_LIMIT.toLocaleString()} tokens`}>
+            <svg className="w-5 h-5 -rotate-90" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="#e5e7eb" strokeWidth="3" />
+              <circle cx="12" cy="12" r="9" fill="none"
+                stroke={tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e'}
+                strokeWidth="3"
+                strokeDasharray={`${tokenPct * 0.565} 56.5`}
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
           <button
             onClick={clearMessages}
             className="p-1 text-gray-400 hover:text-gray-600 rounded text-xs"
