@@ -368,24 +368,32 @@ export function MarkdownEditor({
       }
       return btoa(binary)
     }
+    // Track mouse position during drag for insertion point
+    let mouseX = 0, mouseY = 0
+    const onMouseMove = (e: MouseEvent) => { mouseX = e.clientX; mouseY = e.clientY }
+
     const promise = getCurrentWindow().onDragDropEvent((event) => {
-      if (event.payload.type === 'enter' || event.payload.type === 'over') {
+      if (event.payload.type === 'enter') {
+        window.addEventListener('mousemove', onMouseMove)
+        const ed = editorRef.current
+        if (ed && mode === 'wysiwyg') {
+          ed.view.dom.classList.add('drag-over')
+        }
+      }
+      if (event.payload.type === 'over') {
         const ed = editorRef.current
         if (!ed || mode !== 'wysiwyg') return
-        // Show visual indicator by adding a CSS class
-        ed.view.dom.classList.add('drag-over')
-        // Move cursor to mouse position for placement preview
-        if (event.payload.position) {
-          const pos = ed.view.posAtCoords({
-            left: event.payload.position.x,
-            top: event.payload.position.y,
-          })
-          if (pos) {
-            ed.chain().focus().setTextSelection(pos.pos).run()
-          }
+        const rect = ed.view.dom.getBoundingClientRect()
+        const pos = ed.view.posAtCoords({
+          left: mouseX - rect.left,
+          top: mouseY - rect.top,
+        })
+        if (pos) {
+          ed.chain().focus().setTextSelection(pos.pos).run()
         }
       }
       if (event.payload.type === 'leave' || event.payload.type === 'drop') {
+        window.removeEventListener('mousemove', onMouseMove)
         editorRef.current?.view.dom.classList.remove('drag-over')
       }
       if (event.payload.type !== 'drop') return
