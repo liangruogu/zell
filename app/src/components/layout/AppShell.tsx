@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { AIPanel } from '@/components/editor/AIPanel'
 import { useAIStore } from '@/stores/aiStore'
@@ -8,9 +9,17 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const location = useLocation()
   const { isOpen: isAIOpen, openPanel, closePanel } = useAIStore()
   const [aiWidth, setAiWidth] = useState(320)
   const [aiDragging, setAiDragging] = useState(false)
+
+  const showAI = location.pathname.includes('/knowledge')
+
+  // Close AI panel when leaving knowledge base
+  useEffect(() => {
+    if (!showAI && isAIOpen) closePanel()
+  }, [showAI, isAIOpen, closePanel])
 
   const handleAIDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -53,7 +62,7 @@ export function AppShell({ children }: AppShellProps) {
       <main className="flex-1 flex flex-col min-w-0">
         {children}
       </main>
-      {isAIOpen && (
+      {isAIOpen && showAI && (
         <>
           <div
             onMouseDown={handleAIDragStart}
