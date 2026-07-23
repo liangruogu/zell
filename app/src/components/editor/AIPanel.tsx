@@ -427,7 +427,7 @@ export function AIPanel() {
             onClick={streaming ? handleStop : handleSend}
             disabled={!streaming && (!pendingInput.trim() || !hasAI)}
             className={cn(
-              'p-1.5 rounded transition-colors',
+              'p-1.5 rounded transition-colors self-center',
               streaming
                 ? 'bg-red-500 text-white hover:bg-red-600'
                 : pendingInput.trim() && hasAI
