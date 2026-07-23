@@ -41,6 +41,10 @@ function renderMarkdown(content: string): string {
   const div = document.createElement('div')
   div.innerHTML = html
   div.querySelectorAll('pre code').forEach((block) => {
+    // Trim trailing newline that markdown code fences always add
+    if (block.lastChild?.nodeType === Node.TEXT_NODE) {
+      (block.lastChild as Text).textContent = (block.lastChild as Text).textContent?.replace(/\n+$/, '') ?? ''
+    }
     try {
       hljs.highlightElement(block as HTMLElement)
     } catch {
