@@ -357,7 +357,6 @@ export function MarkdownEditor({
         const [, projectId, fileName] = match
         const cached = img.getAttribute('data-bindle-resolved')
         if (cached) {
-          // Already resolved from server, just apply
           if (img.getAttribute('src')?.startsWith('bindle-img:')) {
             img.setAttribute('src', cached)
           }
@@ -373,12 +372,17 @@ export function MarkdownEditor({
         } catch { /* keep */ }
       })
     }
-    editor.on('transaction', resolve)
     editor.on('create', resolve)
+    const onUpdate = () => {
+      // Only run on content changes (not every transaction like resize)
+      const imgs = editor.view.dom.querySelectorAll('img[src^="bindle-img:"]:not([data-bindle-resolved])')
+      if (imgs.length > 0) resolve()
+    }
+    editor.on('update', onUpdate)
     resolve()
     return () => {
-      editor.off('transaction', resolve)
       editor.off('create', resolve)
+      editor.off('update', onUpdate)
     }
   }, [editor, mode])
 
