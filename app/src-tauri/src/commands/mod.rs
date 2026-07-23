@@ -6,4 +6,5 @@ pub mod resource;
 pub mod image;
 pub mod file;
 pub mod conversation;
+pub mod export;
 pub mod system;

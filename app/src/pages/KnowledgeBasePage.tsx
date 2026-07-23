@@ -8,7 +8,8 @@ import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { ResizablePanel, useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { KnowledgeArticle } from '@/types/knowledge'
-import { markdownToHtml } from '@/lib/markdown'
+import { invoke } from '@tauri-apps/api/core'
+import { save } from '@tauri-apps/plugin-dialog'
 import { Plus, FileText, Trash2, FileOutput, Search, X, ListTree, ChevronRight, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -135,26 +136,17 @@ export default function KnowledgeBasePage() {
   }, [currentArticle, updateArticle])
 
   const handleExport = useCallback(async (article: KnowledgeArticle, format: 'pdf' | 'docx') => {
-    const html = markdownToHtml(article.content)
-    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:system-ui;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.7}pre{background:#f5f5f5;padding:12px;border-radius:6px;overflow:auto}code{font-size:0.9em}img{max-width:100%}blockquote{border-left:3px solid #ddd;margin-left:0;padding-left:16px;color:#666}table{border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${html}</body></html>`
+    const ext = format === 'pdf' ? 'pdf' : 'docx'
+    const outputPath = await save({
+      defaultPath: `${article.title}.${ext}`,
+      filters: [{ name: format.toUpperCase(), extensions: [ext] }],
+    })
+    if (!outputPath) return
 
-    if (format === 'docx') {
-      const { default: htmlDocx } = await import('html-docx-js')
-      const blob = await htmlDocx.asBlob(fullHtml)
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = `${article.title}.docx`
-      a.click()
-      URL.revokeObjectURL(a.href)
-    } else {
-      const { default: html2pdf } = await import('html2pdf.js')
-      html2pdf().set({
-        margin: 10,
-        filename: `${article.title}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(fullHtml).save()
+    try {
+      await invoke('export_article', { markdown: article.content, outputPath, format })
+    } catch (e: any) {
+      alert(`导出失败: ${e}`)
     }
   }, [])
 
