@@ -20,10 +20,10 @@ export const router = createBrowserRouter([
   },
   {
     path: '/project/:id/whiteboard',
-    element: <WhiteboardPage />,
+    element: <ExternalLinksPage />,
   },
   {
     path: '/project/:id/links',
-    element: <ExternalLinksPage />,
+    element: <WhiteboardPage />,
   },
 ])
