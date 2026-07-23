@@ -382,13 +382,13 @@ export function AIPanel() {
                 <Sparkles size={13} />
               </button>
               {showProviders && (
-                <div className="absolute bottom-full left-0 mb-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                <div className="absolute bottom-full left-0 mb-1 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
                   {providers.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => handleSwitchProvider(p.id)}
                       className={cn(
-                        'w-full text-left px-3 py-2 text-sm hover:bg-gray-50',
+                        'w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50',
                         (activeId === p.id || (!activeId && p === providers[0])) && 'text-bindle-600 font-medium',
                       )}
                     >
