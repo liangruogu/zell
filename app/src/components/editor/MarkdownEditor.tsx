@@ -272,7 +272,7 @@ export function MarkdownEditor({
     }
   }, [content, editor, mode])
 
-  // Resolve bindle-img refs inserted by paste/drag
+  // Resolve bindle-img refs inserted by paste/drag or loaded from markdown
   useEffect(() => {
     if (!editor || mode !== 'wysiwyg') return
     const resolve = () => {
@@ -292,6 +292,8 @@ export function MarkdownEditor({
     }
     editor.on('transaction', resolve)
     editor.on('create', resolve)
+    // Resolve immediately on mount (in case create already fired)
+    resolve()
     return () => {
       editor.off('transaction', resolve)
       editor.off('create', resolve)
