@@ -1,36 +1,35 @@
 import { useEffect, useState, useCallback } from 'react'
-import { X, Palette, Bot, FileText, Server, CheckCircle, Plus, Trash2, Check, Loader2 } from 'lucide-react'
+import { X, Palette, Bot, FileText, Server, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useForm } from 'react-hook-form'
 import { cn } from '@/lib/utils'
-import { testProviderConnection, type AIProvider } from '@/services/aiService'
 
 type SettingsCategory = 'appearance' | 'ai' | 'editor' | 'server'
 
 const CATEGORIES: { key: SettingsCategory; label: string; icon: React.ReactNode }[] = [
-  { key: 'appearance', label: '澶栬', icon: <Palette size={16} /> },
-  { key: 'ai', label: 'AI 鏈嶅姟', icon: <Bot size={16} /> },
-  { key: 'editor', label: '缂栬緫鍣?, icon: <FileText size={16} /> },
-  { key: 'server', label: '鏈嶅姟鍣?, icon: <Server size={16} /> },
+  { key: 'appearance', label: '外观', icon: <Palette size={16} /> },
+  { key: 'ai', label: 'AI 服务', icon: <Bot size={16} /> },
+  { key: 'editor', label: '编辑器', icon: <FileText size={16} /> },
+  { key: 'server', label: '服务器', icon: <Server size={16} /> },
 ]
 
 const FONT_SIZE_OPTIONS = [
-  { value: '14', label: '14px (杈冨皬)' },
-  { value: '15', label: '15px (涓瓑)' },
-  { value: '16', label: '16px (榛樿)' },
-  { value: '18', label: '18px (杈冨ぇ)' },
+  { value: '14', label: '14px (较小)' },
+  { value: '15', label: '15px (中等)' },
+  { value: '16', label: '16px (默认)' },
+  { value: '18', label: '18px (较大)' },
 ]
 
 const EDITOR_MODE_OPTIONS = [
-  { value: 'wysiwyg', label: '鎵€瑙佸嵆鎵€寰? },
-  { value: 'split', label: '鍒嗗睆妯″紡' },
+  { value: 'wysiwyg', label: '所见即所得' },
+  { value: 'split', label: '分屏模式' },
 ]
 
 const IMAGE_STORAGE_OPTIONS = [
-  { value: 'base64', label: 'Base64 鍐呭祵锛圡arkdown 婧愮爜杈冮暱锛? },
-  { value: 'file', label: '鏂囦欢璺緞锛堜繚瀛樺湪椤圭洰鐩綍锛岀畝娲佸彲璇伙級' },
+  { value: 'base64', label: 'Base64 内嵌（Markdown 源码较长）' },
+  { value: 'file', label: '文件路径（保存在项目目录，简洁可读）' },
 ]
 
 interface SettingsDialogProps {
@@ -89,7 +88,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </button>
 
         <nav className="w-44 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0 py-4">
-          <h2 className="px-4 mb-3 font-semibold text-gray-800 text-sm">璁剧疆</h2>
+          <h2 className="px-4 mb-3 font-semibold text-gray-800 text-sm">设置</h2>
           {CATEGORIES.map((cat) => (
             <button
               key={cat.key}
@@ -109,7 +108,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
         <div className="flex-1 overflow-auto p-6 relative">
           {category === 'appearance' && <AppearanceSettings parsed={parsed} setSetting={setSetting} showToast={showToast} />}
-          {category === 'ai' && <AISettings showToast={showToast} />}
+          {category === 'ai' && <AISettings parsed={parsed} setSetting={setSetting} showToast={showToast} />}
           {category === 'editor' && <EditorSettings parsed={parsed} setSetting={setSetting} showToast={showToast} />}
           {category === 'server' && <ServerSettings parsed={parsed} setSetting={setSetting} showToast={showToast} />}
 
@@ -161,192 +160,92 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
 
   const onSubmit = useCallback(async (data: { fontSize: string; showToolbar: boolean }) => {
     await setSetting('appearance', JSON.stringify(data))
-    showToast('澶栬璁剧疆宸蹭繚瀛?)
+    showToast('外观设置已保存')
   }, [setSetting, showToast])
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <h3 className="font-semibold text-gray-800">澶栬璁剧疆</h3>
+      <h3 className="font-semibold text-gray-800">外观设置</h3>
       <div className="space-y-4">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">缂栬緫鍣ㄥ瓧鍙?/label>
+          <label className="block text-sm font-medium text-gray-700">编辑器字号</label>
           <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('fontSize')}>
             {FONT_SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" className="w-4 h-4 accent-bindle-500" {...register('showToolbar')} />
-          <span className="text-sm text-gray-700">鏄剧ず缂栬緫鍣ㄥ伐鍏锋爮</span>
+          <span className="text-sm text-gray-700">显示编辑器工具栏</span>
         </label>
       </div>
-      <Button type="submit" size="sm">淇濆瓨澶栬</Button>
+      <Button type="submit" size="sm">保存外观</Button>
     </form>
   )
 }
 
-// ---- AI Settings (multi-provider) ----
-function AISettings({ showToast }: {
+// ---- AI Settings ----
+function AISettings({ parsed, setSetting, showToast }: {
+  parsed: ReturnType<typeof parseSettings>
+  setSetting: (k: string, v: string) => Promise<void>
   showToast: (msg: string) => void
 }) {
-  const [providers, setProviders] = useState<AIProvider[]>(() => {
-    const raw = useSettingsStore.getState().settings['ai_providers']
-    try { return raw ? JSON.parse(raw) : [] } catch { return [] }
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: {
+      textProvider: String(parsed.ai.text_provider || 'openai'),
+      textModel: String(parsed.ai.text_model || 'gpt-4o'),
+      textApiKey: String(parsed.ai.text_api_key || ''),
+      imageProvider: String(parsed.ai.image_provider || 'openai'),
+      imageModel: String(parsed.ai.image_model || 'dall-e-3'),
+      ollamaUrl: String(parsed.ai.local_ollama_url || 'http://localhost:11434'),
+      ollamaModel: String(parsed.ai.local_ollama_model || 'llama3:8b'),
+    },
   })
-  const [activeId, setActiveId] = useState<string | null>(() =>
-    useSettingsStore.getState().settings['ai_active_provider'] || null
-  )
-  const [testing, setTesting] = useState<string | null>(null)
-  const setSetting = useSettingsStore((s) => s.setSetting)
 
-  // Sync from store when settings load (providers were not available at init time)
-  const storeProviders = useSettingsStore((s) => s.settings['ai_providers'])
   useEffect(() => {
-    try {
-      const parsed: AIProvider[] = storeProviders ? JSON.parse(storeProviders) : []
-      if (parsed.length > 0) setProviders(parsed)
-    } catch {}
-  }, [storeProviders])
-  const storeActive = useSettingsStore((s) => s.settings['ai_active_provider'])
-  useEffect(() => {
-    if (storeActive) setActiveId(storeActive)
-  }, [storeActive])
+    reset({
+      textProvider: String(parsed.ai.text_provider || 'openai'),
+      textModel: String(parsed.ai.text_model || 'gpt-4o'),
+      textApiKey: String(parsed.ai.text_api_key || ''),
+      imageProvider: String(parsed.ai.image_provider || 'openai'),
+      imageModel: String(parsed.ai.image_model || 'dall-e-3'),
+      ollamaUrl: String(parsed.ai.local_ollama_url || 'http://localhost:11434'),
+      ollamaModel: String(parsed.ai.local_ollama_model || 'llama3:8b'),
+    })
+  }, [parsed.ai.text_provider, parsed.ai.text_model, parsed.ai.text_api_key,
+      parsed.ai.image_provider, parsed.ai.image_model,
+      parsed.ai.local_ollama_url, parsed.ai.local_ollama_model, reset])
 
-  const saveProviders = useCallback(async (p: AIProvider[]) => {
-    setProviders(p)
-    await setSetting('ai_providers', JSON.stringify(p))
-  }, [setSetting])
-
-  const saveActive = useCallback(async (id: string | null) => {
-    setActiveId(id)
-    if (id) {
-      await setSetting('ai_active_provider', id)
-    }
-  }, [setSetting])
-
-  const handleAdd = () => {
-    const p: AIProvider = {
-      id: crypto.randomUUID(),
-      name: '',
-      baseUrl: 'https://api.openai.com/v1',
-      apiKey: '',
-      model: 'gpt-4o',
-    }
-    saveProviders([...providers, p])
-  }
-
-  const handleUpdate = (id: string, field: keyof AIProvider, value: string) => {
-    saveProviders(providers.map((p) => p.id === id ? { ...p, [field]: value } : p))
-  }
-
-  const handleDelete = (id: string) => {
-    if (activeId === id) saveActive(null)
-    saveProviders(providers.filter((p) => p.id !== id))
-  }
-
-  const handleTest = async (p: AIProvider) => {
-    setTesting(p.id)
-    const result = await testProviderConnection(p)
-    setTesting(null)
-    showToast(result.ok ? `${p.name || 'Provider'} 杩炴帴鎴愬姛` : `杩炴帴澶辫触: ${result.message}`)
-  }
+  const onSubmit = useCallback(async (data: Record<string, string>) => {
+    await setSetting('ai_config', JSON.stringify({
+      text_provider: data.textProvider, text_model: data.textModel,
+      text_api_key: data.textApiKey, image_provider: data.imageProvider,
+      image_model: data.imageModel, local_ollama_url: data.ollamaUrl,
+      local_ollama_model: data.ollamaModel, fallback_to_local: true,
+    }))
+    showToast('AI 配置已保存')
+  }, [setSetting, showToast])
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-semibold text-gray-800">AI 鏈嶅姟</h3>
-
-      {providers.length === 0 && (
-        <p className="text-sm text-gray-400 py-4 text-center">鏆傛棤 AI 鏈嶅姟锛岀偣鍑?娣诲姞"閰嶇疆</p>
-      )}
-
-      {providers.map((p) => (
-        <ProviderCard
-          key={p.id}
-          provider={p}
-          isActive={activeId === p.id}
-          testing={testing === p.id}
-          onSetActive={() => saveActive(p.id)}
-          onUpdate={(f, v) => handleUpdate(p.id, f, v)}
-          onDelete={() => handleDelete(p.id)}
-          onTest={() => handleTest(p)}
-        />
-      ))}
-
-      <Button size="sm" onClick={handleAdd} variant="outline">
-        <Plus size={14} /> 娣诲姞 Provider
-      </Button>
-    </div>
-  )
-}
-
-function ProviderCard({ provider: p, isActive, testing, onSetActive, onUpdate, onDelete, onTest }: {
-  provider: AIProvider
-  isActive: boolean
-  testing: boolean
-  onSetActive: () => void
-  onUpdate: (field: keyof AIProvider, value: string) => void
-  onDelete: () => void
-  onTest: () => void
-}) {
-  return (
-    <div className={cn('border rounded-lg p-3 space-y-2', isActive ? 'border-bindle-300 bg-bindle-50' : 'border-gray-200')}>
-      <div className="flex items-center gap-2">
-        <input
-          className="flex-1 px-2 py-1 text-sm border-0 bg-transparent font-medium outline-none"
-          placeholder="Provider 鍚嶇О"
-          value={p.name}
-          onChange={(e) => onUpdate('name', e.target.value)}
-        />
-        <button
-          onClick={onSetActive}
-          className={cn('shrink-0 px-2 py-0.5 text-xs rounded-full transition-colors',
-            isActive ? 'bg-bindle-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
-          )}
-        >
-          {isActive ? '浣跨敤涓? : '鍚敤'}
-        </button>
-        <button onClick={onDelete} className="shrink-0 p-1 text-gray-400 hover:text-red-500 rounded">
-          <Trash2 size={14} />
-        </button>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-[11px] text-gray-400">Base URL</label>
-          <input
-            className="w-full px-2 py-1 text-sm border border-gray-200 rounded outline-none focus:ring-1 focus:ring-bindle-400"
-            value={p.baseUrl}
-            onChange={(e) => onUpdate('baseUrl', e.target.value)}
-            placeholder="https://api.openai.com/v1"
-          />
-        </div>
-        <div>
-          <label className="text-[11px] text-gray-400">Model</label>
-          <input
-            className="w-full px-2 py-1 text-sm border border-gray-200 rounded outline-none focus:ring-1 focus:ring-bindle-400"
-            value={p.model}
-            onChange={(e) => onUpdate('model', e.target.value)}
-            placeholder="gpt-4o"
-          />
-        </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <h3 className="font-semibold text-gray-800">AI 服务配置</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <Input id="textProvider" label="文本生成服务商" {...register('textProvider')} />
+        <Input id="textModel" label="文本模型" placeholder="gpt-4o" {...register('textModel')} />
         <div className="col-span-2">
-          <label className="text-[11px] text-gray-400">API Key</label>
-          <input
-            type="password"
-            className="w-full px-2 py-1 text-sm border border-gray-200 rounded outline-none focus:ring-1 focus:ring-bindle-400"
-            value={p.apiKey}
-            onChange={(e) => onUpdate('apiKey', e.target.value)}
-            placeholder="sk-...锛圤llama 鍙暀绌猴級"
-          />
+          <Input id="textApiKey" label="API Key" type="password" placeholder="sk-..." {...register('textApiKey')} />
         </div>
+        <Input id="imageProvider" label="图片生成服务商" {...register('imageProvider')} />
+        <Input id="imageModel" label="图片模型" placeholder="dall-e-3" {...register('imageModel')} />
       </div>
-      <button
-        onClick={onTest}
-        disabled={testing}
-        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-bindle-600 transition-colors disabled:opacity-50"
-      >
-        {testing ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-        娴嬭瘯杩炴帴
-      </button>
-    </div>
+
+      <h3 className="font-semibold text-gray-800 pt-2">本地模型 (Ollama)</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <Input id="ollamaUrl" label="Ollama 地址" placeholder="http://localhost:11434" {...register('ollamaUrl')} />
+        <Input id="ollamaModel" label="本地模型名" placeholder="llama3:8b" {...register('ollamaModel')} />
+      </div>
+
+      <Button type="submit" size="sm">保存 AI 配置</Button>
+    </form>
   )
 }
 
@@ -371,27 +270,30 @@ function EditorSettings({ parsed, setSetting, showToast }: {
   }, [parsed.editorPrefs.defaultMode, parsed.editorPrefs.imageStorage, reset])
 
   const onSubmit = useCallback(async (data: { defaultMode: string; imageStorage: string }) => {
-    await setSetting('editor_prefs', JSON.stringify(data))
-    showToast('缂栬緫鍣ㄨ缃凡淇濆瓨')
-  }, [setSetting, showToast])
+    await setSetting('editor_prefs', JSON.stringify({
+      ...parsed.editorPrefs,
+      ...data,
+    }))
+    showToast('编辑器设置已保存')
+  }, [setSetting, showToast, parsed.editorPrefs])
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <h3 className="font-semibold text-gray-800">缂栬緫鍣ㄥ亸濂?/h3>
+      <h3 className="font-semibold text-gray-800">编辑器偏好</h3>
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">榛樿缂栬緫妯″紡</label>
+        <label className="block text-sm font-medium text-gray-700">默认编辑模式</label>
         <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('defaultMode')}>
           {EDITOR_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">鍥剧墖瀛樺偍鏂瑰紡</label>
+        <label className="block text-sm font-medium text-gray-700">图片存储方式</label>
         <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('imageStorage')}>
           {IMAGE_STORAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <p className="text-xs text-gray-400 mt-1">閫夋嫨鏂囦欢璺緞妯″紡鍚庯紝鎻掑叆鐨勫浘鐗囧皢浠?bindle-img:// 鍗忚寮曠敤锛孧arkdown 婧愮爜鏇寸畝娲?/p>
+        <p className="text-xs text-gray-400 mt-1">Base64 模式：图片直接嵌入 Markdown<br />文件模式：图片保存为独立文件，Markdown 仅存引用</p>
       </div>
-      <Button type="submit" size="sm">淇濆瓨鍋忓ソ</Button>
+      <Button type="submit" size="sm">保存偏好</Button>
     </form>
   )
 }
@@ -410,15 +312,15 @@ function ServerSettings({ parsed, setSetting, showToast }: {
 
   const onSubmit = useCallback(async (data: { serverUrl: string }) => {
     await setSetting('server_url', data.serverUrl)
-    showToast('鏈嶅姟鍣ㄨ缃凡淇濆瓨')
+    showToast('服务器设置已保存')
   }, [setSetting, showToast])
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <h3 className="font-semibold text-gray-800">鍥㈤槦鏈嶅姟鍣?/h3>
-      <Input id="serverUrl" label="鏈嶅姟鍣ㄥ湴鍧€" placeholder="https://bindle.example.com" {...register('serverUrl')} />
-      <p className="text-xs text-gray-400">鐣欑┖浣跨敤鏈湴妯″紡锛涘～鍐欏悗杩炴帴鑷墭绠″悗绔疄鐜板洟闃熷崗浣?/p>
-      <Button type="submit" size="sm">淇濆瓨</Button>
+      <h3 className="font-semibold text-gray-800">团队服务器</h3>
+      <Input id="serverUrl" label="服务器地址" placeholder="https://bindle.example.com" {...register('serverUrl')} />
+      <p className="text-xs text-gray-400">留空使用本地模式；填写后连接自托管后端实现团队协作</p>
+      <Button type="submit" size="sm">保存</Button>
     </form>
   )
 }
