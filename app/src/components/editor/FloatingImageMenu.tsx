@@ -25,6 +25,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
   const [imgWidth, setImgWidth] = useState(400)
   const [imgFloat, setImgFloat] = useState('center')
   const [imgSrc, setImgSrc] = useState('')
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const updateImageWidth = useCallback((width: number | string | null) => {
     const { state, view } = editor
