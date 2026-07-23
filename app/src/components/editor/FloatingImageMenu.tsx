@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { type Editor } from '@tiptap/react'
 import { cn } from '@/lib/utils'
-import { AlignLeft, AlignCenter, Maximize } from 'lucide-react'
 
 interface FloatingImageMenuProps {
   editor: Editor
@@ -14,16 +13,10 @@ const SIZE_PRESETS = [
   { label: '充满', width: 'full' as const },
 ]
 
-const FLOAT_OPTIONS: { label: string; value: string; icon: React.ReactNode }[] = [
-  { label: '居中', value: 'center', icon: <AlignCenter size={14} /> },
-  { label: '靠左', value: 'left', icon: <AlignLeft size={14} /> },
-]
-
 export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
   const [visible, setVisible] = useState(false)
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const [imgWidth, setImgWidth] = useState(400)
-  const [imgFloat, setImgFloat] = useState('center')
   const [imgSrc, setImgSrc] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -34,40 +27,13 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
     if (node?.type.name === 'image' || node?.type.name === 'inlineImage') {
       if (width === 'full') {
         editor.chain().setNodeSelection(from).updateAttributes('image', { width: '100%' }).run()
-        // Apply max-width removal and full width CSS via style
         const img = view.dom.querySelector(`img[src="${node.attrs.src}"]`) as HTMLElement | null
-        if (img) {
-          img.style.width = '100%'
-          img.style.maxWidth = '100%'
-        }
+        if (img) { img.style.width = '100%'; img.style.maxWidth = '100%' }
       } else {
         const numeric = width === null ? null : Number(width)
         editor.chain().setNodeSelection(from).updateAttributes('image', { width: numeric }).run()
         const img = view.dom.querySelector(`img[src="${node.attrs.src}"]`) as HTMLElement | null
         if (img) img.style.width = numeric ? `${numeric}px` : ''
-      }
-    }
-  }, [editor])
-
-  const updateImageFloat = useCallback((float: string) => {
-    const { state, view } = editor
-    const { from } = state.selection
-    const node = state.doc.nodeAt(from)
-    if (node?.type.name === 'image' || node?.type.name === 'inlineImage') {
-      setImgFloat(float)
-      const img = view.dom.querySelector(`img[src="${node.attrs.src}"]`) as HTMLElement | null
-      if (img) {
-        if (float === 'center') {
-          img.style.display = 'block'
-          img.style.marginLeft = 'auto'
-          img.style.marginRight = 'auto'
-          img.style.float = 'none'
-        } else if (float === 'left') {
-          img.style.display = 'block'
-          img.style.marginLeft = '0'
-          img.style.marginRight = '1em'
-          img.style.float = 'left'
-        }
       }
     }
   }, [editor])
@@ -89,16 +55,6 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
           : img.getAttribute('width')
             ? parseInt(img.getAttribute('width')!)
             : img.naturalWidth || img.clientWidth
-
-        // Detect current float
-        const style = img.style
-        if (style.display === 'block' || (style.marginLeft === 'auto' && style.marginRight === 'auto')) {
-          setImgFloat('center')
-        } else if (style.float === 'left') {
-          setImgFloat('left')
-        } else {
-          setImgFloat('center')
-        }
 
         setImgWidth(Math.min(currentWidth || 400, 800))
         setImgSrc(img.src)
@@ -155,7 +111,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
   if (!visible) return null
 
   const menuWidth = 260
-  const menuHeight = 280
+  const menuHeight = 220
   const x = Math.min(pos.x, window.innerWidth - menuWidth - 10)
   const y = Math.min(pos.y, window.innerHeight - menuHeight - 10)
 
@@ -167,7 +123,6 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
     >
       <h4 className="text-xs font-semibold text-gray-700 mb-3">调整图片</h4>
 
-      {/* Size slider */}
       <div className="space-y-2 mb-3">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>宽度</span>
@@ -184,7 +139,6 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
         />
       </div>
 
-      {/* Size presets */}
       <div className="flex gap-1.5 mb-3">
         {SIZE_PRESETS.map((p) => (
           <button
@@ -204,30 +158,6 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
         ))}
       </div>
 
-      {/* Float options */}
-      <div className="mb-3">
-        <span className="text-xs text-gray-500 mb-1.5 block">位置</span>
-        <div className="flex gap-1.5">
-          {FLOAT_OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => updateImageFloat(o.value)}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-1 py-1.5 text-xs rounded border transition-colors',
-                imgFloat === o.value
-                  ? 'bg-bindle-50 border-bindle-300 text-bindle-700'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-              )}
-            >
-              {o.icon}
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Copy options */}
       <div className="border-t border-gray-100 pt-2 space-y-1">
         <button
           type="button"
