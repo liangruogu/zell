@@ -6,6 +6,7 @@ export interface ExternalLink {
   description: string
   link_type: string
   favicon: string
+  ai_skill: string
   sort_order: number
   sync_status: string
   last_synced_at: string | null

@@ -18,10 +18,10 @@ interface LinkState {
 
   fetchLinks: (projectId: string) => Promise<void>
   createLink: (projectId: string, data: {
-    title: string; url: string; description?: string; linkType?: string
+    title: string; url: string; description?: string; linkType?: string; aiSkill?: string
   }) => Promise<ExternalLink>
   updateLink: (id: string, data: {
-    title: string; url: string; description: string; linkType: string
+    title: string; url: string; description: string; linkType: string; aiSkill?: string
   }) => Promise<void>
   deleteLink: (id: string) => Promise<void>
   syncLink: (id: string) => Promise<void>
@@ -46,6 +46,7 @@ export const useLinkStore = create<LinkState>((set) => ({
     const link = await invoke<ExternalLink>('create_external_link', {
       projectId, title: data.title, url: data.url,
       description: data.description || '', linkType: data.linkType || 'web',
+      aiSkill: data.aiSkill || '',
     })
     set((s) => ({ links: [...s.links, link] }))
     return link
@@ -55,6 +56,7 @@ export const useLinkStore = create<LinkState>((set) => ({
     await invoke('update_external_link', {
       id, title: data.title, url: data.url,
       description: data.description, linkType: data.linkType,
+      aiSkill: data.aiSkill || '',
     })
     set((s) => ({
       links: s.links.map((l) => l.id === id ? { ...l, ...data } : l),

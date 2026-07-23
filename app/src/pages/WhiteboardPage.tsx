@@ -47,6 +47,7 @@ export default function ExternalLinksPage() {
   const [url, setUrl] = useState('')
   const [linkDescription, setLinkDescription] = useState('')
   const [linkType, setLinkType] = useState('web')
+  const [apiToken, setApiToken] = useState('')
   const [isNewLink, setIsNewLink] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ExternalLink | null>(null)
 
@@ -130,6 +131,7 @@ export default function ExternalLinksPage() {
     setUrl('')
     setLinkDescription('')
     setLinkType('web')
+    setApiToken('')
     setTab('links')
   }, [setCurrentLink, setCurrentFile])
 
@@ -139,13 +141,13 @@ export default function ExternalLinksPage() {
     const type = linkType === 'web' ? detected : linkType
 
     if (isNewLink) {
-      const link = await createLink(projectId, { title: title.trim(), url: url.trim(), description: linkDescription, linkType: type })
+      const link = await createLink(projectId, { title: title.trim(), url: url.trim(), description: linkDescription, linkType: type, aiSkill: apiToken })
       setCurrentLink(link)
       setIsNewLink(false)
     } else if (currentLink) {
-      await updateLink(currentLink.id, { title: title.trim(), url: url.trim(), description: linkDescription, linkType: type })
+      await updateLink(currentLink.id, { title: title.trim(), url: url.trim(), description: linkDescription, linkType: type, aiSkill: apiToken })
     }
-  }, [projectId, title, url, linkDescription, linkType, isNewLink, currentLink, createLink, updateLink, setCurrentLink])
+  }, [projectId, title, url, linkDescription, linkType, apiToken, isNewLink, currentLink, createLink, updateLink, setCurrentLink])
 
   const handleOpenUrl = useCallback(async (linkUrl: string) => {
     try { await open(linkUrl) } catch { window.open(linkUrl, '_blank') }
@@ -265,6 +267,11 @@ export default function ExternalLinksPage() {
     setIsNewLink(false)
     setCurrentLink(link)
     setCurrentFile(null)
+    setTitle(link.title)
+    setUrl(link.url)
+    setLinkDescription(link.description)
+    setLinkType(link.link_type)
+    setApiToken(link.ai_skill || '')
   }, [setCurrentLink, setCurrentFile])
 
   // --- Render helpers ---
@@ -318,12 +325,19 @@ export default function ExternalLinksPage() {
                       )}
                       onClick={() => selectLink(link)}
                     >
-                      <Link2 size={14} className="shrink-0 text-gray-400" />
+                      {link.favicon ? (
+                        <img src={link.favicon} alt="" className="w-4 h-4 rounded shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                      ) : (
+                        <Link2 size={14} className="shrink-0 text-gray-400" />
+                      )}
                       <span className="truncate flex-1">{link.title}</span>
-                      {link.sync_status === 'synced' && link.link_type === 'file' && (
+                      {link.sync_status === 'synced' && (
                         <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" title="已同步" />
                       )}
-                      {link.sync_status === 'error' && link.link_type === 'file' && (
+                      {link.sync_status === 'syncing' && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="同步中" />
+                      )}
+                      {link.sync_status === 'error' && (
                         <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" title="同步失败" />
                       )}
                       <span className="text-[10px] text-gray-400 shrink-0">{LINK_TYPE_LABELS[link.link_type] || link.link_type}</span>
@@ -452,6 +466,10 @@ export default function ExternalLinksPage() {
                 </div>
                 <Textarea id="description" label="描述" placeholder="简要描述这个资源..." rows={3} value={linkDescription} onChange={(e) => setLinkDescription(e.target.value)} />
 
+                {(linkType === 'figma' || linkType === 'canva' || linkType === 'notion') && (
+                  <Input id="apiToken" label="API Token" placeholder="输入 API Token..." value={apiToken} onChange={(e) => setApiToken(e.target.value)} />
+                )}
+
                 {currentLink && (
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <span>同步状态:</span>
@@ -482,11 +500,9 @@ export default function ExternalLinksPage() {
                       <Button variant="outline" onClick={() => handleOpenUrl(currentLink.url)}>
                         <ExternalLinkIcon size={14} /> 打开链接
                       </Button>
-                      {currentLink.link_type === 'file' && (
-                        <Button variant="outline" onClick={() => syncLink(currentLink.id)}>
-                          同步
-                        </Button>
-                      )}
+                      <Button variant="outline" onClick={() => syncLink(currentLink.id)}>
+                        同步
+                      </Button>
                     </>
                   )}
                 </div>

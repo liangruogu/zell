@@ -3,6 +3,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useFileStore } from '@/stores/fileStore'
+import { useLinkStore } from '@/stores/linkStore'
 import { runAgent, type AgentToolCall } from '@/services/core/agentRunner'
 import { createKnowledgeAgentConfig } from '@/services/agents/knowledgeAgent'
 
@@ -112,6 +113,19 @@ export async function sendMessage(userContent: string) {
           if (f.extracted_text) desc += ` (已提取文本, ${f.extracted_text.length} 字符)`
           ctx += `\n- [${f.original_name}] ${f.file_type} | ID: ${f.id}${desc}`
         }
+      }
+
+      // Add external links with sync status
+      const links = useLinkStore.getState().links
+      if (links.length > 0) {
+        ctx += `\n\n外部链接 (${links.length} 个):`
+        for (const l of links.slice(0, 15)) {
+          let desc = ` — ${l.url}`
+          if (l.description) desc += ` | ${l.description}`
+          if (l.sync_status === 'synced') desc += ' [已同步]'
+          ctx += `\n- [${l.title}] 类型: ${l.link_type} | ID: ${l.id}${desc}`
+        }
+        if (links.length > 15) ctx += `\n... 共 ${links.length} 个链接`
       }
 
       config.systemPrompt += ctx
