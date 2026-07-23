@@ -483,7 +483,7 @@ export default function ExternalLinksPage() {
             </div>
           ) : tab === 'links' && (currentLink || isNewLink) ? (
             <div className="flex-1 overflow-auto p-4">
-              <div className="max-w-xl space-y-3">
+              <div className="max-w-xl mx-auto space-y-3">
                 <h3 className="font-semibold text-gray-800 text-sm">{isNewLink ? '添加外部链接' : '编辑链接'}</h3>
                 <Input id="title" label="标题" placeholder="链接名称" value={title} onChange={(e) => setTitle(e.target.value)} />
                 <Input id="url" label="URL" placeholder="https://..." value={url}
