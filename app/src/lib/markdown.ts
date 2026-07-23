@@ -1,5 +1,19 @@
 import TurndownService from 'turndown'
 import { marked } from 'marked'
+import { convertFileSrc } from '@tauri-apps/api/core'
+
+let _imagesBaseDir: string | null = null
+
+export function setImagesBaseDir(dir: string) {
+  _imagesBaseDir = dir
+}
+
+function bindleImgToSrc(ref: string): string {
+  if (!_imagesBaseDir) return ref
+  // ref format: "projId/fileName"
+  const path = `${_imagesBaseDir}/projects/${ref}`
+  return convertFileSrc(path)
+}
 
 const turndown = new TurndownService({
   headingStyle: 'atx',
@@ -8,7 +22,7 @@ const turndown = new TurndownService({
   bulletListMarker: '-',
 })
 
-// Preserve image width and bindle-img refs
+// Preserve image width and convert asset URLs back to bindle-img refs
 turndown.addRule('imageWithSize', {
   filter: (node) => node.nodeName === 'IMG',
   replacement: (_content, node) => {
@@ -16,6 +30,21 @@ turndown.addRule('imageWithSize', {
     const alt = el.getAttribute('alt') || ''
     const src = el.getAttribute('src') || ''
     const width = el.getAttribute('width')
+
+    // If src is an asset URL (from convertFileSrc), convert back to bindle-img ref
+    if (_imagesBaseDir && src.includes('/images/')) {
+      try {
+        const url = new URL(src)
+        const decoded = decodeURIComponent(url.pathname)
+        const idx = decoded.lastIndexOf('/projects/')
+        if (idx >= 0) {
+          const relative = decoded.slice(idx + '/projects/'.length) // "projId/images/fileName"
+          const bindleRef = `bindle-img:${relative}`
+          const titleAttr = width ? ` "width=${width}"` : ''
+          return `![${alt}](${bindleRef}${titleAttr})`
+        }
+      } catch { /* not a URL, use as-is */ }
+    }
 
     // Keep bindle-img: refs as-is
     if (src.startsWith('bindle-img:')) {
@@ -27,7 +56,7 @@ turndown.addRule('imageWithSize', {
   },
 })
 
-// Custom image renderer: support width from title attribute, hide bindle-img broken icon
+// Custom image renderer: resolve bindle-img to asset URLs
 marked.use({
   renderer: {
     image({ href, title, text }: { href: string; title: string | null; text: string }) {
@@ -36,10 +65,8 @@ marked.use({
         const wm = title.match(/width=(\d+)/)
         if (wm) widthAttr = ` width="${wm[1]}"`
       }
-      if (href.startsWith('bindle-img:')) {
-        return `<img src="${href}" alt="${text}"${widthAttr} style="opacity:0;min-width:40px;min-height:40px" onerror="return false">`
-      }
-      return `<img src="${href}" alt="${text}"${widthAttr}>`
+      const src = href.startsWith('bindle-img:') ? bindleImgToSrc(href.replace('bindle-img:', '')) : href
+      return `<img src="${src}" alt="${text}"${widthAttr}>`
     },
   },
 })

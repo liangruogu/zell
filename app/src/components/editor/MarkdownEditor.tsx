@@ -15,13 +15,14 @@ import hljs from 'highlight.js'
 import { EditorToolbar } from './EditorToolbar'
 import { FloatingImageMenu } from './FloatingImageMenu'
 import { cn } from '@/lib/utils'
-import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
+import { htmlToMarkdown, markdownToHtml, setImagesBaseDir } from '@/lib/markdown'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { format } from '@/lib/format'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { readFile } from '@tauri-apps/plugin-fs'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import { appDataDir } from '@tauri-apps/api/path'
 
 const lowlight = createLowlight(common)
 
@@ -83,6 +84,11 @@ export function MarkdownEditor({
 
   const [justSaved, setJustSaved] = useState(false)
 
+  // Cache app data dir for image path resolution
+  useEffect(() => {
+    appDataDir().then(setImagesBaseDir)
+  }, [])
+
   // Helper: insert image based on storage mode
   const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
     const ed = editorRef.current
@@ -93,7 +99,11 @@ export function MarkdownEditor({
       if (projectId) {
         try {
           const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
-          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
+          // Get the images dir path and convert to asset URL for direct rendering
+          const dir = await appDataDir()
+          const imgPath = `${dir}projects/${projectId}/images/${saved.file_name}`
+          const assetUrl = convertFileSrc(imgPath)
+          ed.chain().focus().setImage({ src: assetUrl }).run()
           return
         } catch { /* fall through to base64 */ }
       }
@@ -225,33 +235,6 @@ export function MarkdownEditor({
       editor.commands.setContent(markdownToHtml(content || ''))
     }
   }, [content, editor, mode])
-
-  // Resolve bindle-img: refs inserted by paste/drag or loaded from markdown
-  useEffect(() => {
-    if (!editor || mode !== 'wysiwyg') return
-    const resolveImgs = () => {
-      const imgs = editor.view.dom.querySelectorAll('img[src^="bindle-img:"]')
-      imgs.forEach(async (img) => {
-        const src = img.getAttribute('src') || ''
-        const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
-        if (!match) return
-        const [, projectId, fileName] = match
-        try {
-          const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
-          if (img.getAttribute('src')?.startsWith('bindle-img:')) {
-            img.setAttribute('src', dataUrl)
-            ;(img as HTMLElement).style.opacity = '1'
-          }
-        } catch { /* keep hidden */ }
-      })
-    }
-    editor.on('transaction', resolveImgs)
-    editor.on('create', resolveImgs)
-    return () => {
-      editor.off('transaction', resolveImgs)
-      editor.off('create', resolveImgs)
-    }
-  }, [editor, mode])
 
   useEffect(() => {
     if (editor) {
