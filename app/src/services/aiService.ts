@@ -46,6 +46,20 @@ export async function sendMessage(userContent: string) {
     ? `\`\`\`quote\n${refText}\n\`\`\`\n\n${userContent}`
     : userContent
 
+  // Clear previous error messages before sending
+  const allMsgs = useAIStore.getState().messages
+  if (allMsgs.some(m => m.role === 'assistant' && (m.content.startsWith('请求失败') || m.content === '(没有返回内容)'))) {
+    useAIStore.setState((state: any) => ({
+      messages: state.messages.filter((m: any) => {
+        if (m.role !== 'assistant') return true
+        const c = m.content
+        if (c === '(没有返回内容)') return false
+        if (c.startsWith('请求失败') || c.startsWith('AI 请求失败')) return false
+        return true
+      }),
+    }))
+  }
+
   useAIStore.getState().addMessage({ role: 'user', content: displayContent })
   useAIStore.getState().setStreaming(true)
   if (refText) useAIStore.getState().setSelectedText('')
@@ -54,19 +68,11 @@ export async function sendMessage(userContent: string) {
   const msgIdx = useAIStore.getState().messages.length - 1
 
   const storeSnapshot = useAIStore.getState().messages
-  // Filter out failed assistant messages from previous errors
-  const validMessages = storeSnapshot.filter(m => {
-    if (m.role !== 'assistant') return true
-    const c = m.content
-    if (c === '(没有返回内容)') return false
-    if (c.startsWith('请求失败') || c.startsWith('AI 请求失败')) return false
-    return true
-  })
-  const messages = validMessages
+  const messages = storeSnapshot
     .slice(0, -1)
     .map((m, i) => ({
       role: m.role as 'user' | 'assistant',
-      content: m.role === 'user' && i === validMessages.length - 2 ? apiContent : m.content,
+      content: m.role === 'user' && i === storeSnapshot.length - 2 ? apiContent : m.content,
     }))
 
   const config = createKnowledgeAgentConfig()
