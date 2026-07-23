@@ -105,7 +105,7 @@ export function MarkdownEditor({
     })
     if (!outputPath) return
 
-    const markdown = htmlToMarkdown(content)
+    const markdown = htmlToMarkdown(editorRef.current?.getHTML() || content)
     try {
       await invoke('export_article', { markdown, outputPath, format })
       setSaveMessage('✓ 导出成功')
