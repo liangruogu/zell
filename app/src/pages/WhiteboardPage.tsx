@@ -240,7 +240,7 @@ export default function ExternalLinksPage() {
     if (!projectId || !currentFile) return
     try {
       const path = await getFilePath(projectId, currentFile.file_name)
-      await open(path)
+      await invoke('open_in_system', { filePath: path })
     } catch (e) {
       console.error('Failed to open file:', e)
     }
