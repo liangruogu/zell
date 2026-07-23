@@ -15,15 +15,14 @@ import hljs from 'highlight.js'
 import { EditorToolbar } from './EditorToolbar'
 import { FloatingImageMenu } from './FloatingImageMenu'
 import { cn } from '@/lib/utils'
-import { htmlToMarkdown, markdownToHtml, setImagesBaseDir } from '@/lib/markdown'
+import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { format } from '@/lib/format'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { readFile } from '@tauri-apps/plugin-fs'
-import { invoke, convertFileSrc } from '@tauri-apps/api/core'
-import { appDataDir } from '@tauri-apps/api/path'
+import { invoke } from '@tauri-apps/api/core'
 
 const lowlight = createLowlight(common)
 
@@ -85,11 +84,6 @@ export function MarkdownEditor({
 
   const [justSaved, setJustSaved] = useState(false)
 
-  // Cache app data dir for image path resolution
-  useEffect(() => {
-    appDataDir().then(setImagesBaseDir)
-  }, [])
-
   // Helper: insert image based on storage mode
   const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
     const ed = editorRef.current
@@ -100,12 +94,7 @@ export function MarkdownEditor({
       if (projectId) {
         try {
           const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
-          // Get the images dir path and convert to asset URL for direct rendering
-          const dir = await appDataDir()
-          const sep = dir.endsWith('\\') || dir.endsWith('/') ? '' : '\\'
-          const imgPath = `${dir}${sep}projects\\${projectId}\\images\\${saved.file_name}`
-          const assetUrl = convertFileSrc(imgPath)
-          ed.chain().focus().setImage({ src: assetUrl }).run()
+          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
           return
         } catch { /* fall through to base64 */ }
       }
@@ -234,9 +223,55 @@ export function MarkdownEditor({
     }
     if (content !== prevContentRef.current) {
       prevContentRef.current = content
-      editor.commands.setContent(markdownToHtml(content || ''))
+      const html = markdownToHtml(content || '')
+      // Pre-resolve bindle-img refs before rendering to avoid broken image flash
+      const refs = [...html.matchAll(/bindle-img:([^\s")<]+)/g)].map(m => m[1])
+      if (refs.length === 0) {
+        editor.commands.setContent(html)
+        return
+      }
+      const uniqueRefs = [...new Set(refs)]
+      Promise.all(uniqueRefs.map(async (ref) => {
+        const [projId, fileName] = ref.split('/')
+        try {
+          const dataUrl = await invoke<string>('resolve_project_image', { projectId: projId, fileName })
+          return { ref, dataUrl }
+        } catch { return { ref, dataUrl: '' } }
+      })).then((results) => {
+        let resolved = html
+        for (const { ref, dataUrl } of results) {
+          if (dataUrl) resolved = resolved.replace(new RegExp(`bindle-img:${ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), dataUrl)
+        }
+        if (!editor.isDestroyed) editor.commands.setContent(resolved)
+      })
     }
   }, [content, editor, mode])
+
+  // Resolve bindle-img refs inserted by paste/drag
+  useEffect(() => {
+    if (!editor || mode !== 'wysiwyg') return
+    const resolve = () => {
+      const imgs = editor.view.dom.querySelectorAll('img[src^="bindle-img:"]')
+      imgs.forEach(async (img) => {
+        const src = img.getAttribute('src') || ''
+        const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
+        if (!match) return
+        const [, projectId, fileName] = match
+        try {
+          const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
+          if (img.getAttribute('src')?.startsWith('bindle-img:')) {
+            img.setAttribute('src', dataUrl)
+          }
+        } catch { /* keep */ }
+      })
+    }
+    editor.on('transaction', resolve)
+    editor.on('create', resolve)
+    return () => {
+      editor.off('transaction', resolve)
+      editor.off('create', resolve)
+    }
+  }, [editor, mode])
 
   useEffect(() => {
     if (editor) {
@@ -388,9 +423,17 @@ export function MarkdownEditor({
     prevModeRef.current = mode
     if (prev === 'split' && mode === 'wysiwyg' && splitSource) {
       const html = markdownToHtml(splitSource)
+      // Save directly via Rust command + update store
       const article = useKnowledgeStore.getState().currentArticle
       if (article) {
-        useKnowledgeStore.getState().updateArticle(article.id, article.title, splitSource)
+        invoke('update_knowledge_article', {
+          id: article.id,
+          title: article.title,
+          content: splitSource,
+          contentJson: '{}',
+        }).then(() => {
+          useKnowledgeStore.getState().updateArticle(article.id, article.title, splitSource)
+        }).catch((e) => console.error('split save failed:', e))
       }
       onChangeRef.current?.(html, splitSource)
     }
