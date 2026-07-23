@@ -41,18 +41,23 @@ function renderMarkdown(content: string): string {
   const div = document.createElement('div')
   div.innerHTML = html
   div.querySelectorAll('pre code').forEach((block) => {
-    // Remove trailing newlines from code block content (markdown spec artifact)
-    const el = block as HTMLElement
-    const raw = el.textContent || ''
-    if (raw.endsWith('\n')) {
-      el.textContent = raw.replace(/\n+$/, '')
+    // Code fence content always ends with \n — trim it visually
+    if (block.lastChild?.nodeType === Node.TEXT_NODE) {
+      const t = block.lastChild as Text
+      t.textContent = t.textContent?.replace(/\n+$/, '') ?? ''
+    } else if (block.childNodes.length > 0) {
+      // hljs may have already run — check all text nodes
+      block.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const t = child as Text
+          t.textContent = t.textContent?.replace(/\n+$/, '') ?? ''
+        }
+      })
     }
     try {
-      hljs.highlightElement(el)
+      hljs.highlightElement(block as HTMLElement)
     } catch { /* unsupported language */ }
   })
-  return div.innerHTML
-}
   return div.innerHTML
 }
 import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil } from 'lucide-react'
