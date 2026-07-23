@@ -4,7 +4,20 @@ import { sendMessage, getProviders, getActiveProviderId } from '@/services/aiSer
 import { useSettingsStore } from '@/stores/settingsStore'
 import { cn } from '@/lib/utils'
 import { markdownToHtml } from '@/lib/markdown'
+import hljs from 'highlight.js'
+
+function renderMarkdown(content: string): string {
+  const html = markdownToHtml(content)
+  // Apply highlight.js to code blocks
+  const div = document.createElement('div')
+  div.innerHTML = html
+  div.querySelectorAll('pre code').forEach((block) => {
+    hljs.highlightElement(block as HTMLElement)
+  })
+  return div.innerHTML
+}
 import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil } from 'lucide-react'
+import hljs from 'highlight.js'
 
 export function AIPanel() {
   const { isOpen, messages, streaming, selectedText, closePanel, clearMessages, deleteMessagePair, truncateMessages, updateMessage } = useAIStore()
@@ -27,10 +40,13 @@ export function AIPanel() {
     setShowProviders(false)
   }
 
-  // Auto-scroll
+  // Auto-scroll: only scroll if already near bottom
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight
+    const el = listRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    if (atBottom) {
+      el.scrollTop = el.scrollHeight
     }
   }, [messages])
 
@@ -185,7 +201,7 @@ export function AIPanel() {
                   )}
                 >
                   {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm max-w-none [&_pre]:text-sm [&_code]:text-sm" dangerouslySetInnerHTML={{ __html: markdownToHtml(msg.content) }} />
+                    <div className="prose prose-sm max-w-none [&_pre]:text-sm [&_code]:text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
                   ) : (
                     msg.content
                   )}
