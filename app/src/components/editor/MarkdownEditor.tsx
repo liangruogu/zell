@@ -198,7 +198,7 @@ export function MarkdownEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ codeBlock: false }),
-      Image.configure({ allowBase64: true, inline: true }),
+      Image.configure({ allowBase64: true, inline: false }),
       Table.configure({ resizable: true }),
       TableRow, TableCell, TableHeader,
       TaskList,
