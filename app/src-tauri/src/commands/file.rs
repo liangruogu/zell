@@ -3,11 +3,15 @@ use crate::db::Database;
 use crate::commands::resource;
 use base64::Engine as _;
 use chrono::Utc;
+use quick_xml::events::Event;
+use quick_xml::reader::Reader;
 use std::fs;
+use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tauri::Manager;
 use uuid::Uuid;
+use zip::read::ZipArchive;
 
 fn files_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, String> {
     let app_data = app
@@ -56,11 +60,76 @@ fn extract_text(path: &Path, file_type: &str) -> Result<String, String> {
         "pdf" => {
             pdf_extract::extract_text(path).map_err(|e| format!("PDF extract failed: {}", e))
         }
-        _ => {
-            // DOCX/PPTX/XLSX extraction coming in later phase
-            Ok(String::new())
+        "docx" => extract_docx_text(path),
+        "pptx" => extract_pptx_text(path),
+        _ => Ok(String::new()),
+    }
+}
+
+fn extract_docx_text(path: &Path) -> Result<String, String> {
+    let file = fs::File::open(path).map_err(|e| format!("Open failed: {}", e))?;
+    let reader = BufReader::new(file);
+    let mut archive = ZipArchive::new(reader).map_err(|e| format!("ZIP failed: {}", e))?;
+
+    let mut doc = archive
+        .by_name("word/document.xml")
+        .map_err(|_| "Not a valid DOCX: missing word/document.xml".to_string())?;
+
+    let mut xml = String::new();
+    doc.read_to_string(&mut xml).map_err(|e| format!("Read failed: {}", e))?;
+
+    let mut reader = Reader::from_str(&xml);
+    let mut text = String::new();
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(ref e)) if e.name().as_ref() == b"w:t" => {
+                if let Ok(Event::Text(t)) = reader.read_event_into(&mut Vec::new()) {
+                    text.push_str(&t.unescape().unwrap_or_default());
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(_) => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+    Ok(text)
+}
+
+fn extract_pptx_text(path: &Path) -> Result<String, String> {
+    let file = fs::File::open(path).map_err(|e| format!("Open failed: {}", e))?;
+    let reader = BufReader::new(file);
+    let mut archive = ZipArchive::new(reader).map_err(|e| format!("ZIP failed: {}", e))?;
+
+    let mut text = String::new();
+    let mut buf = Vec::new();
+
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i).map_err(|e| format!("Entry failed: {}", e))?;
+        let name = entry.name().to_string();
+        if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") {
+            let mut xml = String::new();
+            entry.read_to_string(&mut xml).map_err(|e| format!("Read failed: {}", e))?;
+
+            let mut reader = Reader::from_str(&xml);
+            loop {
+                match reader.read_event_into(&mut buf) {
+                    Ok(Event::Start(ref e)) if e.name().as_ref() == b"a:t" => {
+                        if let Ok(Event::Text(t)) = reader.read_event_into(&mut Vec::new()) {
+                            text.push_str(&t.unescape().unwrap_or_default());
+                        }
+                    }
+                    Ok(Event::Eof) => break,
+                    Err(_) => break,
+                    _ => {}
+                }
+                buf.clear();
+            }
         }
     }
+    Ok(text)
 }
 
 #[tauri::command]
