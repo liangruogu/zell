@@ -61,9 +61,9 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
           img.style.display = 'block'
           img.style.marginLeft = 'auto'
           img.style.marginRight = 'auto'
-          img.style.float = ''
+          img.style.float = 'none'
         } else if (float === 'left') {
-          img.style.display = 'inline-block'
+          img.style.display = 'block'
           img.style.marginLeft = '0'
           img.style.marginRight = '1em'
           img.style.float = 'left'
