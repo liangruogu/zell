@@ -73,7 +73,8 @@ html, body, #root {
 /* Code blocks: same font size as body */
 .prose.bindle-prose :where(pre) {
   font-size: 1em;
-  background: #1e1e2e;
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
   padding: 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
@@ -85,7 +86,7 @@ html, body, #root {
   background: transparent;
   padding: 0;
   border-radius: 0;
-  color: #cdd6f4;
+  color: #374151;
   font-weight: normal;
 }
 
@@ -114,8 +115,8 @@ html, body, #root {
   right: 0;
   padding: 0.2rem 0.75rem;
   font-size: 0.7rem;
-  color: #a0a0b8;
-  background: rgba(255,255,255,0.05);
+  color: #6b7280;
+  background: rgba(0,0,0,0.04);
   border-bottom-left-radius: 0.375rem;
   font-family: ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0.04em;
@@ -176,22 +177,37 @@ html, body, #root {
   accent-color: #4c6ef5;
 }
 
-/* ======== Code Highlight (Catppuccin Mocha) ======== */
-.prose.bindle-prose pre code .hljs-keyword  { color: #cba6f7; }
-.prose.bindle-prose pre code .hljs-string   { color: #a6e3a1; }
-.prose.bindle-prose pre code .hljs-number   { color: #fab387; }
-.prose.bindle-prose pre code .hljs-comment  { color: #6c7086; font-style: italic; }
-.prose.bindle-prose pre code .hljs-function { color: #89b4fa; }
-.prose.bindle-prose pre code .hljs-built_in { color: #89b4fa; }
-.prose.bindle-prose pre code .hljs-title    { color: #89b4fa; }
-.prose.bindle-prose pre code .hljs-type     { color: #f9e2af; }
-.prose.bindle-prose pre code .hljs-attr     { color: #89dceb; }
-.prose.bindle-prose pre code .hljs-params   { color: #cdd6f4; }
-.prose.bindle-prose pre code .hljs-meta     { color: #f38ba8; }
-.prose.bindle-prose pre code .hljs-literal  { color: #fab387; }
-.prose.bindle-prose pre code .hljs-variable { color: #cdd6f4; }
-.prose.bindle-prose pre code .hljs-selector-class { color: #a6e3a1; }
-.prose.bindle-prose pre code .hljs-selector-tag   { color: #cba6f7; }
+/* ======== Code Highlight (Light Theme) ======== */
+.prose.bindle-prose pre code .hljs-keyword,
+.prose pre code .hljs-keyword  { color: #d73a49; }
+.prose.bindle-prose pre code .hljs-string,
+.prose pre code .hljs-string   { color: #032f62; }
+.prose.bindle-prose pre code .hljs-number,
+.prose pre code .hljs-number   { color: #005cc5; }
+.prose.bindle-prose pre code .hljs-comment,
+.prose pre code .hljs-comment  { color: #6a737d; font-style: italic; }
+.prose.bindle-prose pre code .hljs-function,
+.prose pre code .hljs-function { color: #6f42c1; }
+.prose.bindle-prose pre code .hljs-built_in,
+.prose pre code .hljs-built_in { color: #6f42c1; }
+.prose.bindle-prose pre code .hljs-title,
+.prose pre code .hljs-title    { color: #6f42c1; }
+.prose.bindle-prose pre code .hljs-type,
+.prose pre code .hljs-type     { color: #005cc5; }
+.prose.bindle-prose pre code .hljs-attr,
+.prose pre code .hljs-attr     { color: #005cc5; }
+.prose.bindle-prose pre code .hljs-params,
+.prose pre code .hljs-params   { color: #24292e; }
+.prose.bindle-prose pre code .hljs-meta,
+.prose pre code .hljs-meta     { color: #d73a49; }
+.prose.bindle-prose pre code .hljs-literal,
+.prose pre code .hljs-literal  { color: #005cc5; }
+.prose.bindle-prose pre code .hljs-variable,
+.prose pre code .hljs-variable { color: #24292e; }
+.prose.bindle-prose pre code .hljs-selector-class,
+.prose pre code .hljs-selector-class { color: #22863a; }
+.prose.bindle-prose pre code .hljs-selector-tag,
+.prose pre code .hljs-selector-tag   { color: #d73a49; }
 
 /* Table styling */
 .prose.bindle-prose table { font-size: 0.95em; }
