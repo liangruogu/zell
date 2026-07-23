@@ -290,7 +290,6 @@ pub fn re_extract_file_text(
     .map_err(|e| e.to_string())?;
     drop(conn);
 
-    // Update FTS5 index
     if !text.is_empty() {
         let _ = resource::index_document(&db, &project_id, "file", &id, &original_name, &text);
     } else {
@@ -298,4 +297,20 @@ pub fn re_extract_file_text(
     }
 
     Ok(text)
+}
+
+#[tauri::command]
+pub fn rename_project_file(
+    db: tauri::State<Database>,
+    id: String,
+    new_name: String,
+) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE project_files SET original_name = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![new_name, now, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }

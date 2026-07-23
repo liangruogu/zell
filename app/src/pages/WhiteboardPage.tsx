@@ -33,7 +33,7 @@ export default function ExternalLinksPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const { fetchProject } = useProjectStore()
   const { links, currentLink, loading: linkLoading, fetchLinks, createLink, updateLink, deleteLink, setCurrentLink, syncLink } = useLinkStore()
-  const { files, currentFile, loading: fileLoading, fetchFiles, importFile, deleteFile, updateFile, setCurrentFile, resolveFileUrl, getFilePath, reExtractText } = useFileStore()
+  const { files, currentFile, loading: fileLoading, fetchFiles, importFile, deleteFile, updateFile, setCurrentFile, resolveFileUrl, getFilePath, reExtractText, renameFile } = useFileStore()
   const panel = useResizablePanel()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -379,25 +379,14 @@ export default function ExternalLinksPage() {
                         <Upload size={16} /> 松手以导入文件                      </div>
                     )}
                     {files.map((f) => (
-                      <div
+                      <FileItem
                         key={f.id}
-                        className={cn(
-                          'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
-                          currentFile?.id === f.id
-                            ? 'bg-bindle-100 text-bindle-700'
-                            : 'text-gray-600 hover:bg-gray-50'
-                        )}
-                        onClick={() => selectFile(f)}
-                      >
-                        <span className="shrink-0 text-xs">{FILE_TYPE_ICONS[f.file_type] || '馃摝'}</span>
-                        <span className="truncate flex-1 text-xs">{f.original_name}</span>
-                        <span className="text-[10px] text-gray-400 shrink-0">{format.fileSize(f.file_size)}</span>
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
-                          <button onClick={(e) => { e.stopPropagation(); confirmDeleteFile(f) }} className="p-0.5 rounded hover:bg-red-100" title="删除">
-                            <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
-                          </button>
-                        </div>
-                      </div>
+                        file={f}
+                        isActive={currentFile?.id === f.id}
+                        onSelect={() => selectFile(f)}
+                        onDelete={() => confirmDeleteFile(f)}
+                        onRename={(newName) => renameFile(f.id, newName)}
+                      />
                     ))}
                   </>
                 )}
@@ -603,5 +592,56 @@ export default function ExternalLinksPage() {
         </div>
       </Dialog>
     </AppShell>
+  )
+}
+
+function FileItem({ file, isActive, onSelect, onDelete, onRename }: {
+  file: ProjectFile; isActive: boolean
+  onSelect: () => void
+  onDelete: () => void
+  onRename: (newName: string) => void
+}) {
+  const [renaming, setRenaming] = useState(false)
+  const [name, setName] = useState(file.original_name)
+
+  const handleRename = () => {
+    const trimmed = name.trim()
+    if (trimmed && trimmed !== file.original_name) onRename(trimmed)
+    setRenaming(false)
+  }
+
+  return (
+    <div
+      className={cn(
+        'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
+        isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50'
+      )}
+      onClick={onSelect}
+      onDoubleClick={(e) => { e.stopPropagation(); setRenaming(true); setName(file.original_name) }}
+    >
+      <span className="shrink-0 text-xs">{FILE_TYPE_ICONS[file.file_type] || '📄'}</span>
+      {renaming ? (
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={handleRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleRename()
+            if (e.key === 'Escape') { setRenaming(false); setName(file.original_name) }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 px-1 py-0.5 text-xs border border-bindle-300 rounded outline-none focus:ring-1 focus:ring-bindle-400"
+        />
+      ) : (
+        <span className="truncate flex-1 text-xs">{file.original_name}</span>
+      )}
+      <span className="text-[10px] text-gray-400 shrink-0">{format.fileSize(file.file_size)}</span>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
+        <button onClick={(e) => { e.stopPropagation(); onDelete() }} className="p-0.5 rounded hover:bg-red-100" title="删除">
+          <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
+        </button>
+      </div>
+    </div>
   )
 }

@@ -15,6 +15,7 @@ interface FileState {
   getFilePath: (projectId: string, fileName: string) => Promise<string>
   reExtractText: (id: string) => Promise<string>
   setCurrentFile: (file: ProjectFile | null) => void
+  renameFile: (id: string, newName: string) => Promise<void>
 }
 
 export const useFileStore = create<FileState>((set) => ({
@@ -55,6 +56,14 @@ export const useFileStore = create<FileState>((set) => ({
 
   resolveFileUrl: async (projectId, fileName) => {
     return invoke<string>('resolve_project_file', { projectId, fileName })
+  },
+
+  renameFile: async (id: string, newName: string) => {
+    await invoke('rename_project_file', { id, newName })
+    set((s) => ({
+      files: s.files.map((f) => (f.id === id ? { ...f, original_name: newName } : f)),
+      currentFile: s.currentFile?.id === id ? { ...s.currentFile, original_name: newName } : s.currentFile,
+    }))
   },
 
   getFilePath: async (projectId, fileName) => {

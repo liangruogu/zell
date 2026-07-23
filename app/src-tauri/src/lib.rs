@@ -72,6 +72,7 @@ pub fn run() {
             commands::file::update_project_file,
             commands::file::delete_project_file,
             commands::file::re_extract_file_text,
+            commands::file::rename_project_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
