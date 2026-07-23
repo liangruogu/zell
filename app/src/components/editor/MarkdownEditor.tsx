@@ -132,11 +132,14 @@ export function MarkdownEditor({
         }).catch(e => console.error('save failed:', e))
       }
       // When wysiwyg editor appears, set its content from split source
+      const cleanHtml = html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
+        return open + body.replace(/\n+$/, '') + close
+      })
       ignoreNextSync.current = true
       prevContentRef.current = md
       setTimeout(() => {
         if (editorRef.current && !editorRef.current.isDestroyed) {
-          editorRef.current.commands.setContent(html)
+          editorRef.current.commands.setContent(cleanHtml)
         }
       }, 0)
       onChangeRef.current?.(html, md)
