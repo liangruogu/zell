@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { type Editor } from '@tiptap/react'
 import { cn } from '@/lib/utils'
+import { AlignLeft, AlignCenter, Maximize } from 'lucide-react'
 
 interface FloatingImageMenuProps {
   editor: Editor
@@ -10,23 +11,63 @@ const SIZE_PRESETS = [
   { label: '小', width: 200 },
   { label: '中', width: 400 },
   { label: '大', width: 600 },
-  { label: '原始', width: null },
+  { label: '充满', width: 'full' as const },
+]
+
+const FLOAT_OPTIONS: { label: string; value: string; icon: React.ReactNode }[] = [
+  { label: '居中', value: 'center', icon: <AlignCenter size={14} /> },
+  { label: '靠左', value: 'left', icon: <AlignLeft size={14} /> },
 ]
 
 export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
   const [visible, setVisible] = useState(false)
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const [imgWidth, setImgWidth] = useState(400)
+  const [imgFloat, setImgFloat] = useState('center')
   const [imgSrc, setImgSrc] = useState('')
-  const menuRef = useRef<HTMLDivElement>(null)
 
   const updateImageWidth = useCallback((width: number | string | null) => {
     const { state, view } = editor
     const { from } = state.selection
     const node = state.doc.nodeAt(from)
     if (node?.type.name === 'image' || node?.type.name === 'inlineImage') {
-      const numeric = width === null ? null : Number(width)
-      editor.chain().setNodeSelection(from).updateAttributes('image', { width: numeric }).run()
+      if (width === 'full') {
+        editor.chain().setNodeSelection(from).updateAttributes('image', { width: '100%' }).run()
+        // Apply max-width removal and full width CSS via style
+        const img = view.dom.querySelector(`img[src="${node.attrs.src}"]`) as HTMLElement | null
+        if (img) {
+          img.style.width = '100%'
+          img.style.maxWidth = '100%'
+        }
+      } else {
+        const numeric = width === null ? null : Number(width)
+        editor.chain().setNodeSelection(from).updateAttributes('image', { width: numeric }).run()
+        const img = view.dom.querySelector(`img[src="${node.attrs.src}"]`) as HTMLElement | null
+        if (img) img.style.width = numeric ? `${numeric}px` : ''
+      }
+    }
+  }, [editor])
+
+  const updateImageFloat = useCallback((float: string) => {
+    const { state, view } = editor
+    const { from } = state.selection
+    const node = state.doc.nodeAt(from)
+    if (node?.type.name === 'image' || node?.type.name === 'inlineImage') {
+      setImgFloat(float)
+      const img = view.dom.querySelector(`img[src="${node.attrs.src}"]`) as HTMLElement | null
+      if (img) {
+        if (float === 'center') {
+          img.style.display = 'block'
+          img.style.marginLeft = 'auto'
+          img.style.marginRight = 'auto'
+          img.style.float = ''
+        } else if (float === 'left') {
+          img.style.display = 'inline-block'
+          img.style.marginLeft = '0'
+          img.style.marginRight = '1em'
+          img.style.float = 'left'
+        }
+      }
     }
   }, [editor])
 
@@ -47,6 +88,16 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
           : img.getAttribute('width')
             ? parseInt(img.getAttribute('width')!)
             : img.naturalWidth || img.clientWidth
+
+        // Detect current float
+        const style = img.style
+        if (style.display === 'block' || (style.marginLeft === 'auto' && style.marginRight === 'auto')) {
+          setImgFloat('center')
+        } else if (style.float === 'left') {
+          setImgFloat('left')
+        } else {
+          setImgFloat('center')
+        }
 
         setImgWidth(Math.min(currentWidth || 400, 800))
         setImgSrc(img.src)
@@ -71,12 +122,14 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
     updateImageWidth(w)
   }, [updateImageWidth])
 
-  const handlePreset = useCallback((width: number | null) => {
-    if (width !== null) {
+  const handlePreset = useCallback((width: number | 'full' | null) => {
+    if (width === 'full') {
+      setImgWidth(100)
+      updateImageWidth('full')
+    } else if (width !== null) {
       setImgWidth(width)
       updateImageWidth(width)
     } else {
-      // Reset to original size
       updateImageWidth(null)
       setImgWidth(400)
     }
@@ -90,7 +143,6 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
         new ClipboardItem({ [blob.type]: blob }),
       ])
     } catch {
-      // Fallback: try copying URL
       navigator.clipboard.writeText(imgSrc)
     }
   }, [imgSrc])
@@ -101,9 +153,8 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
 
   if (!visible) return null
 
-  // Adjust position to stay within viewport
   const menuWidth = 260
-  const menuHeight = 220
+  const menuHeight = 280
   const x = Math.min(pos.x, window.innerWidth - menuWidth - 10)
   const y = Math.min(pos.y, window.innerHeight - menuHeight - 10)
 
@@ -141,16 +192,38 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
             onClick={() => handlePreset(p.width)}
             className={cn(
               'flex-1 py-1 text-xs rounded border transition-colors',
-              (p.width === null && imgWidth !== 50 && imgWidth !== 200 && imgWidth !== 400 && imgWidth !== 600) ||
-                (p.width !== null && imgWidth === p.width)
+              (p.width === 'full' && imgWidth === 100) ||
+                (p.width !== null && p.width !== 'full' && imgWidth === p.width)
                 ? 'bg-bindle-50 border-bindle-300 text-bindle-700'
                 : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
             )}
           >
             {p.label}
-            {p.width ? ` ${p.width}` : ''}
           </button>
         ))}
+      </div>
+
+      {/* Float options */}
+      <div className="mb-3">
+        <span className="text-xs text-gray-500 mb-1.5 block">位置</span>
+        <div className="flex gap-1.5">
+          {FLOAT_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => updateImageFloat(o.value)}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1 py-1.5 text-xs rounded border transition-colors',
+                imgFloat === o.value
+                  ? 'bg-bindle-50 border-bindle-300 text-bindle-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+              )}
+            >
+              {o.icon}
+              {o.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Copy options */}
