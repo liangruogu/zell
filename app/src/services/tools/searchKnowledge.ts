@@ -1,4 +1,5 @@
 import { tool } from 'ai'
+import { z } from 'zod'
 import { invoke } from '@tauri-apps/api/core'
 import { useProjectStore } from '@/stores/projectStore'
 
@@ -6,13 +7,8 @@ interface SearchResult { title: string; snippet: string; source_type: string; so
 
 export const searchKnowledge = tool({
   description: '全文搜索知识库文章内容。根据关键词返回匹配的文章标题和内容片段。适合查找特定主题或概念。',
-  parameters: {
-    type: 'object' as const,
-    properties: { query: { type: 'string', description: '搜索关键词' } },
-    required: ['query'],
-    additionalProperties: false,
-  },
-  execute: async ({ query }: { query: string }) => {
+  parameters: z.object({ query: z.string().describe('搜索关键词') }),
+  execute: async ({ query }) => {
     const project = useProjectStore.getState().currentProject
     if (!project) return '当前没有打开的项目。'
     const results = await invoke<SearchResult[]>('search_knowledge', { projectId: project.id, query, limit: 5 })

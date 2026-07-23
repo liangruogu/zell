@@ -1,5 +1,80 @@
+import { tool } from '@langchain/core/tools'
+import { z } from 'zod'
 import type { AgentConfig } from '@/services/core/agentRunner'
-import { knowledgeTools } from '@/services/tools'
+import { invoke } from '@tauri-apps/api/core'
+import { useProjectStore } from '@/stores/projectStore'
+
+const getProjectContextTool = tool(
+  async () => {
+    const project = useProjectStore.getState().currentProject
+    if (!project) return '当前没有打开的项目。'
+    let status = '未设置'
+    try {
+      const s = JSON.parse(project.settings || '{}')
+      if (s.status) status = s.status
+    } catch { /* ignore */ }
+    return JSON.stringify({
+      name: project.name,
+      description: project.description,
+      background: project.background,
+      status,
+    })
+  },
+  { name: 'get_project_context', description: '获取当前项目的基本信息和背景。返回项目名称、背景描述和状态。' }
+)
+
+interface ArticleSummary { id: string; title: string; preview: string; updated_at: string }
+const listArticlesTool = tool(
+  async () => {
+    const project = useProjectStore.getState().currentProject
+    if (!project) return '当前没有打开的项目。'
+    const summaries = await invoke<ArticleSummary[]>('get_article_summaries', { projectId: project.id })
+    if (summaries.length === 0) return '知识库中还没有任何文章。'
+    return JSON.stringify(summaries.map(s => ({ id: s.id, title: s.title, preview: s.preview })))
+  },
+  { name: 'list_articles', description: '列出知识库中所有文章的标题和内容预览。' }
+)
+
+interface SearchResult { title: string; snippet: string; source_type: string; source_id: string; rank: number }
+const searchKnowledgeTool = tool(
+  async ({ query }: { query: string }) => {
+    const project = useProjectStore.getState().currentProject
+    if (!project) return '当前没有打开的项目。'
+    const results = await invoke<SearchResult[]>('search_knowledge', { projectId: project.id, query, limit: 5 })
+    if (results.length === 0) return '未找到匹配的知识库文章。'
+    return JSON.stringify(results.map(r => ({ id: r.source_id, title: r.title, snippet: r.snippet.replace(/<\/?b>/g, '') })))
+  },
+  { name: 'search_knowledge', description: '全文搜索知识库文章内容。输入搜索关键词。', schema: z.object({ query: z.string().describe('搜索关键词') }) }
+)
+
+const searchResourcesTool = tool(
+  async ({ query }: { query: string }) => {
+    const project = useProjectStore.getState().currentProject
+    if (!project) return '当前没有打开的项目。'
+    const results = await invoke<SearchResult[]>('search_resources', { projectId: project.id, query, limit: 5 })
+    if (results.length === 0) return '未找到匹配的外部资源。'
+    return JSON.stringify(results.map(r => ({ id: r.source_id, name: r.title, type: r.source_type, snippet: r.snippet.replace(/<\/?b>/g, '') })))
+  },
+  { name: 'search_resources', description: '搜索外部资源（PDF、Word文档、PPT、网页提取文本）的内容。输入搜索关键词。', schema: z.object({ query: z.string().describe('搜索关键词') }) }
+)
+
+interface KnowledgeArticle { id: string; title: string; content: string; updated_at: string }
+const getArticleTool = tool(
+  async ({ id }: { id: string }) => {
+    const article = await invoke<KnowledgeArticle>('get_knowledge_article', { id })
+    return JSON.stringify({ title: article.title, content: article.content })
+  },
+  { name: 'get_article', description: '获取指定知识库文章的完整内容。需要提供文章ID。', schema: z.object({ id: z.string().describe('文章ID') }) }
+)
+
+interface ResourceContent { id: string; name: string; text: string; resource_type: string; url: string | null }
+const getResourceTool = tool(
+  async ({ type, id }: { type: string; id: string }) => {
+    const resource = await invoke<ResourceContent>('get_resource_content', { resourceType: type, id })
+    return JSON.stringify({ name: resource.name, text: resource.text || '(无提取文本)', type: resource.resource_type, url: resource.url })
+  },
+  { name: 'get_resource', description: '获取外部资源的完整提取文本。type 为 file 或 link。', schema: z.object({ type: z.enum(['file', 'link']).describe('资源类型'), id: z.string().describe('资源ID') }) }
+)
 
 export const KNOWLEDGE_SYSTEM_PROMPT = `你是一个项目知识库助手，运行在 Bindle 应用中。你有以下能力：
 - 获取项目背景信息（get_project_context）
@@ -20,7 +95,7 @@ export const KNOWLEDGE_SYSTEM_PROMPT = `你是一个项目知识库助手，运�
 export function createKnowledgeAgentConfig(modelId?: string): AgentConfig {
   return {
     systemPrompt: KNOWLEDGE_SYSTEM_PROMPT,
-    tools: knowledgeTools,
+    tools: [getProjectContextTool, listArticlesTool, searchKnowledgeTool, searchResourcesTool, getArticleTool, getResourceTool],
     modelId: modelId || '',
   }
 }
