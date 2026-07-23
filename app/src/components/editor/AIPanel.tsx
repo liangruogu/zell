@@ -61,7 +61,7 @@ function renderMarkdown(content: string): string {
   })
   return div.innerHTML
 }
-import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil, Plus, MessageSquare } from 'lucide-react'
+import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil, Plus, MessageSquare, Square } from 'lucide-react'
 
 export function AIPanel() {
   const { isOpen, messages, streaming, selectedText, closePanel, deleteMessagePair, truncateMessages, updateMessage, pendingInput, setPendingInput, conversations, activeConversationId, loadConversations, createConversation, switchConversation, deleteConversation } = useAIStore()
@@ -114,6 +114,10 @@ export function AIPanel() {
     setPendingInput('')
     await sendMessage(text)
   }, [pendingInput, streaming, hasAI])
+
+  const handleStop = useCallback(() => {
+    useAIStore.getState().abortController?.abort()
+  }, [])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -420,16 +424,18 @@ export function AIPanel() {
             disabled={streaming}
           />
           <button
-            onClick={handleSend}
-            disabled={!pendingInput.trim() || streaming || !hasAI}
+            onClick={streaming ? handleStop : handleSend}
+            disabled={!streaming && (!pendingInput.trim() || !hasAI)}
             className={cn(
               'p-1.5 rounded transition-colors',
-              pendingInput.trim() && !streaming
-                ? 'bg-bindle-500 text-white hover:bg-bindle-600'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed',
+              streaming
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : pendingInput.trim() && hasAI
+                  ? 'bg-bindle-500 text-white hover:bg-bindle-600'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed',
             )}
           >
-            <Send size={16} />
+            {streaming ? <Square size={14} /> : <Send size={16} />}
           </button>
         </div>
       </div>

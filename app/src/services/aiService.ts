@@ -112,6 +112,14 @@ export async function sendMessage(userContent: string) {
         if (articles.length > 20) ctx += `\n... 共 ${articles.length} 篇`
       }
 
+      // Add current open article
+      const currentArticle = useKnowledgeStore.getState().currentArticle
+      if (currentArticle) {
+        ctx += `\n\n【用户当前正在查看的文章】\n标题: ${currentArticle.title}\nID: ${currentArticle.id}`
+        const preview = (currentArticle.content || '').replace(/[#*`\[\]()]/g, '').slice(0, 500)
+        ctx += `\n内容预览: ${preview}`
+      }
+
       // Add external files with descriptions
       const files = useFileStore.getState().files
       if (files.length > 0) {
@@ -143,6 +151,11 @@ export async function sendMessage(userContent: string) {
 
   let accumulated = ''
 
+  // Create AbortController for stop functionality
+  const abortController = new AbortController()
+  useAIStore.getState().setAbortController(abortController)
+  config.abortSignal = abortController.signal
+
   await runAgent(messages as any, config, {
     onTextDelta(delta) {
       accumulated += delta
@@ -163,4 +176,5 @@ export async function sendMessage(userContent: string) {
   useAIStore.getState().setStreaming(false)
   // Persist conversation to DB
   useAIStore.getState().saveConversation().catch(() => {})
+  useAIStore.getState().setAbortController(null)
 }

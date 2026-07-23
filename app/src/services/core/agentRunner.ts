@@ -46,6 +46,7 @@ export async function runAgent(
     configuration: { baseURL: prov.baseUrl },
     temperature: 0.7,
     streaming: true,
+    ...(config.abortSignal ? { signal: config.abortSignal } as any : {}),
   })
 
   const llmWithTools = config.tools.length > 0 ? llm.bindTools(config.tools) : llm

@@ -69,6 +69,8 @@ interface AIState {
   switchConversation: (id: string) => void
   deleteConversation: (id: string) => Promise<void>
   saveConversation: () => Promise<void>
+  abortController: AbortController | null
+  setAbortController: (ctrl: AbortController | null) => void
 }
 
 export const useAIStore = create<AIState>((set, get) => ({
@@ -81,6 +83,7 @@ export const useAIStore = create<AIState>((set, get) => ({
 
   conversations: [],
   activeConversationId: null,
+  abortController: null,
 
   openPanel: (sourceType, selectedText) => {
     saveAIOpen(true)
@@ -187,4 +190,6 @@ export const useAIStore = create<AIState>((set, get) => ({
       title: t,
     })
   },
+
+  setAbortController: (ctrl) => set({ abortController: ctrl }),
 }))
