@@ -484,6 +484,24 @@ export function MarkdownEditor({
     return ''
   }, [mode, splitSource])
 
+  // Resolve bindle-img refs in split mode preview
+  useEffect(() => {
+    if (mode !== 'split' || !previewRef.current) return
+    const imgs = previewRef.current.querySelectorAll('img[src^="bindle-img:"]')
+    imgs.forEach(async (img) => {
+      const src = img.getAttribute('src') || ''
+      const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
+      if (!match) return
+      const [, projectId, fileName] = match
+      try {
+        const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
+        if (img.getAttribute('src')?.startsWith('bindle-img:')) {
+          img.setAttribute('src', dataUrl)
+        }
+      } catch { /* keep */ }
+    })
+  }, [previewHtml, mode])
+
   // Current code block language for status bar (Typora style)
   const codeBlockLang = useMemo(() => {
     if (!editor || mode !== 'wysiwyg') return null
