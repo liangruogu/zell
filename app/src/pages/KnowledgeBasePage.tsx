@@ -109,7 +109,7 @@ export default function KnowledgeBasePage() {
 
   const handleCreate = useCallback(async () => {
     if (!projectId || !newTitle.trim()) return
-    const mdContent = `# ${newTitle.trim()}\n\n寮€濮嬬紪鍐欏唴瀹?..`
+    const mdContent = `# ${newTitle.trim()}\n\n开始编写内容...`
     const article = await createArticle(projectId, newTitle.trim(), mdContent)
     setNewTitle('')
     setShowCreate(false)
@@ -262,7 +262,7 @@ export default function KnowledgeBasePage() {
               )}
             >
               <FileText size={13} />
-              鏂囦欢
+              文件
             </button>
             <button
               onClick={() => setListTabSafe('outline')}
@@ -274,7 +274,7 @@ export default function KnowledgeBasePage() {
               )}
             >
               <ListTree size={13} />
-              澶х翰
+              大纲
             </button>
           </div>
 
@@ -286,7 +286,7 @@ export default function KnowledgeBasePage() {
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="鎼滅储鏂囩珷..."
+                  placeholder="搜索文章..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-7 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
@@ -311,16 +311,16 @@ export default function KnowledgeBasePage() {
             {isDragOver && (
               <div className="flex flex-col items-center justify-center h-full text-bindle-500 gap-2">
                 <Upload size={32} strokeWidth={1.5} />
-                <p className="text-sm font-medium">閲婃斁浠ュ鍏?Markdown 鏂囦欢</p>
+                <p className="text-sm font-medium">释放以导入 Markdown 文件</p>
               </div>
             )}
             {!isDragOver && (
               listTab === 'files' ? (
               loading ? (
-                <p className="px-3 py-4 text-sm text-gray-400 text-center">鍔犺浇涓?..</p>
+                <p className="px-3 py-4 text-sm text-gray-400 text-center">加载中...</p>
               ) : filteredArticles.length === 0 ? (
                 <p className="px-3 py-4 text-sm text-gray-400 text-center">
-                  {searchQuery ? '鏃犲尮閰嶆枃绔? : '鏆傛棤鏂囩珷'}
+                  {searchQuery ? '无匹配文章' : '暂无文章'}
                 </p>
               ) : (
                 filteredArticles.map((article) => (
@@ -336,7 +336,7 @@ export default function KnowledgeBasePage() {
               )
             ) : (
               headingTree.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-gray-400 text-center">鏃犳爣棰?/p>
+                <p className="px-3 py-4 text-sm text-gray-400 text-center">无标题</p>
               ) : (
                 headingTree.map((node, i) => (
                   <OutlineNode key={i} node={node} depth={0} />
@@ -354,7 +354,7 @@ export default function KnowledgeBasePage() {
                   <input
                     autoFocus
                     type="text"
-                    placeholder="鏂囩珷鏍囬"
+                    placeholder="文章标题"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     onKeyDown={(e) => {
@@ -363,7 +363,7 @@ export default function KnowledgeBasePage() {
                     }}
                     className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
                   />
-                  <Button size="sm" onClick={handleCreate} disabled={!newTitle.trim()}>纭畾</Button>
+                  <Button size="sm" onClick={handleCreate} disabled={!newTitle.trim()}>确定</Button>
                 </div>
               ) : (
                 <button
@@ -371,10 +371,10 @@ export default function KnowledgeBasePage() {
                   className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded transition-colors"
                 >
                   <Plus size={14} />
-                  鏂板缓鏂囩珷
+                  新建文章
                 </button>
               )}
-              <p className="text-xs text-gray-400 px-2.5">{articles.length} 绡囨枃绔?/p>
+              <p className="text-xs text-gray-400 px-2.5">{articles.length} 篇文章</p>
             </div>
           )}
         </div>
@@ -391,7 +391,7 @@ export default function KnowledgeBasePage() {
                 content={currentArticle.content}
                 onChange={handleEditorChange}
                 onSave={handleImmediateSave}
-                placeholder="寮€濮嬬紪杈戠煡璇嗗簱鏂囨。..."
+                placeholder="开始编辑知识库文档..."
                 autofocus={false}
                 updatedAt={currentArticle.updated_at}
                 projectId={projectId}
@@ -401,7 +401,7 @@ export default function KnowledgeBasePage() {
             <div className="flex-1 flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <FileText size={48} strokeWidth={1} className="mx-auto mb-3" />
-                <p className="text-lg">閫夋嫨鎴栧垱寤轰竴绡囨枃绔?/p>
+                <p className="text-lg">选择或创建一篇文章</p>
               </div>
             </div>
           )}
@@ -411,12 +411,12 @@ export default function KnowledgeBasePage() {
       <Dialog
         open={!!deleteTarget}
         onOpenChange={() => setDeleteTarget(null)}
-        title="鍒犻櫎鏂囩珷"
-        description={`纭畾瑕佸垹闄ゃ€?{deleteTarget?.title}銆嶅悧锛熸鎿嶄綔涓嶅彲鎾ら攢銆俙}
+        title="删除文章"
+        description={`确定要删除「${deleteTarget?.title}」吗？此操作不可撤销。`}}
       >
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={() => setDeleteTarget(null)}>鍙栨秷</Button>
-          <Button variant="destructive" onClick={handleDelete}>纭鍒犻櫎</Button>
+          <Button variant="outline" onClick={() => setDeleteTarget(null)}>取消</Button>
+          <Button variant="destructive" onClick={handleDelete}>确认删除</Button>
         </div>
       </Dialog>
     </AppShell>
@@ -442,10 +442,10 @@ function ArticleItem({
       <FileText size={14} className="shrink-0 text-gray-400" />
       <span className="truncate flex-1">{article.title}</span>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button onClick={(e) => { e.stopPropagation(); onExport(article) }} className="p-0.5 rounded hover:bg-bindle-200" title="瀵煎嚭 Word">
+        <button onClick={(e) => { e.stopPropagation(); onExport(article) }} className="p-0.5 rounded hover:bg-bindle-200" title="导出 Word">
           <FileOutput size={13} className="text-gray-400 hover:text-bindle-600" />
         </button>
-        <button onClick={(e) => { e.stopPropagation(); onDelete(article) }} className="p-0.5 rounded hover:bg-red-100" title="鍒犻櫎">
+        <button onClick={(e) => { e.stopPropagation(); onDelete(article) }} className="p-0.5 rounded hover:bg-red-100" title="删除">
           <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
         </button>
       </div>

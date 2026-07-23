@@ -273,7 +273,7 @@ export default function ExternalLinksPage() {
                 tab === 'links' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-400 hover:text-gray-600'
               )}
             >
-              <Link2 size={14} /> 閾炬帴
+              <Link2 size={14} /> 链接
             </button>
             <button
               onClick={() => { setTab('files'); setCurrentLink(null); setIsNewLink(false) }}
@@ -282,7 +282,7 @@ export default function ExternalLinksPage() {
                 tab === 'files' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-400 hover:text-gray-600'
               )}
             >
-              <FolderOpen size={14} /> 鏂囦欢
+              <FolderOpen size={14} /> 文件
             </button>
           </div>
 
@@ -291,9 +291,9 @@ export default function ExternalLinksPage() {
             <>
               <div className="flex-1 overflow-auto py-1">
                 {linkLoading ? (
-                  <p className="px-3 py-4 text-sm text-gray-400 text-center">鍔犺浇涓?..</p>
+                  <p className="px-3 py-4 text-sm text-gray-400 text-center">加载中...</p>
                 ) : links.length === 0 ? (
-                  <p className="px-3 py-4 text-sm text-gray-400 text-center">鏆傛棤閾炬帴</p>
+                  <p className="px-3 py-4 text-sm text-gray-400 text-center">暂无链接</p>
                 ) : (
                   links.map((link) => (
                     <div
@@ -309,17 +309,17 @@ export default function ExternalLinksPage() {
                       <Link2 size={14} className="shrink-0 text-gray-400" />
                       <span className="truncate flex-1">{link.title}</span>
                       {link.sync_status === 'synced' && link.link_type === 'file' && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" title="宸插悓姝? />
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" title="已同步" />
                       )}
                       {link.sync_status === 'error' && link.link_type === 'file' && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" title="鍚屾澶辫触" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" title="同步失败" />
                       )}
                       <span className="text-[10px] text-gray-400 shrink-0">{LINK_TYPE_LABELS[link.link_type] || link.link_type}</span>
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
-                        <button onClick={(e) => { e.stopPropagation(); handleOpenUrl(link.url) }} className="p-0.5 rounded hover:bg-bindle-200" title="鎵撳紑閾炬帴">
+                        <button onClick={(e) => { e.stopPropagation(); handleOpenUrl(link.url) }} className="p-0.5 rounded hover:bg-bindle-200" title="打开链接">
                           <ExternalLinkIcon size={13} className="text-gray-400 hover:text-bindle-600" />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); confirmDelete(link) }} className="p-0.5 rounded hover:bg-red-100" title="鍒犻櫎">
+                        <button onClick={(e) => { e.stopPropagation(); confirmDelete(link) }} className="p-0.5 rounded hover:bg-red-100" title="删除">
                           <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
                         </button>
                       </div>
@@ -330,9 +330,9 @@ export default function ExternalLinksPage() {
 
               <div className="p-2 border-t border-gray-100 shrink-0">
                 <button onClick={handleNewLink} className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded transition-colors">
-                  <Plus size={14} /> 娣诲姞閾炬帴
+                  <Plus size={14} /> 添加链接
                 </button>
-                <p className="text-xs text-gray-400 px-2.5 mt-1">{links.length} 涓摼鎺?/p>
+                <p className="text-xs text-gray-400 px-2.5 mt-1">{links.length} 个链接</p>
               </div>
             </>
           )}
@@ -350,7 +350,7 @@ export default function ExternalLinksPage() {
                 onDrop={handleDrop}
               >
                 {fileLoading ? (
-                  <p className="px-3 py-4 text-sm text-gray-400 text-center">鍔犺浇涓?..</p>
+                  <p className="px-3 py-4 text-sm text-gray-400 text-center">加载中...</p>
                 ) : files.length === 0 ? (
                   <div className={cn(
                     'flex flex-col items-center justify-center gap-3 py-8 text-center transition-colors',
@@ -358,15 +358,15 @@ export default function ExternalLinksPage() {
                   )}>
                     <Upload size={32} strokeWidth={1} className={isDragOver ? 'text-bindle-400' : ''} />
                     <div>
-                      <p className="text-sm">{isDragOver ? '鏉惧紑浠ュ鍏ユ枃浠? : '鎷栧叆鏂囦欢鍒版澶?}</p>
-                      <p className="text-xs mt-1">PDF / Word / PPT / 鍥剧墖 / Markdown</p>
+                      <p className="text-sm">{isDragOver ? '松手以导入文件' : '拖入文件到此处'}</p>
+                      <p className="text-xs mt-1">PDF / Word / PPT / 图片 / Markdown</p>
                     </div>
                   </div>
                 ) : (
                   <>
                     {isDragOver && (
                       <div className="flex items-center justify-center gap-2 py-3 text-sm text-bindle-500 bg-bindle-50 border-2 border-dashed border-bindle-300 mx-2 rounded-lg">
-                        <Upload size={16} /> 鏉惧紑浠ュ鍏ユ枃浠?                      </div>
+                        <Upload size={16} /> 松手以导入文件                      </div>
                     )}
                     {files.map((f) => (
                       <div
@@ -383,7 +383,7 @@ export default function ExternalLinksPage() {
                         <span className="truncate flex-1 text-xs">{f.original_name}</span>
                         <span className="text-[10px] text-gray-400 shrink-0">{format.fileSize(f.file_size)}</span>
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
-                          <button onClick={(e) => { e.stopPropagation(); confirmDeleteFile(f) }} className="p-0.5 rounded hover:bg-red-100" title="鍒犻櫎">
+                          <button onClick={(e) => { e.stopPropagation(); confirmDeleteFile(f) }} className="p-0.5 rounded hover:bg-red-100" title="删除">
                             <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
                           </button>
                         </div>
@@ -406,9 +406,9 @@ export default function ExternalLinksPage() {
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded transition-colors"
                 >
-                  <Plus size={14} /> 娣诲姞鏂囦欢
+                  <Plus size={14} /> 添加文件
                 </button>
-                <p className="text-xs text-gray-400 px-2.5 mt-1">{files.length} 涓枃浠?/p>
+                <p className="text-xs text-gray-400 px-2.5 mt-1">{files.length} 个文件</p>
               </div>
             </>
           )}
@@ -424,13 +424,13 @@ export default function ExternalLinksPage() {
                 {tab === 'links' ? (
                   <>
                     <Link2 size={48} strokeWidth={1} className="mx-auto mb-3" />
-                    <p className="text-lg">閫夋嫨鎴栨坊鍔犱竴涓閮ㄩ摼鎺?/p>
+                    <p className="text-lg">选择或添加一个外部链接</p>
                   </>
                 ) : (
                   <>
                     <FolderOpen size={48} strokeWidth={1} className="mx-auto mb-3" />
-                    <p className="text-lg">鎷栧叆鏂囦欢鎴栫偣鍑绘坊鍔?/p>
-                    <p className="text-sm mt-1">鏀寔 PDF / Word / PPT / 鍥剧墖 / Markdown</p>
+                    <p className="text-lg">拖入文件或点击添加</p>
+                    <p className="text-sm mt-1">支持 PDF / Word / PPT / 图片 / Markdown</p>
                   </>
                 )}
               </div>
@@ -438,22 +438,22 @@ export default function ExternalLinksPage() {
           ) : tab === 'links' && (currentLink || isNewLink) ? (
             <div className="flex-1 overflow-auto p-6">
               <div className="max-w-xl space-y-4">
-                <h3 className="font-semibold text-gray-800">{isNewLink ? '娣诲姞澶栭儴閾炬帴' : '缂栬緫閾炬帴'}</h3>
-                <Input id="title" label="鏍囬" placeholder="閾炬帴鍚嶇О" value={title} onChange={(e) => setTitle(e.target.value)} />
+                <h3 className="font-semibold text-gray-800">{isNewLink ? '添加外部链接' : '编辑链接'}</h3>
+                <Input id="title" label="标题" placeholder="链接名称" value={title} onChange={(e) => setTitle(e.target.value)} />
                 <Input id="url" label="URL" placeholder="https://..." value={url}
                   onChange={(e) => { setUrl(e.target.value); setLinkType(detectLinkType(e.target.value)) }} />
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-500">绫诲瀷:</span>
+                  <span className="text-sm text-gray-500">类型:</span>
                   <select value={linkType} onChange={(e) => setLinkType(e.target.value)}
                     className="px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400">
                     {Object.entries(LINK_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
-                <Textarea id="description" label="鎻忚堪" placeholder="绠€瑕佹弿杩拌繖涓祫婧?.." rows={3} value={linkDescription} onChange={(e) => setLinkDescription(e.target.value)} />
+                <Textarea id="description" label="描述" placeholder="简要描述这个资源..." rows={3} value={linkDescription} onChange={(e) => setLinkDescription(e.target.value)} />
 
                 {currentLink && (
                   <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>鍚屾鐘舵€?</span>
+                    <span>同步状态:</span>
                     <span className={cn(
                       'font-medium',
                       currentLink.sync_status === 'synced' && 'text-green-600',
@@ -461,10 +461,10 @@ export default function ExternalLinksPage() {
                       currentLink.sync_status === 'error' && 'text-red-600',
                       currentLink.sync_status === 'idle' && 'text-gray-400',
                     )}>
-                      {currentLink.sync_status === 'synced' ? '宸插悓姝? :
-                       currentLink.sync_status === 'syncing' ? '鍚屾涓? :
-                       currentLink.sync_status === 'error' ? '鍚屾澶辫触' :
-                       '寰呭悓姝?}
+                      {currentLink.sync_status === 'synced' ? '已同步' :
+                       currentLink.sync_status === 'syncing' ? '同步中' :
+                       currentLink.sync_status === 'error' ? '同步失败' :
+                       '待同步'}
                     </span>
                     {currentLink.last_synced_at && (
                       <span>路 {format.relativeTime(currentLink.last_synced_at)}</span>
@@ -474,16 +474,16 @@ export default function ExternalLinksPage() {
 
                 <div className="flex gap-2 pt-2">
                   <Button onClick={handleSaveLink} disabled={!title.trim() || !url.trim()}>
-                    {isNewLink ? '娣诲姞' : '淇濆瓨'}
+                    {isNewLink ? '添加' : '保存'}
                   </Button>
                   {currentLink && (
                     <>
                       <Button variant="outline" onClick={() => handleOpenUrl(currentLink.url)}>
-                        <ExternalLinkIcon size={14} /> 鎵撳紑閾炬帴
+                        <ExternalLinkIcon size={14} /> 打开链接
                       </Button>
                       {currentLink.link_type === 'file' && (
                         <Button variant="outline" onClick={() => syncLink(currentLink.id)}>
-                          鍚屾
+                          同步
                         </Button>
                       )}
                     </>
@@ -502,19 +502,19 @@ export default function ExternalLinksPage() {
                 {/* Metadata */}
                 <div className="grid grid-cols-2 gap-3 text-sm bg-gray-50 rounded-lg p-3">
                   <div>
-                    <span className="text-gray-400">绫诲瀷</span>
+                    <span className="text-gray-400">类型</span>
                     <p className="text-gray-700">{FILE_TYPE_LABELS[currentFile.file_type] || currentFile.file_type}</p>
                   </div>
                   <div>
-                    <span className="text-gray-400">澶у皬</span>
+                    <span className="text-gray-400">大小</span>
                     <p className="text-gray-700">{format.fileSize(currentFile.file_size)}</p>
                   </div>
                   <div>
-                    <span className="text-gray-400">娣诲姞鏃堕棿</span>
+                    <span className="text-gray-400">添加时间</span>
                     <p className="text-gray-700">{format.dateTime(currentFile.created_at)}</p>
                   </div>
                   <div>
-                    <span className="text-gray-400">鏇存柊</span>
+                    <span className="text-gray-400">更新</span>
                     <p className="text-gray-700">{format.relativeTime(currentFile.updated_at)}</p>
                   </div>
                 </div>
@@ -529,27 +529,27 @@ export default function ExternalLinksPage() {
                 {/* Extracted text preview */}
                 {currentFile.extracted_text ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">鎻愬彇鐨勬枃鏈紙AI 涓婁笅鏂囷級</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">提取的文本（AI 上下文）</label>
                     <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 max-h-48 overflow-auto whitespace-pre-wrap border border-gray-100">
                       {currentFile.extracted_text.slice(0, 2000)}
                       {currentFile.extracted_text.length > 2000 && (
-                        <p className="text-gray-400 mt-1">...锛堝叡 {currentFile.extracted_text.length} 瀛楃锛?/p>
+                        <p className="text-gray-400 mt-1">...（共 {currentFile.extracted_text.length} 字符）</p>
                       )}
                     </div>
                   </div>
                 ) : (
                   <div className="p-3 bg-amber-50 rounded-lg text-sm text-amber-600 border border-amber-100">
-                    <p>鏆傛棤鍙彁鍙栫殑鏂囨湰銆侾DF / Word / PPT 鏂囨湰鎻愬彇灏嗗湪鍚庣画鐗堟湰鏀寔銆?/p>
+                    <p>暂无可提取的文本。PDF / Word / PPT 文本提取将在后续版本支持。</p>
                   </div>
                 )}
 
                 {/* Description */}
-                <Textarea id="fileDescription" label="鎻忚堪" placeholder="绠€瑕佹弿杩拌繖涓枃浠?.." rows={2} value={fileDescription} onChange={(e) => setFileDescription(e.target.value)} />
+                <Textarea id="fileDescription" label="描述" placeholder="简要描述这个文件..." rows={2} value={fileDescription} onChange={(e) => setFileDescription(e.target.value)} />
 
                 <div className="flex gap-2 pt-2">
-                  <Button onClick={handleSaveFile}>淇濆瓨</Button>
+                  <Button onClick={handleSaveFile}>保存</Button>
                   <Button variant="outline" onClick={handleOpenFile}>
-                    <ExternalLinkIcon size={14} /> 鍦ㄧ郴缁熶腑鎵撳紑
+                    <ExternalLinkIcon size={14} /> 在系统中打开
                   </Button>
                   <Button
                     variant="outline"
@@ -558,15 +558,15 @@ export default function ExternalLinksPage() {
                       try {
                         const text = await reExtractText(currentFile.id)
                         if (!text) {
-                          console.log('鏂囨湰鎻愬彇瀹屾垚锛堟棤鏂囨湰鍐呭锛?)
+                          console.log('文本提取完成（无文本内容）')
                         }
                         await fetchFiles(projectId!)
                       } catch (err) {
-                        console.error('閲嶆柊鎻愬彇澶辫触:', err)
+                        console.error('重新提取失败:', err)
                       }
                     }}
                   >
-                    閲嶆柊鎻愬彇
+                    重新提取
                   </Button>
                 </div>
               </div>
@@ -576,20 +576,20 @@ export default function ExternalLinksPage() {
       </div>
 
       {/* Delete link dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)} title="鍒犻櫎閾炬帴"
-        description={`纭畾瑕佸垹闄ゃ€?{deleteTarget?.title}銆嶅悧锛焋}>
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)} title="删除链接"
+        description={`确定要删除「${deleteTarget?.title}」吗？`}>
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={() => setDeleteTarget(null)}>鍙栨秷</Button>
-          <Button variant="destructive" onClick={handleDeleteLink}>纭鍒犻櫎</Button>
+          <Button variant="outline" onClick={() => setDeleteTarget(null)}>取消</Button>
+          <Button variant="destructive" onClick={handleDeleteLink}>确认删除</Button>
         </div>
       </Dialog>
 
       {/* Delete file dialog */}
-      <Dialog open={!!deleteFileTarget} onOpenChange={() => setDeleteFileTarget(null)} title="鍒犻櫎鏂囦欢"
-        description={`纭畾瑕佸垹闄ゃ€?{deleteFileTarget?.original_name}銆嶅悧锛熸枃浠跺皢浠庣鐩樹笂绉婚櫎銆俙}>
+      <Dialog open={!!deleteFileTarget} onOpenChange={() => setDeleteFileTarget(null)} title="删除文件"
+        description={`确定要删除「${deleteFileTarget?.original_name}」吗？文件将从磁盘上移除。`}>
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={() => setDeleteFileTarget(null)}>鍙栨秷</Button>
-          <Button variant="destructive" onClick={handleDeleteFile}>纭鍒犻櫎</Button>
+          <Button variant="outline" onClick={() => setDeleteFileTarget(null)}>取消</Button>
+          <Button variant="destructive" onClick={handleDeleteFile}>确认删除</Button>
         </div>
       </Dialog>
     </AppShell>

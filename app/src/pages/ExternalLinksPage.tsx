@@ -45,7 +45,7 @@ export default function WhiteboardPage() {
     []
   )
 
-  /* ---------- 椤圭洰 & 鐧芥澘鍒楄〃 ---------- */
+  /* ---------- 项目 & 白板列表 ---------- */
   useEffect(() => {
     if (projectId) {
       fetchProject(projectId)
@@ -75,15 +75,15 @@ export default function WhiteboardPage() {
         setLoadState({ status: 'ready' })
       } catch (error: any) {
         setLoadState({ status: 'error', error: error.message })
-        console.error('鍔犺浇澶辫触:', error)
+        console.error('加载失败:', error)
       }
     })()
 
     const throttledSave = throttle(() => {
       const json = JSON.stringify(getSnapshot(newStore))
       saveSnapshot(currentWhiteboard.id, json)
-        .then(() => console.log('鑷姩淇濆瓨鎴愬姛'))
-        .catch((e) => console.error('鑷姩淇濆瓨澶辫触:', e))
+        .then(() => console.log('自动保存成功'))
+        .catch((e) => console.error('自动保存失败:', e))
     }, 1000)
 
     const cleanupFn = newStore.listen(throttledSave)
@@ -148,7 +148,7 @@ export default function WhiteboardPage() {
           <div className="p-2 border-t border-gray-100 space-y-1 shrink-0">
             {showCreate ? (
               <div className="flex gap-1">
-                <input autoFocus type="text" placeholder="鐧芥澘鍚嶇О" value={newName}
+                <input autoFocus type="text" placeholder="白板名称" value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleCreate()
@@ -156,12 +156,12 @@ export default function WhiteboardPage() {
                   }}
                   className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
                 />
-                <Button size="sm" onClick={handleCreate} disabled={!newName.trim()}>纭畾</Button>
+                <Button size="sm" onClick={handleCreate} disabled={!newName.trim()}>确定</Button>
               </div>
             ) : (
               <button onClick={() => setShowCreate(true)}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded transition-colors">
-                <Plus size={14} /> 鏂板缓鐧芥澘
+                <Plus size={14} /> 新建白板
               </button>
             )}
             <p className="text-xs text-gray-400 px-2.5">{whiteboards.length} 个白板</p>
@@ -181,7 +181,7 @@ export default function WhiteboardPage() {
               ) : loadState.status === 'error' ? (
                 <div className="flex flex-col items-center justify-center h-full text-red-500 gap-2">
                   <AlertCircle size={32} />
-                  <p>鍔犺浇澶辫触: {loadState.error}</p>
+                  <p>加载失败: {loadState.error}</p>
                 </div>
               ) : store ? (
                 <Tldraw key={currentWhiteboard.id} store={store} />
@@ -202,8 +202,8 @@ export default function WhiteboardPage() {
         title="删除白板"
         description={`确定要删除「${deleteTarget?.name}」吗？此操作不可撤销。`}>
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={() => setDeleteTarget(null)}>鍙栨秷</Button>
-          <Button variant="destructive" onClick={handleDelete}>纭鍒犻櫎</Button>
+          <Button variant="outline" onClick={() => setDeleteTarget(null)}>取消</Button>
+          <Button variant="destructive" onClick={handleDelete}>确认删除</Button>
         </div>
       </Dialog>
     </AppShell>
@@ -231,7 +231,7 @@ function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete }: {
       <span className="truncate flex-1">{whiteboard.name}</span>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button onClick={(e) => { e.stopPropagation(); onDelete(whiteboard) }}
-          className="p-0.5 rounded hover:bg-red-100" title="鍒犻櫎">
+          className="p-0.5 rounded hover:bg-red-100" title="删除">
           <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
         </button>
       </div>

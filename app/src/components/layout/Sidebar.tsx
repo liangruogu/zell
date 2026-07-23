@@ -121,10 +121,10 @@ export function Sidebar() {
               'flex items-center gap-2 w-full px-2.5 py-2 text-sm font-medium text-white bg-bindle-600 hover:bg-bindle-700 rounded-md transition-colors whitespace-nowrap overflow-hidden',
               collapsed && 'justify-center px-0'
             )}
-            title="鏂板缓椤圭洰"
+            title="新建项目"
           >
             <Plus size={16} className="shrink-0" />
-            {!collapsed && <span className="truncate">鏂板缓椤圭洰</span>}
+            {!collapsed && <span className="truncate">新建项目</span>}
           </button>
           <button
             onClick={() => setShowSettings(true)}
@@ -133,10 +133,10 @@ export function Sidebar() {
               collapsed && 'justify-center px-0',
               'text-gray-500 hover:bg-bindle-100'
             )}
-            title="璁剧疆"
+            title="设置"
           >
             <Settings size={18} className="shrink-0" />
-            {!collapsed && <span className="truncate">璁剧疆</span>}
+            {!collapsed && <span className="truncate">设置</span>}
           </button>
         </div>
       </aside>
