@@ -549,7 +549,7 @@ export function MarkdownEditor({
   }
 
   return (
-    <div className={cn('flex flex-col h-full border border-gray-200 rounded-lg overflow-hidden bg-white', className)}>
+    <div className={cn('flex flex-col h-full overflow-hidden bg-white', className)}>
       {editable && showToolbar && (
         <EditorToolbar editor={editor} editorMode={mode} onToggleMode={handleModeToggle} />
       )}

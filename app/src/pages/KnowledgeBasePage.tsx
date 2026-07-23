@@ -413,7 +413,6 @@ export default function KnowledgeBasePage() {
         onOpenChange={() => setDeleteTarget(null)}
         title="删除文章"
         description={'确定要删除"' + (deleteTarget?.title || '') + '"吗？此操作不可撤销。'}>
-      >
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setDeleteTarget(null)}>取消</Button>
           <Button variant="destructive" onClick={handleDelete}>确认删除</Button>
