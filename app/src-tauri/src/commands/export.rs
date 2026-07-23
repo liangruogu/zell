@@ -10,6 +10,53 @@ fn images_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, String> {
     Ok(app_data.join("projects").join(project_id).join("images"))
 }
 
+fn run_pandoc(md_path: &PathBuf, output_path: &str, temp_dir: &PathBuf, format: &str) -> Result<(), String> {
+    let mut cmd = Command::new("pandoc");
+    cmd.arg(md_path)
+        .arg("--from=markdown")
+        .arg("-o")
+        .arg(output_path)
+        .current_dir(temp_dir);
+
+    if format == "pdf" {
+        // Try default engine first, then wkhtmltopdf as fallback
+        let result = cmd.output().map_err(|e| format!("运行 Pandoc 失败: {}", e))?;
+        if result.status.success() {
+            return Ok(());
+        }
+        // Fallback: try wkhtmltopdf
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        if stderr.contains("pdflatex") || stderr.contains("xelatex") {
+            let mut cmd2 = Command::new("pandoc");
+            cmd2.arg(md_path)
+                .arg("-o")
+                .arg(output_path)
+                .arg("--pdf-engine=wkhtmltopdf")
+                .current_dir(temp_dir);
+            let r2 = cmd2.output().map_err(|e| format!("运行 Pandoc 失败: {}", e))?;
+            if r2.status.success() {
+                return Ok(());
+            }
+            let err2 = String::from_utf8_lossy(&r2.stderr);
+            return Err(format!(
+                "PDF 导出需要 TeX 引擎。\n请安装其中之一：\n\
+                1. MiKTeX (https://miktex.org)\n\
+                2. wkhtmltopdf (https://wkhtmltopdf.org)\n\n\
+                安装后重启应用重试。\n\n错误详情: {}",
+                err2
+            ));
+        }
+        return Err(format!("Pandoc 导出失败: {}", stderr));
+    } else {
+        let result = cmd.output().map_err(|e| format!("运行 Pandoc 失败: {}", e))?;
+        if result.status.success() {
+            return Ok(());
+        }
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        Err(format!("Pandoc 导出失败: {}", stderr))
+    }
+}
+
 #[tauri::command]
 pub fn export_article(
     app: AppHandle,
@@ -21,7 +68,7 @@ pub fn export_article(
     let check = Command::new("pandoc").arg("--version").output();
     if check.is_err() {
         return Err(
-            "Pandoc 未安装。请访问 https://pandoc.org/installing.html 安装后重试。".to_string(),
+            "Pandoc 未安装。请访问 https://pandoc.org/installing.html 安装后重试。\n\n安装步骤：\n1. 下载 pandoc 安装包\n2. 运行安装程序\n3. 如需导出 PDF，还需安装 MiKTeX 或 wkhtmltopdf\n4. 重启 Bindle".to_string(),
         );
     }
 
@@ -54,40 +101,16 @@ pub fn export_article(
     let md_path = temp_dir.join("article.md");
     std::fs::write(&md_path, &resolved).map_err(|e| format!("写入临时文件失败: {}", e))?;
 
-    // Run pandoc from the temp directory so relative image paths resolve
-    let mut cmd = Command::new("pandoc");
-    cmd.arg(&md_path)
-        .arg("--from=markdown")
-        .arg("-o")
-        .arg(&output_path)
-        .current_dir(&temp_dir);
-
-    if format == "pdf" {
-        cmd.arg("--pdf-engine=xelatex");
-    }
-
-    let result = cmd.output();
+    run_pandoc(&md_path, &output_path, &temp_dir, &format)?;
 
     // Clean up temp files
     let _ = std::fs::remove_dir_all(&temp_dir);
 
-    match result {
-        Ok(output) => {
-            if output.status.success() {
-                // Verify output file exists and is non-empty
-                let meta =
-                    std::fs::metadata(&output_path).map_err(|e| format!("输出文件未生成: {}", e))?;
-                if meta.len() == 0 {
-                    return Err("Pandoc 生成了空文件，请确认已安装必要的 PDF 引擎（如 xelatex）".to_string());
-                }
-                Ok(output_path)
-            } else {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let msg = if stderr.is_empty() { stdout } else { stderr };
-                Err(format!("Pandoc 导出失败:\n{}", msg))
-            }
-        }
-        Err(e) => Err(format!("运行 Pandoc 失败: {}", e)),
+    // Verify output
+    let meta =
+        std::fs::metadata(&output_path).map_err(|e| format!("输出文件未生成: {}", e))?;
+    if meta.len() == 0 {
+        return Err("Pandoc 生成了空文件".to_string());
     }
+    Ok(output_path)
 }
