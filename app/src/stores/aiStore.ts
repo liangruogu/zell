@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { invoke } from '@tauri-apps/api/core'
 
 const STORAGE_OPEN_KEY = 'bindle_ai_open'
 const STORAGE_INPUT_KEY = 'bindle_ai_input'
@@ -6,15 +7,12 @@ const STORAGE_INPUT_KEY = 'bindle_ai_input'
 function loadAIOpen(): boolean {
   try { return localStorage.getItem(STORAGE_OPEN_KEY) === '1' } catch { return false }
 }
-
 function saveAIOpen(v: boolean) {
   try { localStorage.setItem(STORAGE_OPEN_KEY, v ? '1' : '0') } catch { /* */ }
 }
-
 function loadInput(): string {
   try { return localStorage.getItem(STORAGE_INPUT_KEY) || '' } catch { return '' }
 }
-
 function saveInput(v: string) {
   try { localStorage.setItem(STORAGE_INPUT_KEY, v) } catch { /* */ }
 }
@@ -25,12 +23,34 @@ interface AIMessage_ {
   reasoningContent?: string
 }
 
+interface ConversationMeta {
+  id: string
+  project_id: string
+  created_at: string
+  updated_at: string
+}
+
+interface AiConversation {
+  id: string
+  project_id: string
+  source_type: string
+  source_id: string | null
+  selected_text: string | null
+  messages: string
+  created_at: string
+  updated_at: string
+}
+
 interface AIState {
   isOpen: boolean
   sourceType: 'knowledge' | 'whiteboard' | null
   selectedText: string
   messages: AIMessage_[]
   streaming: boolean
+  pendingInput: string
+
+  conversations: ConversationMeta[]
+  activeConversationId: string | null
 
   openPanel: (sourceType: 'knowledge' | 'whiteboard', selectedText?: string) => void
   closePanel: () => void
@@ -41,16 +61,25 @@ interface AIState {
   truncateMessages: (index: number) => void
   setStreaming: (v: boolean) => void
   clearMessages: () => void
-  pendingInput: string
   setPendingInput: (text: string) => void
+
+  loadConversations: (projectId: string) => Promise<void>
+  createConversation: (projectId: string, sourceType: string) => Promise<string>
+  switchConversation: (id: string) => void
+  deleteConversation: (id: string) => Promise<void>
+  saveConversation: () => Promise<void>
 }
 
-export const useAIStore = create<AIState>((set) => ({
+export const useAIStore = create<AIState>((set, get) => ({
   isOpen: loadAIOpen(),
   sourceType: null,
   selectedText: '',
   messages: [],
   streaming: false,
+  pendingInput: loadInput(),
+
+  conversations: [],
+  activeConversationId: null,
 
   openPanel: (sourceType, selectedText) => {
     saveAIOpen(true)
@@ -91,6 +120,67 @@ export const useAIStore = create<AIState>((set) => ({
 
   clearMessages: () => set({ messages: [], streaming: false }),
 
-  pendingInput: loadInput(),
   setPendingInput: (text: string) => { saveInput(text); set({ pendingInput: text }) },
+
+  // --- Conversation management ---
+
+  loadConversations: async (projectId: string) => {
+    try {
+      const convos = await invoke<ConversationMeta[]>('get_ai_conversations', { projectId })
+      set((state) => {
+        const active = state.activeConversationId
+        if (active && !convos.find(c => c.id === active)) {
+          // Active conversation was deleted
+          return { conversations: convos, activeConversationId: convos[0]?.id || null }
+        }
+        return { conversations: convos }
+      })
+    } catch { /* */ }
+  },
+
+  createConversation: async (projectId: string, sourceType: string) => {
+    const conv = await invoke<ConversationMeta>('create_ai_conversation', { projectId, sourceType })
+    set((state) => ({
+      conversations: [conv, ...state.conversations],
+      activeConversationId: conv.id,
+      messages: [],
+    }))
+    return conv.id
+  },
+
+  switchConversation: async (id: string) => {
+    const conv = get().conversations.find(c => c.id === id)
+    if (!conv) return
+    try {
+      const full = await invoke<AiConversation>('get_ai_conversation', { id })
+      const msgs = JSON.parse(full.messages || '[]') as AIMessage_[]
+      set({ activeConversationId: id, messages: msgs })
+    } catch {
+      set({ activeConversationId: id, messages: [] })
+    }
+  },
+
+  deleteConversation: async (id: string) => {
+    await invoke('delete_ai_conversation', { id })
+    set((state) => {
+      const convos = state.conversations.filter(c => c.id !== id)
+      const nextActive = state.activeConversationId === id
+        ? (convos[0]?.id || null)
+        : state.activeConversationId
+      return {
+        conversations: convos,
+        activeConversationId: nextActive,
+        messages: nextActive ? state.messages : [],
+      }
+    })
+  },
+
+  saveConversation: async () => {
+    const { activeConversationId, messages } = get()
+    if (!activeConversationId) return
+    await invoke('save_ai_conversation', {
+      id: activeConversationId,
+      messagesJson: JSON.stringify(messages),
+    })
+  },
 }))

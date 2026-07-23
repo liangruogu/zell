@@ -4,6 +4,7 @@ import { sendMessage, getProviders, getActiveProviderId } from '@/services/aiSer
 import { useSettingsStore } from '@/stores/settingsStore'
 import { cn } from '@/lib/utils'
 import { markdownToHtml } from '@/lib/markdown'
+import { useProjectStore } from '@/stores/projectStore'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
@@ -60,14 +61,16 @@ function renderMarkdown(content: string): string {
   })
   return div.innerHTML
 }
-import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil } from 'lucide-react'
+import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil, Plus, MessageSquare } from 'lucide-react'
 
 export function AIPanel() {
-  const { isOpen, messages, streaming, selectedText, closePanel, clearMessages, deleteMessagePair, truncateMessages, updateMessage, pendingInput, setPendingInput } = useAIStore()
+  const { isOpen, messages, streaming, selectedText, closePanel, clearMessages, deleteMessagePair, truncateMessages, updateMessage, pendingInput, setPendingInput, conversations, activeConversationId, loadConversations, createConversation, switchConversation, deleteConversation } = useAIStore()
+  const project = useProjectStore((s) => s.currentProject)
   const [showProviders, setShowProviders] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
   const [deleteConfirmIdx, setDeleteConfirmIdx] = useState<number | null>(null)
+  const [showConvList, setShowConvList] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -97,6 +100,13 @@ export function AIPanel() {
   useEffect(() => {
     if (isOpen) inputRef.current?.focus()
   }, [isOpen])
+
+  // Load conversations when panel opens or project changes
+  useEffect(() => {
+    if (isOpen && project) {
+      loadConversations(project.id)
+    }
+  }, [isOpen, project?.id, loadConversations])
 
   const handleSend = useCallback(async () => {
     const text = pendingInput.trim()
@@ -246,6 +256,68 @@ export function AIPanel() {
             <X size={16} />
           </button>
         </div>
+      </div>
+
+      {/* Conversation bar */}
+      <div className="flex items-center gap-1 px-4 py-1.5 border-b border-gray-100 shrink-0 bg-gray-50/50 relative">
+        <button
+          onClick={() => setShowConvList(!showConvList)}
+          className="flex items-center gap-1 flex-1 text-xs text-gray-600 hover:text-bindle-600 py-1"
+        >
+          <MessageSquare size={12} />
+          <span className="truncate">
+            {activeConversationId
+              ? conversations.find(c => c.id === activeConversationId)?.created_at
+                ? new Date(conversations.find(c => c.id === activeConversationId)!.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : '对话'
+              : '新对话'}
+          </span>
+          <ChevronDown size={10} />
+        </button>
+        {project && (
+          <button
+            onClick={async () => {
+              const srcType = useAIStore.getState().sourceType || 'knowledge'
+              await createConversation(project.id, srcType)
+            }}
+            className="p-1 text-gray-400 hover:text-bindle-600 rounded"
+            title="新建对话"
+          >
+            <Plus size={14} />
+          </button>
+        )}
+
+        {showConvList && (
+          <div className="absolute top-[72px] left-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
+            {conversations.length === 0 ? (
+              <p className="px-3 py-4 text-xs text-gray-400 text-center">暂无历史对话</p>
+            ) : (
+              conversations.map((c) => (
+                <div
+                  key={c.id}
+                  className={cn(
+                    'flex items-center justify-between px-3 py-2 text-xs cursor-pointer hover:bg-gray-50',
+                    activeConversationId === c.id && 'bg-bindle-50',
+                  )}
+                  onClick={() => { switchConversation(c.id); setShowConvList(false) }}
+                >
+                  <span className="truncate flex-1">
+                    {new Date(c.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteConversation(c.id)
+                    }}
+                    className="p-0.5 text-gray-400 hover:text-red-500 rounded ml-1"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Messages */}

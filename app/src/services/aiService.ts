@@ -36,6 +36,15 @@ export async function testProviderConnection(provider: AIProvider): Promise<{ ok
 }
 
 export async function sendMessage(userContent: string) {
+  const store = useAIStore.getState()
+  const project = useProjectStore.getState().currentProject
+
+  // Auto-create conversation if none active
+  if (project && !store.activeConversationId) {
+    const sourceType = store.sourceType || 'knowledge'
+    await useAIStore.getState().createConversation(project.id, sourceType)
+  }
+
   const providers = getProviders()
   if (providers.length === 0) {
     useAIStore.getState().addMessage({ role: 'assistant', content: '请先在设置中配置 AI 服务。' })
@@ -152,4 +161,6 @@ export async function sendMessage(userContent: string) {
   }
 
   useAIStore.getState().setStreaming(false)
+  // Persist conversation to DB
+  useAIStore.getState().saveConversation().catch(() => {})
 }
