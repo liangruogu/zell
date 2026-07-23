@@ -11,50 +11,48 @@ fn images_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, String> {
 }
 
 fn run_pandoc(md_path: &PathBuf, output_path: &str, temp_dir: &PathBuf, format: &str) -> Result<(), String> {
-    let mut cmd = Command::new("pandoc");
-    cmd.arg(md_path)
+    if format == "pdf" {
+        // Try engines in order: xelatex (Chinese support) -> wkhtmltopdf -> pdflatex
+        let engines = ["xelatex", "wkhtmltopdf", "pdflatex"];
+        let mut last_err = String::new();
+        for engine in &engines {
+            let result = Command::new("pandoc")
+                .arg(md_path)
+                .arg("--from=markdown")
+                .arg("-o")
+                .arg(output_path)
+                .arg("--pdf-engine")
+                .arg(engine)
+                .current_dir(temp_dir)
+                .output()
+                .map_err(|e| format!("运行 Pandoc 失败: {}", e))?;
+            if result.status.success() {
+                return Ok(());
+            }
+            last_err = String::from_utf8_lossy(&result.stderr).to_string();
+        }
+        return Err(format!(
+            "PDF 导出失败。已尝试 xelatex、wkhtmltopdf、pdflatex 均失败。\n\n\
+            请确保已安装以下之一：\n\
+            - MiKTeX (https://miktex.org) — 支持中文\n\
+            - wkhtmltopdf (https://wkhtmltopdf.org)\n\n\
+            错误: {}", last_err.trim()
+        ));
+    }
+
+    let result = Command::new("pandoc")
+        .arg(md_path)
         .arg("--from=markdown")
         .arg("-o")
         .arg(output_path)
-        .current_dir(temp_dir);
-
-    if format == "pdf" {
-        // Try default engine first, then wkhtmltopdf as fallback
-        let result = cmd.output().map_err(|e| format!("运行 Pandoc 失败: {}", e))?;
-        if result.status.success() {
-            return Ok(());
-        }
-        // Fallback: try wkhtmltopdf
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        if stderr.contains("pdflatex") || stderr.contains("xelatex") {
-            let mut cmd2 = Command::new("pandoc");
-            cmd2.arg(md_path)
-                .arg("-o")
-                .arg(output_path)
-                .arg("--pdf-engine=wkhtmltopdf")
-                .current_dir(temp_dir);
-            let r2 = cmd2.output().map_err(|e| format!("运行 Pandoc 失败: {}", e))?;
-            if r2.status.success() {
-                return Ok(());
-            }
-            let err2 = String::from_utf8_lossy(&r2.stderr);
-            return Err(format!(
-                "PDF 导出需要 TeX 引擎。\n请安装其中之一：\n\
-                1. MiKTeX (https://miktex.org)\n\
-                2. wkhtmltopdf (https://wkhtmltopdf.org)\n\n\
-                安装后重启应用重试。\n\n错误详情: {}",
-                err2
-            ));
-        }
-        return Err(format!("Pandoc 导出失败: {}", stderr));
-    } else {
-        let result = cmd.output().map_err(|e| format!("运行 Pandoc 失败: {}", e))?;
-        if result.status.success() {
-            return Ok(());
-        }
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        Err(format!("Pandoc 导出失败: {}", stderr))
+        .current_dir(temp_dir)
+        .output()
+        .map_err(|e| format!("运行 Pandoc 失败: {}", e))?;
+    if result.status.success() {
+        return Ok(());
     }
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    Err(format!("Pandoc 导出失败: {}", stderr))
 }
 
 #[tauri::command]
