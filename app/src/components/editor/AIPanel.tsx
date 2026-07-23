@@ -373,13 +373,13 @@ export function AIPanel() {
         <div className="flex items-end gap-2">
           {/* Model selector (icon only) */}
           {activeProvider ? (
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 self-center">
               <button
                 onClick={() => setShowProviders(!showProviders)}
-                className="p-2 text-gray-400 hover:text-bindle-600 border border-gray-200 rounded-lg hover:border-bindle-300"
+                className="p-1.5 text-gray-400 hover:text-bindle-600 border border-gray-200 rounded-lg hover:border-bindle-300"
                 title={activeProvider.name || activeProvider.model}
               >
-                <Sparkles size={14} />
+                <Sparkles size={13} />
               </button>
               {showProviders && (
                 <div className="absolute bottom-full left-0 mb-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
