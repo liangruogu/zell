@@ -58,6 +58,8 @@ html, body, #root {
 .prose.bindle-prose :where(p) { margin-top: 0.5em; margin-bottom: 0.5em; }
 .prose.bindle-prose :where(li) { margin-top: 0.125em; margin-bottom: 0.125em; }
 .prose.bindle-prose :where(ul), .prose.bindle-prose :where(ol) { margin-top: 0.25em; margin-bottom: 0.25em; }
+.prose.bindle-prose :where(img) { margin-top: 0; margin-bottom: 0; display: inline-block; vertical-align: top; }
+.prose.bindle-prose p:has(img) { margin-top: 0; margin-bottom: 0; }
 
 /* Inline code: match body font size */
 .prose.bindle-prose :where(code):not(pre code) {
