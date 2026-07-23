@@ -109,14 +109,29 @@ export function MarkdownEditor({
 
   const handleModeToggle = useCallback(() => {
     const next = mode === 'wysiwyg' ? 'split' : 'wysiwyg'
-    // Flush split source BEFORE switching mode
     if (mode === 'split' && next === 'wysiwyg' && splitSourceRef.current) {
       const md = splitSourceRef.current
       const html = markdownToHtml(md)
+      // Save to DB and update editor content directly
       const article = useKnowledgeStore.getState().currentArticle
       if (article) {
-        useKnowledgeStore.getState().updateArticle(article.id, article.title, md)
+        invoke('update_knowledge_article', {
+          id: article.id,
+          title: article.title,
+          content: md,
+          contentJson: '{}',
+        }).then((updated: { content: string }) => {
+          useKnowledgeStore.getState().updateArticle(article.id, article.title, updated.content)
+        }).catch(e => console.error('save failed:', e))
       }
+      // When wysiwyg editor appears, set its content from split source
+      ignoreNextSync.current = true
+      prevContentRef.current = md
+      setTimeout(() => {
+        if (editorRef.current && !editorRef.current.isDestroyed) {
+          editorRef.current.commands.setContent(html)
+        }
+      }, 0)
       onChangeRef.current?.(html, md)
     }
     if (onModeChange) {
