@@ -532,21 +532,24 @@ export function MarkdownEditor({
   const [resolvedPreviewHtml, setResolvedPreviewHtml] = useState('')
 
   // --- Page break overlay (split mode preview) ---
-  const pageBreakRef = useRef<HTMLDivElement>(null)
+  const pageBreakWrapperRef = useRef<HTMLDivElement>(null)
+  const pageBreakContentRef = useRef<HTMLDivElement>(null)
 
   const updatePageBreaks = useCallback(() => {
-    const container = pageBreakRef.current
-    if (!container) return
-    const old = container.querySelector('.page-break-overlay')
+    const wrapper = pageBreakWrapperRef.current
+    const content = pageBreakContentRef.current
+    if (!wrapper || !content) return
+    const old = wrapper.querySelector('.page-break-overlay')
     old?.remove()
 
     const overlay = document.createElement('div')
     overlay.className = 'page-break-overlay absolute left-0 right-0 pointer-events-none z-10'
     const pxPerMm = 3.779
     const pageH = 297 * pxPerMm
+    const contentH = content.scrollHeight
     overlay.style.top = '0'
-    overlay.style.height = `${container.scrollHeight}px`
-    const count = Math.max(Math.floor(container.scrollHeight / pageH), 1)
+    overlay.style.height = `${contentH}px`
+    const count = Math.max(Math.floor(contentH / pageH), 1)
     for (let i = 1; i <= count; i++) {
       const y = i * pageH
       const line = document.createElement('div')
@@ -559,7 +562,7 @@ export function MarkdownEditor({
       line.appendChild(label)
       overlay.appendChild(line)
     }
-    container.appendChild(overlay)
+    wrapper.appendChild(overlay)
   }, [])
 
   // Draw breaks on split mode mount + editor updates
@@ -689,11 +692,13 @@ export function MarkdownEditor({
             <div className="px-3 py-1 text-xs text-gray-400 bg-gray-50 border-b border-gray-100 shrink-0">
               预览
             </div>
-            <div
-              ref={pageBreakRef}
-              className="flex-1 overflow-auto py-4 prose bindle-prose max-w-3xl mx-auto relative"
-              dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
-            />
+            <div ref={pageBreakWrapperRef} className="flex-1 overflow-auto relative">
+              <div
+                ref={pageBreakContentRef}
+                className="py-4 prose bindle-prose max-w-[210mm] mx-auto"
+                dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
+              />
+            </div>
           </div>
         </div>
       )}
