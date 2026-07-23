@@ -101,31 +101,6 @@ export function MarkdownEditor({
     ed.chain().focus().setImage({ src: dataUrl }).run()
   }, [imageStorage])
 
-  // Helper: insert image into editor based on storage mode
-  const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
-    const ed = editorRef.current
-    if (!ed) return
-    const projectId = useProjectStore.getState().currentProject?.id
-
-    if (imageStorage === 'file' && projectId && sourcePath) {
-      try {
-        const saved = await invoke<{ file_name: string }>('save_project_image', {
-          projectId,
-          sourcePath,
-        })
-        const bindleRef = `bindle-img:${projectId}/${saved.file_name}`
-        ed.chain().focus().setImage({ src: bindleRef }).run()
-      } catch {
-        // fallback to base64 on error
-        ed.chain().focus().setImage({ src: dataUrl }).run()
-      }
-    } else {
-      ed.chain().focus().setImage({ src: dataUrl }).run()
-    }
-  }, [imageStorage])
-
-  const [justSaved2, setJustSaved2] = useState(false)
-
   const [internalMode, setInternalMode] = useState<EditorMode>('wysiwyg')
   const mode = externalMode ?? internalMode
 

@@ -27,6 +27,11 @@ const EDITOR_MODE_OPTIONS = [
   { value: 'split', label: '分屏模式' },
 ]
 
+const IMAGE_STORAGE_OPTIONS = [
+  { value: 'base64', label: 'Base64 内嵌（Markdown 源码较长）' },
+  { value: 'file', label: '文件路径（保存在项目目录，简洁可读）' },
+]
+
 interface SettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -253,17 +258,24 @@ function EditorSettings({ parsed, setSetting, showToast }: {
   const { register, handleSubmit, reset } = useForm({
     defaultValues: {
       defaultMode: String(parsed.editorPrefs.defaultMode || 'wysiwyg'),
+      imageStorage: String(parsed.editorPrefs.imageStorage || 'base64'),
     },
   })
 
   useEffect(() => {
-    reset({ defaultMode: String(parsed.editorPrefs.defaultMode || 'wysiwyg') })
-  }, [parsed.editorPrefs.defaultMode, reset])
+    reset({
+      defaultMode: String(parsed.editorPrefs.defaultMode || 'wysiwyg'),
+      imageStorage: String(parsed.editorPrefs.imageStorage || 'base64'),
+    })
+  }, [parsed.editorPrefs.defaultMode, parsed.editorPrefs.imageStorage, reset])
 
-  const onSubmit = useCallback(async (data: { defaultMode: string }) => {
-    await setSetting('editor_prefs', JSON.stringify(data))
+  const onSubmit = useCallback(async (data: { defaultMode: string; imageStorage: string }) => {
+    await setSetting('editor_prefs', JSON.stringify({
+      ...parsed.editorPrefs,
+      ...data,
+    }))
     showToast('编辑器设置已保存')
-  }, [setSetting, showToast])
+  }, [setSetting, showToast, parsed.editorPrefs])
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -273,6 +285,13 @@ function EditorSettings({ parsed, setSetting, showToast }: {
         <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('defaultMode')}>
           {EDITOR_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+      </div>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">图片存储方式</label>
+        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('imageStorage')}>
+          {IMAGE_STORAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <p className="text-xs text-gray-400 mt-1">Base64 模式：图片直接嵌入 Markdown<br />文件模式：图片保存为独立文件，Markdown 仅存引用</p>
       </div>
       <Button type="submit" size="sm">保存偏好</Button>
     </form>
