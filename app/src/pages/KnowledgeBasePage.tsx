@@ -146,6 +146,10 @@ export default function KnowledgeBasePage() {
     URL.revokeObjectURL(url)
   }, [])
 
+  const handleRename = useCallback((article: KnowledgeArticle, newTitle: string) => {
+    updateArticle(article.id, newTitle, article.content)
+  }, [updateArticle])
+
   const confirmDelete = useCallback((article: KnowledgeArticle) => {
     setDeleteTarget(article)
   }, [])
@@ -331,6 +335,7 @@ export default function KnowledgeBasePage() {
                     onSelect={setCurrentArticle}
                     onExport={handleExport}
                     onDelete={confirmDelete}
+                    onRename={handleRename}
                   />
                 ))
               )
@@ -423,13 +428,30 @@ export default function KnowledgeBasePage() {
 }
 
 function ArticleItem({
-  article, isActive, onSelect, onExport, onDelete,
+  article, isActive, onSelect, onExport, onDelete, onRename,
 }: {
   article: KnowledgeArticle; isActive: boolean
   onSelect: (a: KnowledgeArticle) => void
   onExport: (a: KnowledgeArticle) => void
   onDelete: (a: KnowledgeArticle) => void
+  onRename: (a: KnowledgeArticle, newTitle: string) => void
 }) {
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState(article.title)
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setRenaming(true)
+    setRenameValue(article.title)
+  }
+
+  const handleRenameSubmit = () => {
+    if (renameValue.trim() && renameValue !== article.title) {
+      onRename(article, renameValue.trim())
+    }
+    setRenaming(false)
+  }
+
   return (
     <div
       className={cn(
@@ -437,9 +459,25 @@ function ArticleItem({
         isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50'
       )}
       onClick={() => onSelect(article)}
+      onDoubleClick={handleDoubleClick}
     >
       <FileText size={14} className="shrink-0 text-gray-400" />
-      <span className="truncate flex-1">{article.title}</span>
+      {renaming ? (
+        <input
+          autoFocus
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onBlur={handleRenameSubmit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleRenameSubmit()
+            if (e.key === 'Escape') { setRenaming(false); setRenameValue(article.title) }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 px-1 py-0.5 text-sm border border-bindle-300 rounded outline-none focus:ring-1 focus:ring-bindle-400"
+        />
+      ) : (
+        <span className="truncate flex-1">{article.title}</span>
+      )}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button onClick={(e) => { e.stopPropagation(); onExport(article) }} className="p-0.5 rounded hover:bg-bindle-200" title="导出 Word">
           <FileOutput size={13} className="text-gray-400 hover:text-bindle-600" />

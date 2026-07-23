@@ -25,7 +25,7 @@ export default function WhiteboardPage() {
   const { fetchProject } = useProjectStore()
   const {
     whiteboards, currentWhiteboard, loading,
-    fetchWhiteboards, createWhiteboard, deleteWhiteboard,
+    fetchWhiteboards, createWhiteboard, deleteWhiteboard, renameWhiteboard,
     setCurrentWhiteboard, saveSnapshot,
   } = useWhiteboardStore()
   const panel = useResizablePanel()
@@ -117,6 +117,9 @@ export default function WhiteboardPage() {
   }, [projectId, newName, createWhiteboard, setCurrentWhiteboard])
 
   const confirmDelete = useCallback((wb: Whiteboard) => setDeleteTarget(wb), [])
+  const handleRename = useCallback((wb: Whiteboard, newName: string) => {
+    renameWhiteboard(wb.id, newName)
+  }, [renameWhiteboard])
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return
     await deleteWhiteboard(deleteTarget.id)
@@ -141,6 +144,7 @@ export default function WhiteboardPage() {
                   isActive={currentWhiteboard?.id === wb.id}
                   onSelect={handleSelectWhiteboard}
                   onDelete={confirmDelete}
+                  onRename={handleRename}
                 />
               ))
             )}
@@ -214,11 +218,28 @@ export default function WhiteboardPage() {
 /*  WhiteboardItem                                                     */
 /* ------------------------------------------------------------------ */
 
-function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete }: {
+function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete, onRename }: {
   whiteboard: Whiteboard; isActive: boolean
   onSelect: (w: Whiteboard) => void
   onDelete: (w: Whiteboard) => void
+  onRename: (w: Whiteboard, newName: string) => void
 }) {
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState(whiteboard.name)
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setRenaming(true)
+    setRenameValue(whiteboard.name)
+  }
+
+  const handleRenameSubmit = () => {
+    if (renameValue.trim() && renameValue !== whiteboard.name) {
+      onRename(whiteboard, renameValue.trim())
+    }
+    setRenaming(false)
+  }
+
   return (
     <div
       className={cn(
@@ -226,9 +247,25 @@ function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete }: {
         isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50'
       )}
       onClick={() => onSelect(whiteboard)}
+      onDoubleClick={handleDoubleClick}
     >
       <PenTool size={14} className="shrink-0 text-gray-400" />
-      <span className="truncate flex-1">{whiteboard.name}</span>
+      {renaming ? (
+        <input
+          autoFocus
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onBlur={handleRenameSubmit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleRenameSubmit()
+            if (e.key === 'Escape') { setRenaming(false); setRenameValue(whiteboard.name) }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 px-1 py-0.5 text-sm border border-bindle-300 rounded outline-none focus:ring-1 focus:ring-bindle-400"
+        />
+      ) : (
+        <span className="truncate flex-1">{whiteboard.name}</span>
+      )}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button onClick={(e) => { e.stopPropagation(); onDelete(whiteboard) }}
           className="p-0.5 rounded hover:bg-red-100" title="删除">
