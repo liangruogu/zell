@@ -3,15 +3,11 @@ use crate::db::Database;
 use crate::commands::resource;
 use base64::Engine as _;
 use chrono::Utc;
-use quick_xml::events::Event;
-use quick_xml::reader::Reader;
 use std::fs;
-use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tauri::Manager;
 use uuid::Uuid;
-use zip::read::ZipArchive;
 
 fn files_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, String> {
     let app_data = app
@@ -58,78 +54,34 @@ fn extract_text(path: &Path, file_type: &str) -> Result<String, String> {
             fs::read_to_string(path).map_err(|e| format!("Read failed: {}", e))
         }
         "pdf" => {
-            pdf_extract::extract_text(path).map_err(|e| format!("PDF extract failed: {}", e))
+            use pdf_oxide::PdfDocument;
+            use pdf_oxide::pipeline::{TextPipeline, TextPipelineConfig};
+            use pdf_oxide::pipeline::converters::MarkdownOutputConverter;
+            use pdf_oxide::pipeline::converters::OutputConverter;
+            let path_str = path.to_string_lossy().to_string();
+            let mut doc = PdfDocument::open(&path_str).map_err(|e| format!("PDF open failed: {}", e))?;
+            let mut all_md = String::new();
+            for page_num in 0..doc.page_count().map_err(|e| format!("PDF page count failed: {}", e))? {
+                let spans = doc.extract_spans(page_num)
+                    .map_err(|e| format!("PDF extract spans failed on page {}: {}", page_num, e))?;
+                let config = TextPipelineConfig::default();
+                let pipeline = TextPipeline::with_config(config.clone());
+                let ordered = pipeline.process(spans, Default::default())
+                    .map_err(|e| format!("PDF pipeline failed: {}", e))?;
+                let converter = MarkdownOutputConverter::new();
+                let md = converter.convert(&ordered, &config)
+                    .map_err(|e| format!("PDF markdown convert failed: {}", e))?;
+                if page_num > 0 { all_md.push_str("\n\n---\n\n"); }
+                all_md.push_str(&md);
+            }
+            Ok(all_md)
         }
-        "docx" => extract_docx_text(path),
-        "pptx" => extract_pptx_text(path),
+        "docx" | "pptx" => {
+            let path_str = path.to_string_lossy().to_string();
+            undoc::extract_text(&path_str).map_err(|e| format!("Extract failed: {}", e))
+        }
         _ => Ok(String::new()),
     }
-}
-
-fn extract_docx_text(path: &Path) -> Result<String, String> {
-    let file = fs::File::open(path).map_err(|e| format!("Open failed: {}", e))?;
-    let reader = BufReader::new(file);
-    let mut archive = ZipArchive::new(reader).map_err(|e| format!("ZIP failed: {}", e))?;
-
-    let mut doc = archive
-        .by_name("word/document.xml")
-        .map_err(|_| "Not a valid DOCX: missing word/document.xml".to_string())?;
-
-    let mut xml = String::new();
-    doc.read_to_string(&mut xml).map_err(|e| format!("Read failed: {}", e))?;
-
-    let mut reader = Reader::from_str(&xml);
-    let mut text = String::new();
-    let mut buf = Vec::new();
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) if e.name().as_ref() == b"w:t" => {
-                if let Ok(Event::Text(t)) = reader.read_event_into(&mut Vec::new()) {
-                    text.push_str(&t.unescape().unwrap_or_default());
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(_) => break,
-            _ => {}
-        }
-        buf.clear();
-    }
-    Ok(text)
-}
-
-fn extract_pptx_text(path: &Path) -> Result<String, String> {
-    let file = fs::File::open(path).map_err(|e| format!("Open failed: {}", e))?;
-    let reader = BufReader::new(file);
-    let mut archive = ZipArchive::new(reader).map_err(|e| format!("ZIP failed: {}", e))?;
-
-    let mut text = String::new();
-    let mut buf = Vec::new();
-
-    for i in 0..archive.len() {
-        let mut entry = archive.by_index(i).map_err(|e| format!("Entry failed: {}", e))?;
-        let name = entry.name().to_string();
-        if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") {
-            let mut xml = String::new();
-            entry.read_to_string(&mut xml).map_err(|e| format!("Read failed: {}", e))?;
-
-            let mut reader = Reader::from_str(&xml);
-            loop {
-                match reader.read_event_into(&mut buf) {
-                    Ok(Event::Start(ref e)) if e.name().as_ref() == b"a:t" => {
-                        if let Ok(Event::Text(t)) = reader.read_event_into(&mut Vec::new()) {
-                            text.push_str(&t.unescape().unwrap_or_default());
-                        }
-                    }
-                    Ok(Event::Eof) => break,
-                    Err(_) => break,
-                    _ => {}
-                }
-                buf.clear();
-            }
-        }
-    }
-    Ok(text)
 }
 
 #[tauri::command]
