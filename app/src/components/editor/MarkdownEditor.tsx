@@ -283,48 +283,49 @@ export function MarkdownEditor({
 
   const pageBreakRef = useRef<HTMLDivElement>(null)
 
-  // Update page break lines when content changes
+  const updatePageBreaks = useCallback(() => {
+    const container = pageBreakRef.current
+    if (!container) return
+    const old = container.querySelector('.page-break-overlay')
+    old?.remove()
+
+    const overlay = document.createElement('div')
+    overlay.className = 'page-break-overlay absolute left-0 right-0 pointer-events-none z-10'
+    const pxPerMm = 3.779
+    const pageH = 297 * pxPerMm
+    overlay.style.top = '0'
+    overlay.style.height = `${container.scrollHeight}px`
+    const count = Math.max(Math.floor(container.scrollHeight / pageH), 1)
+    for (let i = 1; i <= count; i++) {
+      const y = i * pageH
+      const line = document.createElement('div')
+      line.className = 'absolute left-4 right-4 border-t border-dashed border-gray-300 flex items-center justify-end'
+      line.style.top = `${y}px`
+      const label = document.createElement('span')
+      label.className = 'text-[10px] text-gray-300 bg-white px-1 rounded'
+      label.style.transform = 'translateY(-50%)'
+      label.textContent = `第 ${i + 1} 页`
+      line.appendChild(label)
+      overlay.appendChild(line)
+    }
+    container.appendChild(overlay)
+  }, [])
+
+  // Draw breaks on split mode mount + editor updates
   useEffect(() => {
-    if (!showPageBreaks || mode !== 'wysiwyg' || !editor) return
+    if (!showPageBreaks || mode !== 'split' || !editor) return
 
-    const updateBreaks = () => {
-      const container = pageBreakRef.current
-      if (!container) return
-      const old = container.querySelector('.page-break-overlay')
-      old?.remove()
+    const schedule = () => requestAnimationFrame(updatePageBreaks)
+    const timer = setTimeout(updatePageBreaks, 100)
+    editor.on('update', schedule)
+    return () => { clearTimeout(timer); editor.off('update', schedule) }
+  }, [showPageBreaks, mode, editor, updatePageBreaks])
 
-      const overlay = document.createElement('div')
-      overlay.className = 'page-break-overlay absolute left-0 right-0 pointer-events-none z-10'
-      const pxPerMm = 3.779
-      const pageH = 297 * pxPerMm
-      overlay.style.top = '0'
-      overlay.style.height = `${container.scrollHeight}px`
-      const count = Math.max(Math.floor(container.scrollHeight / pageH), 1)
-      for (let i = 1; i <= count; i++) {
-        const y = i * pageH
-        const line = document.createElement('div')
-        line.className = 'absolute left-4 right-4 border-t border-dashed border-gray-300 flex items-center justify-end'
-        line.style.top = `${y}px`
-        const label = document.createElement('span')
-        label.className = 'text-[10px] text-gray-300 bg-white px-1 rounded'
-        label.style.transform = 'translateY(-50%)'
-        label.textContent = `第 ${i + 1} 页`
-        line.appendChild(label)
-        overlay.appendChild(line)
-      }
-      container.appendChild(overlay)
-    }
-
-    const scheduleUpdate = () => {
-      requestAnimationFrame(updateBreaks)
-    }
-    const timer = setTimeout(updateBreaks, 100)
-    editor.on('update', scheduleUpdate)
-    return () => {
-      clearTimeout(timer)
-      editor.off('update', scheduleUpdate)
-    }
-  }, [showPageBreaks, mode, editor])
+  // Re-draw breaks when preview content changes
+  useEffect(() => {
+    if (!showPageBreaks || mode !== 'split') return
+    requestAnimationFrame(updatePageBreaks)
+  }, [resolvedPreviewHtml, showPageBreaks, mode, updatePageBreaks])
 
   const prevContentRef = useRef(content)
   useEffect(() => {
@@ -574,7 +575,6 @@ export function MarkdownEditor({
     []
   )
 
-  const previewRef = useRef<HTMLDivElement>(null)
   const [resolvedPreviewHtml, setResolvedPreviewHtml] = useState('')
 
   // Generate and resolve preview HTML for split mode
@@ -654,7 +654,7 @@ export function MarkdownEditor({
 
       {mode === 'wysiwyg' ? (
         <>
-          <div ref={pageBreakRef} className="flex-1 overflow-auto relative">
+          <div className="flex-1 overflow-auto">
             <EditorContent editor={editor} />
           </div>
           <FloatingImageMenu editor={editor} />
@@ -688,8 +688,8 @@ export function MarkdownEditor({
               预览
             </div>
             <div
-              ref={previewRef}
-              className="flex-1 overflow-auto py-4 prose bindle-prose max-w-3xl mx-auto"
+              ref={pageBreakRef}
+              className="flex-1 overflow-auto py-4 prose bindle-prose max-w-3xl mx-auto relative"
               dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
             />
           </div>
