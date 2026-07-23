@@ -2,6 +2,7 @@ import { useAIStore } from '@/stores/aiStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
+import { useFileStore } from '@/stores/fileStore'
 import { runAgent, type AgentToolCall } from '@/services/core/agentRunner'
 import { createKnowledgeAgentConfig } from '@/services/agents/knowledgeAgent'
 
@@ -100,6 +101,19 @@ export async function sendMessage(userContent: string) {
         }
         if (articles.length > 20) ctx += `\n... 共 ${articles.length} 篇`
       }
+
+      // Add external files with descriptions
+      const files = useFileStore.getState().files
+      if (files.length > 0) {
+        ctx += `\n\n外部资源文件 (${files.length} 个):`
+        for (const f of files.slice(0, 15)) {
+          let desc = ''
+          if (f.description) desc = ` — ${f.description}`
+          if (f.extracted_text) desc += ` (已提取文本, ${f.extracted_text.length} 字符)`
+          ctx += `\n- [${f.original_name}] ${f.file_type}${desc}`
+        }
+      }
+
       config.systemPrompt += ctx
     }
   } catch { /* best effort */ }

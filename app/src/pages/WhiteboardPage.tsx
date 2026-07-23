@@ -63,9 +63,19 @@ export default function ExternalLinksPage() {
 
   // Tauri-native file drag-and-drop for files tab
   useEffect(() => {
+    let mouseX = 0, mouseY = 0
+    const onMouseMove = (e: MouseEvent) => { mouseX = e.clientX; mouseY = e.clientY }
     const promise = getCurrentWindow().onDragDropEvent(async (e) => {
-      if (e.payload.type !== 'drop') return
       if (tab !== 'files') return
+      if (e.payload.type === 'enter') {
+        window.addEventListener('mousemove', onMouseMove)
+        setIsDragOver(true)
+      }
+      if (e.payload.type === 'leave' || e.payload.type === 'drop') {
+        window.removeEventListener('mousemove', onMouseMove)
+        setIsDragOver(false)
+      }
+      if (e.payload.type !== 'drop') return
       for (const sourcePath of e.payload.paths) {
         try {
           await importFile(projectId!, sourcePath)
