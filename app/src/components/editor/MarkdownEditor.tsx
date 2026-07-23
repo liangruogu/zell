@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { format } from '@/lib/format'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { readFile } from '@tauri-apps/plugin-fs'
 
 const lowlight = createLowlight(common)
 
@@ -197,6 +199,26 @@ export function MarkdownEditor({
       editor.setEditable(editable && mode === 'wysiwyg')
     }
   }, [editor, editable, mode])
+
+  // Tauri native drag-and-drop: insert images from OS file manager
+  useEffect(() => {
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']
+    const unlisten = getCurrentWindow().onDragDropEvent(async (event) => {
+      if (event.payload.type !== 'drop') return
+      for (const filePath of event.payload.paths) {
+        const ext = filePath.split('.').pop()?.toLowerCase() || ''
+        if (!imageExts.includes(ext)) continue
+        try {
+          const bytes = await readFile(filePath)
+          const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)))
+          const dataUrl = `data:${mime};base64,${base64}`
+          editorRef.current?.chain().focus().setImage({ src: dataUrl }).run()
+        } catch { /* file read failed, skip */ }
+      }
+    })
+    return () => { unlisten.then((fn) => fn()) }
+  }, [])
 
   const handleSave = useCallback(() => {
     const ed = editorRef.current
