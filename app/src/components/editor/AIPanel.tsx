@@ -244,7 +244,7 @@ export function AIPanel() {
                   )}
                 >
                   {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm max-w-none [&_pre]:text-sm [&_code]:text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                    <div className="prose prose-sm max-w-none [&_pre]:text-sm [&_code]:text-sm max-w-3xl mx-auto" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
                   ) : (
                     msg.content
                   )}
