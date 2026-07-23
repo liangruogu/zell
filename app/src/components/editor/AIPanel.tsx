@@ -385,10 +385,10 @@ export function AIPanel() {
             <div className="relative shrink-0 self-center">
               <button
                 onClick={() => setShowProviders(!showProviders)}
-                className="p-1.5 text-gray-400 hover:text-bindle-600 border border-gray-200 rounded-lg hover:border-bindle-300"
+                className="p-1.5 text-gray-400 hover:text-bindle-600 border border-gray-200 rounded-lg hover:border-bindle-300 self-center"
                 title={activeProvider.name || activeProvider.model}
               >
-                <Sparkles size={13} />
+                <Sparkles size={14} />
               </button>
               {showProviders && (
                 <div className="absolute bottom-full left-0 mb-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 overflow-hidden">
@@ -435,7 +435,7 @@ export function AIPanel() {
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed',
             )}
           >
-            {streaming ? <Square size={14} /> : <Send size={16} />}
+            {streaming ? <Square size={14} /> : <Send size={14} />}
           </button>
         </div>
       </div>
