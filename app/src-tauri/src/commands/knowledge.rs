@@ -45,6 +45,7 @@ pub fn create_knowledge_article(
     let _ = crate::commands::resource::index_document(
         &db, &project_id, "knowledge", &id, &title, &content,
     );
+    crate::commands::project::touch_project(&db, &project_id);
 
     Ok(KnowledgeArticle {
         id,
@@ -149,6 +150,7 @@ pub fn update_knowledge_article(
     let _ = crate::commands::resource::index_document(
         &db, &project_id, "knowledge", &id, &title, &content,
     );
+    crate::commands::project::touch_project(&db, &project_id);
 
     get_knowledge_article(db, id)
 }
@@ -169,6 +171,18 @@ pub fn delete_knowledge_article(
     drop(conn);
 
     let _ = crate::commands::resource::delete_document_index(&db, "knowledge", &id);
+
+    // Need project_id for touch_project
+    {
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        if let Ok(pid) = conn.query_row(
+            "SELECT project_id FROM knowledge_articles WHERE id = ?1",
+            rusqlite::params![id],
+            |row| row.get::<_, String>(0),
+        ) {
+            crate::commands::project::touch_project(&db, &pid);
+        }
+    }
 
     Ok(())
 }

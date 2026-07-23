@@ -32,6 +32,8 @@ pub fn create_external_link(
     )
     .map_err(|e| e.to_string())?;
 
+    crate::commands::project::touch_project(&db, &project_id);
+
     Ok(ExternalLink {
         id, project_id, title, url, description, link_type,
         favicon: String::new(), ai_skill, sort_order: max_order + 1,

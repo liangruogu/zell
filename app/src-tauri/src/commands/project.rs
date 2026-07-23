@@ -149,3 +149,13 @@ pub fn set_setting(db: State<'_, Database>, key: String, value: String) -> Resul
     .map_err(|e| e.to_string())?;
     Ok(())
 }
+
+pub fn touch_project(db: &State<'_, Database>, project_id: &str) {
+    if let Ok(conn) = db.conn.lock() {
+        let now = Utc::now().to_rfc3339();
+        let _ = conn.execute(
+            "UPDATE projects SET updated_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, project_id],
+        );
+    }
+}

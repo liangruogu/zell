@@ -20,6 +20,8 @@ pub fn create_whiteboard(
     )
     .map_err(|e| e.to_string())?;
 
+    crate::commands::project::touch_project(&db, &project_id);
+
     Ok(Whiteboard {
         id,
         project_id,

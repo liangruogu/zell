@@ -122,6 +122,8 @@ pub fn import_project_file(
         let _ = resource::index_document(&db, &project_id, "file", &id, &original_name, &extracted_text);
     }
 
+    crate::commands::project::touch_project(&db, &project_id);
+
     Ok(ProjectFile {
         id,
         project_id,
