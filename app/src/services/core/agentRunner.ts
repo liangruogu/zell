@@ -19,7 +19,7 @@ export interface AgentStreamCallbacks {
 
 export interface AgentConfig {
   systemPrompt: string
-  tools: any[]  // LangChain StructuredTool[]
+  tools: any[]
   modelId: string
   abortSignal?: AbortSignal
 }
@@ -64,6 +64,16 @@ export async function runAgent(
   const llmWithTools = config.tools.length > 0 ? llm.bindTools(config.tools) : llm
 
   const langMessages = buildMessages(config.systemPrompt, messages)
+
+  // DEBUG: log message format
+  console.log('[agentRunner] sending', langMessages.length, 'messages')
+  for (const m of langMessages) {
+    const role = m._getType()
+    console.log('[agentRunner] msg', role, 'content:', (m as any).content?.slice(0, 100))
+    if ((m as any).additional_kwargs && Object.keys((m as any).additional_kwargs).length > 0) {
+      console.log('[agentRunner]   additional_kwargs:', JSON.stringify((m as any).additional_kwargs).slice(0, 200))
+    }
+  }
 
   try {
     const stream = await llmWithTools.stream(langMessages, {
@@ -127,6 +137,13 @@ export async function runAgent(
       }
     }
   } catch (e: any) {
+    console.error('[agentRunner] error details:', {
+      name: e.name,
+      message: e.message,
+      status: e.status,
+      code: e.code,
+      response: e.response?.data?.slice?.(0, 300),
+    })
     if (e.name === 'AbortError') return
     callbacks.onError?.(`请求失败: ${e.message || String(e)}`)
   }
