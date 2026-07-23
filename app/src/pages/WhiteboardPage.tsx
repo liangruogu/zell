@@ -14,6 +14,7 @@ import { useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { ExternalLink, ProjectFile } from '@/types/share'
 import { LINK_TYPE_LABELS, FILE_TYPE_LABELS, FILE_TYPE_ICONS } from '@/lib/constants'
 import { format } from '@/lib/format'
+import { markdownToHtml } from '@/lib/markdown'
 import { open } from '@tauri-apps/plugin-shell'
 import { Plus, Link2, Trash2, ExternalLink as ExternalLinkIcon, Upload, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -529,16 +530,17 @@ export default function ExternalLinksPage() {
                 {currentFile.extracted_text ? (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">提取的文本（AI 上下文）</label>
-                    <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 max-h-48 overflow-auto whitespace-pre-wrap border border-gray-100">
-                      {currentFile.extracted_text.slice(0, 2000)}
-                      {currentFile.extracted_text.length > 2000 && (
-                        <p className="text-gray-400 mt-1">...（共 {currentFile.extracted_text.length} 字符）</p>
-                      )}
-                    </div>
+                    <div
+                      className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 max-h-48 overflow-auto border border-gray-100 prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: markdownToHtml(currentFile.extracted_text.slice(0, 3000)) }}
+                    />
+                    {currentFile.extracted_text.length > 3000 && (
+                      <p className="text-xs text-gray-400 mt-1">...（共 {currentFile.extracted_text.length} 字符，仅显示前 3000）</p>
+                    )}
                   </div>
                 ) : (
                   <div className="p-3 bg-amber-50 rounded-lg text-sm text-amber-600 border border-amber-100">
-                    <p>暂无可提取的文本。PDF / Word / PPT 文本提取将在后续版本支持。</p>
+                    暂无可提取的文本
                   </div>
                 )}
 
