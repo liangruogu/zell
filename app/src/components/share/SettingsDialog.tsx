@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { X, Palette, Bot, FileText, Server, CheckCircle, Plus, Trash2, Loader2 } from 'lucide-react'
+import { X, Palette, Bot, FileText, Server, CheckCircle, Plus, Trash2, Loader2, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -7,13 +7,14 @@ import { useForm } from 'react-hook-form'
 import { cn } from '@/lib/utils'
 import { testProviderConnection, type AIProvider } from '@/services/aiService'
 
-type SettingsCategory = 'appearance' | 'ai' | 'editor' | 'server'
+type SettingsCategory = 'appearance' | 'ai' | 'editor' | 'server' | 'sync'
 
 const CATEGORIES: { key: SettingsCategory; label: string; icon: React.ReactNode }[] = [
   { key: 'appearance', label: '外观', icon: <Palette size={16} /> },
   { key: 'ai', label: 'AI 服务', icon: <Bot size={16} /> },
   { key: 'editor', label: '编辑器', icon: <FileText size={16} /> },
   { key: 'server', label: '服务器', icon: <Server size={16} /> },
+  { key: 'sync', label: '资源同步', icon: <Link2 size={16} /> },
 ]
 
 const FONT_SIZE_OPTIONS = [
@@ -112,6 +113,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           {category === 'ai' && <AISettings parsed={parsed} setSetting={setSetting} showToast={showToast} />}
           {category === 'editor' && <EditorSettings parsed={parsed} setSetting={setSetting} showToast={showToast} />}
           {category === 'server' && <ServerSettings parsed={parsed} setSetting={setSetting} showToast={showToast} />}
+          {category === 'sync' && <ResourceSyncSettings parsed={parsed} setSetting={setSetting} showToast={showToast} />}
 
           {/* Toast notification */}
           {toast && (
@@ -136,6 +138,7 @@ function parseSettings(settings: Record<string, string>) {
     editorPrefs,
     appearance,
     serverUrl: settings['server_url'] || '',
+    linkSyncPolicy: settings['link_sync_policy'] || 'manual',
     aiProviders: settings['ai_providers'] || '[]',
     activeProvider: settings['ai_active_provider'] || '',
   }
@@ -405,5 +408,76 @@ function ServerSettings({ parsed, setSetting, showToast }: {
       <p className="text-xs text-gray-400">留空使用本地模式；填写后连接自托管后端实现团队协作</p>
       <Button type="submit" size="sm">保存</Button>
     </form>
+  )
+}
+
+// ---- Resource Sync Settings ----
+function ResourceSyncSettings({ parsed, setSetting, showToast }: {
+  parsed: ReturnType<typeof parseSettings>
+  setSetting: (k: string, v: string) => Promise<void>
+  showToast: (msg: string) => void
+}) {
+  const [policy, setPolicy] = useState('manual')
+  const [intervalHours, setIntervalHours] = useState('24')
+
+  useEffect(() => {
+    const raw = parsed.linkSyncPolicy
+    if (raw.startsWith('scheduled:')) {
+      setPolicy('scheduled')
+      setIntervalHours(raw.split(':')[1] || '24')
+    } else {
+      setPolicy(raw || 'manual')
+    }
+  }, [parsed.linkSyncPolicy])
+
+  const handleSave = useCallback(async () => {
+    const value = policy === 'scheduled' ? `scheduled:${intervalHours}` : policy
+    await setSetting('link_sync_policy', value)
+    showToast('同步策略已保存')
+  }, [policy, intervalHours, setSetting, showToast])
+
+  return (
+    <div className="space-y-5">
+      <h3 className="font-semibold text-gray-800">外部链接同步策略</h3>
+      <p className="text-xs text-gray-400">控制外部链接何时自动抓取网页内容并生成 Markdown 快照。</p>
+
+      <div className="space-y-3">
+        {[
+          { value: 'manual', label: '手动同步', desc: '仅在点击"同步"按钮时更新链接内容' },
+          { value: 'on_open', label: '打开项目时', desc: '每次进入项目时自动同步所有链接' },
+          { value: 'scheduled', label: '定时同步', desc: '按固定间隔自动刷新所有链接' },
+        ].map((opt) => (
+          <label key={opt.value} className={cn(
+            'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+            policy === opt.value ? 'border-bindle-300 bg-bindle-50' : 'border-gray-200 hover:bg-gray-50'
+          )}>
+            <input
+              type="radio"
+              name="syncPolicy"
+              checked={policy === opt.value}
+              onChange={() => setPolicy(opt.value)}
+              className="mt-0.5 text-bindle-500"
+            />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-700">{opt.label}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{opt.desc}</p>
+              {opt.value === 'scheduled' && policy === 'scheduled' && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-gray-500">间隔:</span>
+                  <input
+                    value={intervalHours}
+                    onChange={(e) => setIntervalHours(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                    className="w-16 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                  />
+                  <span className="text-xs text-gray-500">小时</span>
+                </div>
+              )}
+            </div>
+          </label>
+        ))}
+      </div>
+
+      <Button size="sm" onClick={handleSave}>保存设置</Button>
+    </div>
   )
 }

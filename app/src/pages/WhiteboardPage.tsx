@@ -10,6 +10,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { useLinkStore } from '@/stores/linkStore'
 import { useFileStore } from '@/stores/fileStore'
 import { useProjectStore } from '@/stores/projectStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { ExternalLink, ProjectFile } from '@/types/share'
 import { LINK_TYPE_LABELS, FILE_TYPE_LABELS, FILE_TYPE_ICONS } from '@/lib/constants'
@@ -63,6 +64,34 @@ export default function ExternalLinksPage() {
       fetchFiles(projectId)
     }
   }, [projectId, fetchProject, fetchLinks, fetchFiles])
+
+  // Auto-sync based on policy
+  useEffect(() => {
+    const policy = useSettingsStore.getState().settings['link_sync_policy'] || 'manual'
+    if (policy === 'manual') return
+    if (!projectId || links.length === 0) return
+
+    const doSync = async () => {
+      for (const link of links) {
+        if (link.sync_status !== 'syncing') {
+          try { await syncLink(link.id) } catch { /* skip failed syncs */ }
+        }
+      }
+    }
+
+    if (policy === 'on_open') {
+      doSync()
+      return
+    }
+
+    if (policy.startsWith('scheduled:')) {
+      const hours = parseInt(policy.split(':')[1] || '24', 10)
+      if (isNaN(hours) || hours <= 0) return
+      doSync() // also sync on mount
+      const timer = setInterval(doSync, hours * 3600 * 1000)
+      return () => clearInterval(timer)
+    }
+  }, [projectId, links.length])
 
   // Tauri-native file drag-and-drop for files tab
   useEffect(() => {
