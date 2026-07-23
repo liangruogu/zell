@@ -640,7 +640,7 @@ export function MarkdownEditor({
         </>
       ) : (
         <div ref={splitContainerRef} className="flex-1 flex min-h-0">
-          <div className="flex flex-col border-r border-gray-200" style={{ width: `${splitRatio}%` }}>
+            <div className="flex flex-col border-r border-gray-200" style={{ width: `${splitRatio}%` }}>
             <div className="px-3 py-1 text-xs text-gray-400 bg-gray-50 border-b border-gray-100 shrink-0">
               Markdown 源码
             </div>
@@ -666,11 +666,13 @@ export function MarkdownEditor({
             <div className="px-3 py-1 text-xs text-gray-400 bg-gray-50 border-b border-gray-100 shrink-0">
               预览
             </div>
-            <div
-              ref={previewRef}
-              className="flex-1 overflow-auto py-4 prose bindle-prose max-w-3xl mx-auto"
-              dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
-            />
+            <div className="flex-1 overflow-auto flex justify-center">
+              <div
+                ref={previewRef}
+                className="w-full max-w-3xl px-8 py-4 prose bindle-prose"
+                dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
+              />
+            </div>
           </div>
         </div>
       )}
