@@ -41,15 +41,22 @@ function renderMarkdown(content: string): string {
   const div = document.createElement('div')
   div.innerHTML = html
   div.querySelectorAll('pre code').forEach((block) => {
-    // Trim trailing newline that markdown code fences always add
+    // Code fence content always ends with \n — trim it visually
     if (block.lastChild?.nodeType === Node.TEXT_NODE) {
-      (block.lastChild as Text).textContent = (block.lastChild as Text).textContent?.replace(/\n+$/, '') ?? ''
+      const t = block.lastChild as Text
+      t.textContent = t.textContent?.replace(/\n+$/, '') ?? ''
+    } else if (block.childNodes.length > 0) {
+      // hljs may have already run — check all text nodes
+      block.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const t = child as Text
+          t.textContent = t.textContent?.replace(/\n+$/, '') ?? ''
+        }
+      })
     }
     try {
       hljs.highlightElement(block as HTMLElement)
-    } catch {
-      // language not available, leave unstyled
-    }
+    } catch { /* unsupported language */ }
   })
   return div.innerHTML
 }

@@ -77,10 +77,9 @@ export async function sendMessage(userContent: string) {
     }))
 
   const config = createKnowledgeAgentConfig()
-
   let accumulated = ''
 
-  const reasoning = await runAgent(messages as any, config, {
+  await runAgent(messages as any, config, {
     onTextDelta(delta) {
       accumulated += delta
       useAIStore.getState().updateMessage(msgIdx, accumulated)
@@ -92,10 +91,6 @@ export async function sendMessage(userContent: string) {
       useAIStore.getState().updateMessage(msgIdx, error)
     },
   })
-
-  if (reasoning) {
-    useAIStore.getState().updateMessage(msgIdx, accumulated, reasoning)
-  }
 
   if (!accumulated) {
     useAIStore.getState().updateMessage(msgIdx, '(没有返回内容)')
