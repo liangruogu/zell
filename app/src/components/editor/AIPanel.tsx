@@ -281,9 +281,14 @@ export function AIPanel() {
         )}
 
         {messages.length === 0 && hasAI && (
-          <div className="text-center text-sm text-gray-400 py-8">
-            <Sparkles size={32} strokeWidth={1} className="mx-auto mb-2 text-gray-300" />
-            <p>输入问题开始对话</p>
+          <div className="text-center text-sm text-gray-400 py-8 px-4">
+            <Sparkles size={32} strokeWidth={1} className="mx-auto mb-3 text-gray-300" />
+            <p className="text-gray-500 font-medium mb-2">我能帮你做什么？</p>
+            <div className="text-xs space-y-1 text-gray-400">
+              <p>🔍 搜索知识库和外部资源</p>
+              <p>📖 读取文章和文件完整内容</p>
+              <p>💡 基于项目上下文回答问题</p>
+            </div>
           </div>
         )}
 
