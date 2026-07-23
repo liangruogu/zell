@@ -97,6 +97,29 @@ export function MarkdownEditor({
     }
   } catch { /* */ }
 
+  const [justSaved, setJustSaved] = useState(false)
+
+  // Helper: insert image based on storage mode
+  const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
+    const ed = editorRef.current
+    if (!ed) return
+
+    if (imageStorage === 'file' && sourcePath) {
+      const projectId = useProjectStore.getState().currentProject?.id
+      if (projectId) {
+        try {
+          const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
+          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
+          return
+        } catch { /* fall through to base64 */ }
+      }
+    }
+    ed.chain().focus().setImage({ src: dataUrl }).run()
+  }, [imageStorage])
+
+  const [internalMode, setInternalMode] = useState<EditorMode>('wysiwyg')
+  const mode = externalMode ?? internalMode
+
   const pageBreakRef = useRef<HTMLDivElement>(null)
 
   // Update page break lines when content changes
@@ -135,29 +158,6 @@ export function MarkdownEditor({
       editor.off('update', updateBreaks)
     }
   }, [showPageBreaks, mode, editor])
-
-  const [justSaved, setJustSaved] = useState(false)
-
-  // Helper: insert image based on storage mode
-  const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
-    const ed = editorRef.current
-    if (!ed) return
-
-    if (imageStorage === 'file' && sourcePath) {
-      const projectId = useProjectStore.getState().currentProject?.id
-      if (projectId) {
-        try {
-          const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
-          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
-          return
-        } catch { /* fall through to base64 */ }
-      }
-    }
-    ed.chain().focus().setImage({ src: dataUrl }).run()
-  }, [imageStorage])
-
-  const [internalMode, setInternalMode] = useState<EditorMode>('wysiwyg')
-  const mode = externalMode ?? internalMode
 
   const initialHtml = useMemo(() => {
     const html = markdownToHtml(content || '')
