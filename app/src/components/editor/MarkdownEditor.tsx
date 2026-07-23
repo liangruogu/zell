@@ -294,11 +294,14 @@ export function MarkdownEditor({
       old?.remove()
 
       const overlay = document.createElement('div')
-      overlay.className = 'page-break-overlay absolute inset-0 pointer-events-none z-10'
+      overlay.className = 'page-break-overlay absolute left-0 right-0 pointer-events-none z-10'
       const pxPerMm = 3.779
-      const count = Math.floor(container.scrollHeight / (297 * pxPerMm))
+      const pageH = 297 * pxPerMm
+      overlay.style.top = '0'
+      overlay.style.height = `${container.scrollHeight}px`
+      const count = Math.max(Math.floor(container.scrollHeight / pageH), 1)
       for (let i = 1; i <= count; i++) {
-        const y = i * 297 * pxPerMm
+        const y = i * pageH
         const line = document.createElement('div')
         line.className = 'absolute left-4 right-4 border-t border-dashed border-gray-300 flex items-center justify-end'
         line.style.top = `${y}px`
@@ -312,11 +315,14 @@ export function MarkdownEditor({
       container.appendChild(overlay)
     }
 
+    const scheduleUpdate = () => {
+      requestAnimationFrame(updateBreaks)
+    }
     const timer = setTimeout(updateBreaks, 100)
-    editor.on('update', updateBreaks)
+    editor.on('update', scheduleUpdate)
     return () => {
       clearTimeout(timer)
-      editor.off('update', updateBreaks)
+      editor.off('update', scheduleUpdate)
     }
   }, [showPageBreaks, mode, editor])
 
