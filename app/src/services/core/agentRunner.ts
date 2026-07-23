@@ -1,4 +1,10 @@
+import { ChatOpenAI } from '@langchain/openai'
+import { HumanMessage, SystemMessage, AIMessage, ToolMessage } from '@langchain/core/messages'
+import { tool } from '@langchain/core/tools'
+import { z } from 'zod'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { MemorySaver } from '@langchain/langgraph'
+import { createReactAgent } from '@langchain/langgraph/prebuilt'
 
 export interface AgentToolCall {
   toolCallId: string
@@ -14,22 +20,30 @@ export interface AgentStreamCallbacks {
   onError?: (error: string) => void
 }
 
-interface ToolDef {
-  name: string
-  description: string
-  parameters: Record<string, unknown>
-  execute: (args: Record<string, unknown>) => Promise<string>
-}
-
 export interface AgentConfig {
   systemPrompt: string
-  tools: ToolDef[]
+  tools: ReturnType<typeof tool>[]
   modelId: string
   abortSignal?: AbortSignal
 }
 
+const agentCache = new Map<string, ReturnType<typeof createReactAgent>>()
+
+function getOrCreateAgent(llm: ChatOpenAI, tools: ReturnType<typeof tool>[], systemPrompt: string) {
+  const key = systemPrompt.slice(0, 50)
+  if (agentCache.has(key)) return agentCache.get(key)!
+  const agent = createReactAgent({
+    llm,
+    tools,
+    messageModifier: new SystemMessage(systemPrompt),
+    checkpointSaver: new MemorySaver(),
+  })
+  agentCache.set(key, agent)
+  return agent
+}
+
 export async function runAgent(
-  messages: Array<{ role: string; content: string; reasoningContent?: string }>,
+  messages: Array<{ role: string; content: string }>,
   config: AgentConfig,
   callbacks: AgentStreamCallbacks,
 ) {
@@ -44,104 +58,38 @@ export async function runAgent(
 
   if (!prov) { callbacks.onError?.('请先在设置中配置 AI 服务。'); return }
 
-  const endpoint = `${prov.baseUrl.replace(/\/+$/, '')}/chat/completions`
-  const model = config.modelId || prov.model
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${prov.apiKey}`,
-  }
+  const llm = new ChatOpenAI({
+    model: config.modelId || prov.model,
+    apiKey: prov.apiKey || 'not-needed',
+    configuration: { baseURL: prov.baseUrl },
+    temperature: 0.7,
+  })
 
-  const apiMessages: any[] = [{ role: 'system', content: config.systemPrompt }]
-  for (const m of messages) {
-    const msg: any = { role: m.role, content: m.content }
-    if (m.role === 'assistant' && m.reasoningContent) {
-      msg.reasoning_content = m.reasoningContent
-    }
-    apiMessages.push(msg)
-  }
+  const agent = getOrCreateAgent(llm, config.tools, config.systemPrompt)
 
-  let maxSteps = 3
-  while (maxSteps-- > 0) {
-    if (config.abortSignal?.aborted) return
+  const inputMessages = messages.map(m =>
+    m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content)
+  )
 
-    const body: any = { model, messages: apiMessages, stream: true }
-    if (config.tools.length > 0) {
-      body.tools = config.tools.map(t => ({
-        type: 'function',
-        function: { name: t.name, description: t.description, parameters: t.parameters },
-      }))
-      body.tool_choice = 'auto'
-    }
+  try {
+    const stream = await agent.stream(
+      { messages: inputMessages },
+      { streamMode: 'messages' }
+    )
 
-    const resp = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body), signal: config.abortSignal })
-    if (!resp.ok) {
-      const err = await resp.text()
-      callbacks.onError?.(`API ${resp.status}: ${err.slice(0, 200)}`)
-      return
-    }
-
-    const reader = resp.body?.getReader()
-    if (!reader) { callbacks.onError?.('No response body'); return }
-
-    const decoder = new TextDecoder()
-    let buf = '', text = ''
-    const tcMap = new Map<number, { id: string; name: string; args: string }>()
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buf += decoder.decode(value, { stream: true })
-      const lines = buf.split('\n')
-      buf = lines.pop() || ''
-      for (const line of lines) {
-        const s = line.trim()
-        if (!s.startsWith('data: ') || s === 'data: [DONE]') continue
-        try {
-          const d = JSON.parse(s.slice(6))
-          const delta = d.choices?.[0]?.delta
-          if (delta?.content) { text += delta.content; callbacks.onTextDelta(delta.content) }
-          if (delta?.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              const idx = tc.index ?? 0
-              const e = tcMap.get(idx) || { id: '', name: '', args: '' }
-              if (tc.id) e.id = tc.id
-              if (tc.function?.name) e.name += tc.function.name
-              if (tc.function?.arguments) e.args += tc.function.arguments
-              tcMap.set(idx, e)
-            }
-          }
-        } catch { /* skip */ }
+    for await (const [msg, _] of stream as any) {
+      if (msg.tool_calls?.length) {
+        for (const tc of msg.tool_calls) {
+          callbacks.onToolCall?.({ toolCallId: tc.id || '', toolName: tc.name, args: tc.args })
+        }
+      }
+      if (msg.content) {
+        const text = typeof msg.content === 'string' ? msg.content : ''
+        if (text) callbacks.onTextDelta(text)
       }
     }
-
-    const toolCalls = [...tcMap.values()]
-    if (toolCalls.length === 0 || config.tools.length === 0) return
-
-    apiMessages.push({
-      role: 'assistant',
-      content: text || null,
-      tool_calls: toolCalls.map(tc => ({
-        id: tc.id,
-        type: 'function',
-        function: { name: tc.name, arguments: tc.args },
-      })),
-    })
-
-    for (const tc of toolCalls) {
-      const tool = config.tools.find(t => t.name === tc.name)
-      if (!tool) continue
-      let args: Record<string, unknown> = {}
-      try { args = JSON.parse(tc.args) } catch { /* empty */ }
-
-      const entry: AgentToolCall = { toolCallId: tc.id, toolName: tc.name, args }
-      callbacks.onToolCall?.(entry)
-      try {
-        entry.result = await tool.execute(args)
-      } catch (e: any) {
-        entry.result = `Error: ${e.message}`
-      }
-      callbacks.onToolResult?.(entry)
-      apiMessages.push({ role: 'tool', content: typeof entry.result === 'string' ? entry.result : JSON.stringify(entry.result), tool_call_id: tc.id })
-    }
+  } catch (e: any) {
+    if (e.name === 'AbortError') return
+    callbacks.onError?.(`请求失败: ${e.message || String(e)}`)
   }
 }
