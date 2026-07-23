@@ -4,11 +4,36 @@ import { sendMessage, getProviders, getActiveProviderId } from '@/services/aiSer
 import { useSettingsStore } from '@/stores/settingsStore'
 import { cn } from '@/lib/utils'
 import { markdownToHtml } from '@/lib/markdown'
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import rust from 'highlight.js/lib/languages/rust'
+import zig from 'highlight.js/lib/languages/zig'
+import go from 'highlight.js/lib/languages/go'
+import bash from 'highlight.js/lib/languages/bash'
+import json from 'highlight.js/lib/languages/json'
+import xml from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
+import sql from 'highlight.js/lib/languages/sql'
+import yaml from 'highlight.js/lib/languages/yaml'
+
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('rust', rust)
+hljs.registerLanguage('zig', zig)
+hljs.registerLanguage('go', go)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('html', xml)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('sql', sql)
+hljs.registerLanguage('yaml', yaml)
 
 function renderMarkdown(content: string): string {
   const html = markdownToHtml(content)
-  // Apply highlight.js to code blocks
   const div = document.createElement('div')
   div.innerHTML = html
   div.querySelectorAll('pre code').forEach((block) => {
@@ -16,6 +41,7 @@ function renderMarkdown(content: string): string {
   })
   return div.innerHTML
 }
+  })
 import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil } from 'lucide-react'
 
 export function AIPanel() {
