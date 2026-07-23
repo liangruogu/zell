@@ -18,6 +18,8 @@ import { EditorToolbar } from './EditorToolbar'
 import { FloatingImageMenu } from './FloatingImageMenu'
 import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
+import { useAIStore } from '@/stores/aiStore'
+import { Sparkles } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
@@ -55,6 +57,8 @@ export function MarkdownEditor({
   onModeChange,
   updatedAt,
 }: MarkdownEditorProps) {
+  const isAIOpen = useAIStore((s) => s.isOpen)
+  const openPanel = useAIStore((s) => s.openPanel)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
@@ -589,7 +593,7 @@ export function MarkdownEditor({
   }
 
   return (
-    <div className={cn('flex flex-col h-full overflow-hidden bg-white', className)}>
+    <div className={cn('flex flex-col h-full overflow-hidden bg-white relative', className)}>
       {editable && showToolbar && (
         <EditorToolbar editor={editor} editorMode={mode} onToggleMode={handleModeToggle} />
       )}
@@ -664,6 +668,17 @@ export function MarkdownEditor({
           </button>
         </span>
       </div>
+
+      {/* Floating AI button */}
+      {!isAIOpen && (
+        <button
+          onClick={() => openPanel('knowledge')}
+          className="absolute bottom-14 right-4 z-10 p-2 bg-bindle-500 text-white rounded-full shadow-lg hover:bg-bindle-600 transition-all hover:scale-110"
+          title="AI 助手"
+        >
+          <Sparkles size={16} />
+        </button>
+      )}
     </div>
   )
 }
