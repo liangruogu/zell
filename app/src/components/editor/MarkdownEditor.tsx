@@ -17,9 +17,11 @@ import { FloatingImageMenu } from './FloatingImageMenu'
 import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useProjectStore } from '@/stores/projectStore'
 import { format } from '@/lib/format'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { readFile } from '@tauri-apps/plugin-fs'
+import { invoke } from '@tauri-apps/api/core'
 
 const lowlight = createLowlight(common)
 
@@ -67,7 +69,62 @@ export function MarkdownEditor({
     }
   } catch { /* use default */ }
 
+  // Read image storage preference
+  const editorPrefs = useSettingsStore((s) => s.settings['editor_prefs'])
+  let imageStorage: 'base64' | 'file' = 'base64'
+  try {
+    if (editorPrefs) {
+      const parsed = JSON.parse(editorPrefs)
+      if (parsed.imageStorage === 'base64' || parsed.imageStorage === 'file') {
+        imageStorage = parsed.imageStorage
+      }
+    }
+  } catch { /* use default */ }
+
   const [justSaved, setJustSaved] = useState(false)
+
+  // Helper: insert image based on storage mode
+  const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
+    const ed = editorRef.current
+    if (!ed) return
+
+    if (imageStorage === 'file' && sourcePath) {
+      const projectId = useProjectStore.getState().currentProject?.id
+      if (projectId) {
+        try {
+          const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
+          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
+          return
+        } catch { /* fall through to base64 */ }
+      }
+    }
+    ed.chain().focus().setImage({ src: dataUrl }).run()
+  }, [imageStorage])
+
+  // Helper: insert image into editor based on storage mode
+  const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
+    const ed = editorRef.current
+    if (!ed) return
+    const projectId = useProjectStore.getState().currentProject?.id
+
+    if (imageStorage === 'file' && projectId && sourcePath) {
+      try {
+        const saved = await invoke<{ file_name: string }>('save_project_image', {
+          projectId,
+          sourcePath,
+        })
+        const bindleRef = `bindle-img:${projectId}/${saved.file_name}`
+        ed.chain().focus().setImage({ src: bindleRef }).run()
+      } catch {
+        // fallback to base64 on error
+        ed.chain().focus().setImage({ src: dataUrl }).run()
+      }
+    } else {
+      ed.chain().focus().setImage({ src: dataUrl }).run()
+    }
+  }, [imageStorage])
+
+  const [justSaved2, setJustSaved2] = useState(false)
 
   const [internalMode, setInternalMode] = useState<EditorMode>('wysiwyg')
   const mode = externalMode ?? internalMode
@@ -150,7 +207,7 @@ export function MarkdownEditor({
               const reader = new FileReader()
               reader.onload = (e) => {
                 const dataUrl = e.target?.result as string
-                editorRef.current?.chain().focus().setImage({ src: dataUrl }).run()
+                insertImage(dataUrl)
               }
               reader.readAsDataURL(file)
               return true
@@ -194,6 +251,23 @@ export function MarkdownEditor({
     }
   }, [content, editor, mode])
 
+  // Resolve bindle-img: refs in the editor DOM to display images
+  useEffect(() => {
+    if (!editor) return
+    const dom = editor.view.dom
+    const imgs = dom.querySelectorAll('img[src^="bindle-img:"]')
+    imgs.forEach(async (img) => {
+      const src = img.getAttribute('src') || ''
+      const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
+      if (!match) return
+      const [, projectId, fileName] = match
+      try {
+        const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
+        img.setAttribute('src', dataUrl)
+      } catch { /* keep placeholder */ }
+    })
+  }, [editor, content])
+
   useEffect(() => {
     if (editor) {
       editor.setEditable(editable && mode === 'wysiwyg')
@@ -203,22 +277,28 @@ export function MarkdownEditor({
   // Tauri native drag-and-drop: insert images from OS file manager
   useEffect(() => {
     const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']
-    const unlisten = getCurrentWindow().onDragDropEvent(async (event) => {
+    const toBase64 = (bytes: Uint8Array): string => {
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      return btoa(binary)
+    }
+    const promise = getCurrentWindow().onDragDropEvent((event) => {
       if (event.payload.type !== 'drop') return
       for (const filePath of event.payload.paths) {
         const ext = filePath.split('.').pop()?.toLowerCase() || ''
         if (!imageExts.includes(ext)) continue
-        try {
-          const bytes = await readFile(filePath)
+        readFile(filePath).then((bytes) => {
           const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)))
+          const base64 = toBase64(bytes)
           const dataUrl = `data:${mime};base64,${base64}`
-          editorRef.current?.chain().focus().setImage({ src: dataUrl }).run()
-        } catch { /* file read failed, skip */ }
+          insertImage(dataUrl, filePath)
+        }).catch(() => {})
       }
     })
-    return () => { unlisten.then((fn) => fn()) }
-  }, [])
+    return () => { promise.then((fn) => fn()) }
+  }, [insertImage])
 
   const handleSave = useCallback(() => {
     const ed = editorRef.current

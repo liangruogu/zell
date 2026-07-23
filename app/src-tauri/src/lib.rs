@@ -62,6 +62,9 @@ pub fn run() {
             commands::resource::search_knowledge,
             commands::resource::search_resources,
             commands::resource::get_resource_content,
+            commands::image::save_project_image,
+            commands::image::resolve_project_image,
+            commands::image::delete_project_image,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
