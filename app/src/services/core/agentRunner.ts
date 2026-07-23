@@ -1,6 +1,5 @@
 import { streamText, type CoreMessage, type Tool } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { useSettingsStore } from '@/stores/settingsStore'
 
 export interface AgentToolCall {
@@ -26,14 +25,7 @@ export interface AgentConfig {
 
 function resolveProvider(providerConfig: { baseUrl: string; apiKey: string; model: string }) {
   const { baseUrl, apiKey } = providerConfig
-  if (baseUrl.includes('openai.com') || baseUrl.includes('api.openai.com')) {
-    return createOpenAI({ apiKey, baseURL: baseUrl })
-  }
-  return createOpenAICompatible({
-    name: 'custom',
-    baseURL: baseUrl,
-    apiKey: apiKey || 'not-needed',
-  })
+  return createOpenAI({ apiKey: apiKey || 'not-needed', baseURL: baseUrl })
 }
 
 export async function runAgent(
