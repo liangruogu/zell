@@ -191,7 +191,7 @@ export default function WhiteboardPage() {
             <div className="flex-1 flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <PenTool size={48} strokeWidth={1} className="mx-auto mb-3" />
-                <p className="text-lg">閫夋嫨鎴栧垱寤轰竴涓櫧鏉?/p>
+                <p className="text-lg">选择或创建一个白板</p>
               </div>
             </div>
           )}
@@ -199,8 +199,8 @@ export default function WhiteboardPage() {
       </div>
 
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}
-        title="鍒犻櫎鐧芥澘"
-        description={`纭畾瑕佸垹闄ゃ€?{deleteTarget?.name}銆嶅悧锛熸鎿嶄綔涓嶅彲鎾ら攢銆俙}>
+        title="删除白板"
+        description={`确定要删除「${deleteTarget?.name}」吗？此操作不可撤销。`}>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setDeleteTarget(null)}>鍙栨秷</Button>
           <Button variant="destructive" onClick={handleDelete}>纭鍒犻櫎</Button>
