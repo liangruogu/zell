@@ -130,9 +130,9 @@ export default function WhiteboardPage() {
         <div {...panel.panelProps}>
           <div className="flex-1 overflow-auto py-1">
             {loading ? (
-              <p className="px-3 py-4 text-sm text-gray-400 text-center">鍔犺浇涓?..</p>
+              <p className="px-3 py-4 text-sm text-gray-400 text-center">加载中...</p>
             ) : whiteboards.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-gray-400 text-center">鏆傛棤鐧芥澘</p>
+              <p className="px-3 py-4 text-sm text-gray-400 text-center">暂无白板</p>
             ) : (
               whiteboards.map((wb) => (
                 <WhiteboardItem
@@ -164,7 +164,7 @@ export default function WhiteboardPage() {
                 <Plus size={14} /> 鏂板缓鐧芥澘
               </button>
             )}
-            <p className="text-xs text-gray-400 px-2.5">{whiteboards.length} 涓櫧鏉?/p>
+            <p className="text-xs text-gray-400 px-2.5">{whiteboards.length} 个白板</p>
           </div>
         </div>
 

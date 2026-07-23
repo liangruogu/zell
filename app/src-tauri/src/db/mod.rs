@@ -4,7 +4,6 @@ use std::sync::Mutex;
 
 pub mod migrations;
 pub mod models;
-pub mod resource_provider;
 
 pub struct Database {
     pub conn: Mutex<Connection>,
