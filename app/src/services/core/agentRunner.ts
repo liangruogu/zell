@@ -1,10 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai'
-import { HumanMessage, SystemMessage, AIMessage, ToolMessage } from '@langchain/core/messages'
+import { HumanMessage, SystemMessage, AIMessage, AIMessageChunk } from '@langchain/core/messages'
 import { tool } from '@langchain/core/tools'
-import { z } from 'zod'
 import { useSettingsStore } from '@/stores/settingsStore'
-import { MemorySaver } from '@langchain/langgraph'
-import { createReactAgent } from '@langchain/langgraph/prebuilt'
 
 export interface AgentToolCall {
   toolCallId: string
@@ -25,21 +22,6 @@ export interface AgentConfig {
   tools: ReturnType<typeof tool>[]
   modelId: string
   abortSignal?: AbortSignal
-}
-
-const agentCache = new Map<string, ReturnType<typeof createReactAgent>>()
-
-function getOrCreateAgent(llm: ChatOpenAI, tools: ReturnType<typeof tool>[], systemPrompt: string) {
-  const key = systemPrompt.slice(0, 50)
-  if (agentCache.has(key)) return agentCache.get(key)!
-  const agent = createReactAgent({
-    llm,
-    tools,
-    messageModifier: new SystemMessage(systemPrompt),
-    checkpointSaver: new MemorySaver(),
-  })
-  agentCache.set(key, agent)
-  return agent
 }
 
 export async function runAgent(
@@ -63,33 +45,105 @@ export async function runAgent(
     apiKey: prov.apiKey || 'not-needed',
     configuration: { baseURL: prov.baseUrl },
     temperature: 0.7,
+    streaming: true,
   })
 
-  const agent = getOrCreateAgent(llm, config.tools, config.systemPrompt)
+  const llmWithTools = config.tools.length > 0 ? llm.bindTools(config.tools) : llm
 
-  const inputMessages = messages.map(m =>
-    m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content)
-  )
+  const langMessages: (SystemMessage | HumanMessage | AIMessage)[] = [
+    new SystemMessage(config.systemPrompt),
+    ...messages.map(m =>
+      m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content)
+    ),
+  ]
 
-  try {
-    const stream = await agent.stream(
-      { messages: inputMessages },
-      { streamMode: 'messages' }
-    )
+  let maxRounds = 5
+  while (maxRounds-- > 0) {
+    if (config.abortSignal?.aborted) return
 
-    for await (const [msg, _] of stream as any) {
-      if (msg.tool_calls?.length) {
-        for (const tc of msg.tool_calls) {
-          callbacks.onToolCall?.({ toolCallId: tc.id || '', toolName: tc.name, args: tc.args })
+    try {
+      const stream = await llmWithTools.stream(langMessages)
+
+      let content = ''
+      let toolCalls: any[] = []
+      const tcBuf: Map<number, any> = new Map()
+
+      for await (const chunk of stream) {
+        // Handle text content
+        const text = getChunkText(chunk)
+        if (text) {
+          content += text
+          callbacks.onTextDelta(text)
+        }
+
+        // Handle tool calls
+        if ((chunk as any).tool_call_chunks?.length) {
+          for (const tcc of (chunk as any).tool_call_chunks) {
+            const idx = tcc.index ?? 0
+            const existing = tcBuf.get(idx) || { id: '', name: '', args: '' }
+            if (tcc.id) existing.id = tcc.id
+            if (tcc.name) existing.name += tcc.name
+            if (tcc.args) existing.args += tcc.args
+            tcBuf.set(idx, existing)
+          }
         }
       }
-      if (msg.content) {
-        const text = typeof msg.content === 'string' ? msg.content : ''
-        if (text) callbacks.onTextDelta(text)
+
+      // Convert buffered tool calls
+      toolCalls = [...tcBuf.values()].filter((tc: any) => tc.id).map((tc: any) => ({
+        id: tc.id,
+        type: 'function',
+        function: { name: tc.name, arguments: tc.args },
+        name: tc.name,
+        args: tc.args ? JSON.parse(tc.args) : {},
+      }))
+
+      if (toolCalls.length === 0) return // No more tool calls, done
+
+      // Add assistant message with tool calls
+      langMessages.push(new AIMessage({
+        content: content || '',
+        tool_calls: toolCalls.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+        })),
+      }))
+
+      // Execute tools
+      for (const tc of toolCalls) {
+        const entry: AgentToolCall = { toolCallId: tc.id, toolName: tc.name, args: tc.args }
+        callbacks.onToolCall?.(entry)
+
+        try {
+          const matchedTool = config.tools.find(t => t.name === tc.name)
+          entry.result = matchedTool ? await matchedTool.invoke(tc.args) : 'Tool not found'
+        } catch (e: any) {
+          entry.result = `Error: ${e.message}`
+        }
+        callbacks.onToolResult?.(entry)
+
+        langMessages.push({
+          role: 'tool' as any,
+          content: typeof entry.result === 'string' ? entry.result : JSON.stringify(entry.result),
+          tool_call_id: tc.id,
+        } as any)
       }
+    } catch (e: any) {
+      if (e.name === 'AbortError') return
+      callbacks.onError?.(`请求失败: ${e.message || String(e)}`)
+      return
     }
-  } catch (e: any) {
-    if (e.name === 'AbortError') return
-    callbacks.onError?.(`请求失败: ${e.message || String(e)}`)
   }
+}
+
+function getChunkText(chunk: AIMessageChunk): string {
+  if (typeof chunk.content === 'string') return chunk.content
+  if (Array.isArray(chunk.content)) {
+    return chunk.content
+      .filter((b: any) => b.type === 'text')
+      .map((b: any) => b.text)
+      .join('')
+  }
+  return ''
 }
