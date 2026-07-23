@@ -59,7 +59,7 @@ html, body, #root {
 .prose.bindle-prose :where(li) { margin-top: 0.125em; margin-bottom: 0.125em; }
 .prose.bindle-prose :where(ul), .prose.bindle-prose :where(ol) { margin-top: 0.25em; margin-bottom: 0.25em; }
 .prose.bindle-prose :where(img) { display: block; margin-left: auto; margin-right: auto; max-width: 100%; height: auto; }
-.ProseMirror img { transition: width 0.15s ease; }
+.ProseMirror img.ProseMirror-selectednode { outline: 1.5px solid #3b82f6; outline-offset: 2px; }
 
 /* Inline code: match body font size */
 .prose.bindle-prose :where(code):not(pre code) {
