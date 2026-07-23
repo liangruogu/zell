@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 const STORAGE_OPEN_KEY = 'bindle_ai_open'
+const STORAGE_INPUT_KEY = 'bindle_ai_input'
 
 function loadAIOpen(): boolean {
   try { return localStorage.getItem(STORAGE_OPEN_KEY) === '1' } catch { return false }
@@ -8,6 +9,14 @@ function loadAIOpen(): boolean {
 
 function saveAIOpen(v: boolean) {
   try { localStorage.setItem(STORAGE_OPEN_KEY, v ? '1' : '0') } catch { /* */ }
+}
+
+function loadInput(): string {
+  try { return localStorage.getItem(STORAGE_INPUT_KEY) || '' } catch { return '' }
+}
+
+function saveInput(v: string) {
+  try { localStorage.setItem(STORAGE_INPUT_KEY, v) } catch { /* */ }
 }
 
 interface AIMessage_ {
@@ -32,6 +41,8 @@ interface AIState {
   truncateMessages: (index: number) => void
   setStreaming: (v: boolean) => void
   clearMessages: () => void
+  pendingInput: string
+  setPendingInput: (text: string) => void
 }
 
 export const useAIStore = create<AIState>((set) => ({
@@ -79,4 +90,7 @@ export const useAIStore = create<AIState>((set) => ({
   setStreaming: (streaming) => set({ streaming }),
 
   clearMessages: () => set({ messages: [], streaming: false }),
+
+  pendingInput: loadInput(),
+  setPendingInput: (text: string) => { saveInput(text); set({ pendingInput: text }) },
 }))

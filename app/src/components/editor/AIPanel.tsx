@@ -63,8 +63,7 @@ function renderMarkdown(content: string): string {
 import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil } from 'lucide-react'
 
 export function AIPanel() {
-  const { isOpen, messages, streaming, selectedText, closePanel, clearMessages, deleteMessagePair, truncateMessages, updateMessage } = useAIStore()
-  const [input, setInput] = useState('')
+  const { isOpen, messages, streaming, selectedText, closePanel, clearMessages, deleteMessagePair, truncateMessages, updateMessage, pendingInput, setPendingInput } = useAIStore()
   const [showProviders, setShowProviders] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
@@ -100,11 +99,11 @@ export function AIPanel() {
   }, [isOpen])
 
   const handleSend = useCallback(async () => {
-    const text = input.trim()
+    const text = pendingInput.trim()
     if (!text || streaming || !hasAI) return
-    setInput('')
+    setPendingInput('')
     await sendMessage(text)
-  }, [input, streaming, hasAI])
+  }, [pendingInput, streaming, hasAI])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -351,8 +350,8 @@ export function AIPanel() {
         <div className="flex gap-2">
           <textarea
             ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={pendingInput}
+            onChange={(e) => setPendingInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="输入问题，Enter 发送..."
             rows={1}
@@ -361,10 +360,10 @@ export function AIPanel() {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || streaming || !hasAI}
+            disabled={!pendingInput.trim() || streaming || !hasAI}
             className={cn(
-              'shrink-0 px-3 py-2 rounded-lg transition-colors',
-              input.trim() && !streaming
+              'p-1.5 rounded transition-colors',
+              pendingInput.trim() && !streaming
                 ? 'bg-bindle-500 text-white hover:bg-bindle-600'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed',
             )}

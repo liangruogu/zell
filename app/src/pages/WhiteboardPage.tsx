@@ -42,6 +42,7 @@ export default function ExternalLinksPage() {
   const [tab, setTab] = useState<TabType>('links')
   const [isDragOver, setIsDragOver] = useState(false)
   const [showFullPreview, setShowFullPreview] = useState(false)
+  const [showLinkPreview, setShowLinkPreview] = useState(false)
 
   // Link form state
   const [title, setTitle] = useState('')
@@ -520,6 +521,29 @@ export default function ExternalLinksPage() {
                   </div>
                 )}
 
+                {currentLink?.last_snapshot && !currentLink.last_snapshot.startsWith('同步失败:') && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700">同步内容预览</label>
+                      {currentLink.last_snapshot.length > 2000 && (
+                    <button
+                        onClick={() => setShowLinkPreview(true)}
+                        className="text-xs text-bindle-500 hover:text-bindle-600"
+                      >
+                        展开预览
+                      </button>
+                      )}
+                    </div>
+                    <div
+                      className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 max-h-48 overflow-auto border border-gray-100 prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: markdownToHtml(currentLink.last_snapshot.slice(0, 2000)) }}
+                    />
+                    {currentLink.last_snapshot.length > 2000 && (
+                      <p className="text-xs text-gray-400 mt-1">...（共 {currentLink.last_snapshot.length} 字符，仅显示前 2000）</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-2">
                   <Button onClick={handleSaveLink} disabled={!title.trim() || !url.trim()}>
                     {isNewLink ? '添加' : '保存'}
@@ -655,6 +679,16 @@ export default function ExternalLinksPage() {
         <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
           <span>共 {currentFile?.extracted_text?.length || 0} 字符</span>
           <button onClick={() => setShowFullPreview(false)} className="text-bindle-500 hover:text-bindle-600">关闭</button>
+        </div>
+      </Dialog>
+
+      <Dialog open={showLinkPreview} onOpenChange={setShowLinkPreview} title="链接内容预览">
+        <div className="prose prose-sm max-w-none max-h-[60vh] overflow-auto p-4 bg-gray-50 rounded-lg"
+          dangerouslySetInnerHTML={{ __html: markdownToHtml(currentLink?.last_snapshot || '') }}
+        />
+        <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
+          <span>共 {currentLink?.last_snapshot?.length || 0} 字符</span>
+          <button onClick={() => setShowLinkPreview(false)} className="text-bindle-500 hover:text-bindle-600">关闭</button>
         </div>
       </Dialog>
     </AppShell>
