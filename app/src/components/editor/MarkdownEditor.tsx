@@ -109,6 +109,16 @@ export function MarkdownEditor({
 
   const handleModeToggle = useCallback(() => {
     const next = mode === 'wysiwyg' ? 'split' : 'wysiwyg'
+    // Flush split source BEFORE switching mode
+    if (mode === 'split' && next === 'wysiwyg' && splitSourceRef.current) {
+      const md = splitSourceRef.current
+      const html = markdownToHtml(md)
+      const article = useKnowledgeStore.getState().currentArticle
+      if (article) {
+        useKnowledgeStore.getState().updateArticle(article.id, article.title, md)
+      }
+      onChangeRef.current?.(html, md)
+    }
     if (onModeChange) {
       onModeChange(next)
     } else {
@@ -373,6 +383,8 @@ export function MarkdownEditor({
 
   // ------ Split mode ------
   const [splitSource, setSplitSource] = useState('')
+  const splitSourceRef = useRef('')
+  splitSourceRef.current = splitSource
   const [splitRatio, setSplitRatio] = useState(50) // percentage for left panel
   const [splitDragging, setSplitDragging] = useState(false)
   const splitContainerRef = useRef<HTMLDivElement>(null)
@@ -415,29 +427,6 @@ export function MarkdownEditor({
       }
     }
   }, [mode])
-
-  // Track previous mode for split → wysiwyg sync
-  const prevModeRef = useRef(mode)
-  useEffect(() => {
-    const prev = prevModeRef.current
-    prevModeRef.current = mode
-    if (prev === 'split' && mode === 'wysiwyg' && splitSource) {
-      const html = markdownToHtml(splitSource)
-      // Save directly via Rust command + update store
-      const article = useKnowledgeStore.getState().currentArticle
-      if (article) {
-        invoke('update_knowledge_article', {
-          id: article.id,
-          title: article.title,
-          content: splitSource,
-          contentJson: '{}',
-        }).then(() => {
-          useKnowledgeStore.getState().updateArticle(article.id, article.title, splitSource)
-        }).catch((e) => console.error('split save failed:', e))
-      }
-      onChangeRef.current?.(html, splitSource)
-    }
-  }, [mode, splitSource])
 
   const handleSplitChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
