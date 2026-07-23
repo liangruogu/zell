@@ -178,7 +178,7 @@ export function MarkdownEditor({
     onUpdate: handleUpdate,
     editorProps: {
       attributes: {
-        class: 'prose bindle-prose focus:outline-none min-h-[300px] px-6 py-4',
+        class: 'prose bindle-prose focus:outline-none min-h-[300px] py-4',
       },
       handleKeyDown: (_view, event) => {
         if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {
@@ -591,7 +591,7 @@ export function MarkdownEditor({
             </div>
             <div
               ref={previewRef}
-              className="flex-1 overflow-auto p-4 prose bindle-prose"
+              className="flex-1 overflow-auto py-4 prose bindle-prose"
               dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
             />
           </div>
