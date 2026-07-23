@@ -30,3 +30,4 @@ chrono = { version = "0.4", features = ["serde"] }
 ring = "0.17"
 aes-gcm = "0.10"
 base64 = "0.22"
+pdf-extract = "0.7"

@@ -65,6 +65,13 @@ pub fn run() {
             commands::image::save_project_image,
             commands::image::resolve_project_image,
             commands::image::delete_project_image,
+            commands::file::import_project_file,
+            commands::file::get_project_files,
+            commands::file::resolve_project_file,
+            commands::file::get_project_file_path,
+            commands::file::update_project_file,
+            commands::file::delete_project_file,
+            commands::file::re_extract_file_text,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
