@@ -105,8 +105,8 @@ export async function runAgent(
         content: content || '',
         tool_calls: toolCalls.map(tc => ({
           id: tc.id,
-          type: 'function',
-          function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+          name: tc.name,
+          args: typeof tc.args === 'string' ? JSON.parse(tc.args || '{}') : tc.args,
         })),
       }))
 
@@ -127,6 +127,7 @@ export async function runAgent(
           role: 'tool' as any,
           content: typeof entry.result === 'string' ? entry.result : JSON.stringify(entry.result),
           tool_call_id: tc.id,
+          name: tc.name,
         } as any)
       }
     } catch (e: any) {

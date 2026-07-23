@@ -1,159 +1,160 @@
 /**
- * LangGraph Agent 测试文件
- * 测试: 多轮对话 + 工具调用 + 流式输出
- *
+ * Agent 运行时测试 — 模拟真实 Bindle 调用链
  * 运行: npx tsx test/agent-test.ts
  */
-
 import { ChatOpenAI } from '@langchain/openai'
 import { tool } from '@langchain/core/tools'
 import { z } from 'zod'
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import { MemorySaver } from '@langchain/langgraph'
-import { createReactAgent } from '@langchain/langgraph/prebuilt'
+import { HumanMessage, SystemMessage, AIMessage } from '@langchain/core/messages'
 
-// ── 配置（模拟 Bindle 的 AI 配置） ─────────────────────────────────
-const CONFIG = {
-  baseURL: 'https://api.deepseek.com',
+// ── 模拟 Bindle 配置 ────────────────────────────────────────────────
+const PROVIDER = {
+  baseUrl: 'https://api.deepseek.com',
   apiKey: 'sk-a1704ab9ca5c4146851415fc7b11af7f',
   model: 'deepseek-chat',
 }
 
-// ── 模拟工具 ────────────────────────────────────────────────────────
+// ── 模拟工具（和 Bindle 知识库一样） ─────────────────────────────────
+const getProjectContext = tool(
+  async () => JSON.stringify({ name: 'TestProject', background: '测试用', status: 'sprint' }),
+  { name: 'get_project_context', description: '获取当前项目信息' }
+)
+
 const searchDocs = tool(
   async ({ query }: { query: string }) => {
-    console.log('  [tool] searchDocs:', query)
-    if (query.includes('Zig') || query.includes('zig')) {
-      return 'Zig 是一种系统编程语言，设计目标是取代 C 语言。特点：无 GC、编译时计算、交叉编译简单。'
+    if (query.includes('Zig')) return 'Zig 是系统编程语言，无 GC，编译时计算，交叉编译简单。'
+    return `未找到 "${query}"`
+  },
+  { name: 'search_knowledge', description: '搜索知识库', schema: z.object({ query: z.string() }) }
+)
+
+const listArticles = tool(
+  async () => JSON.stringify([{ id: '1', title: '技术架构', preview: 'Bindle 基于 Tauri...' }]),
+  { name: 'list_articles', description: '列出所有文章' }
+)
+
+const SYSTEM_PROMPT = '你是项目知识库助手。用中文简洁回答。'
+
+// ── 核心调用函数（模拟 agentRunner） ─────────────────────────────────
+async function chat(
+  llm: ChatOpenAI,
+  tools: ReturnType<typeof tool>[],
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+  onToken: (t: string) => void,
+  onToolCall?: (name: string, args: any) => void,
+) {
+  const llmWithTools = llm.bindTools(tools)
+
+  // 构建消息列表
+  const msgs: (SystemMessage | HumanMessage | AIMessage)[] = [new SystemMessage(SYSTEM_PROMPT)]
+  for (const m of history) {
+    msgs.push(m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content))
+  }
+
+  for (let round = 0; round < 5; round++) {
+    // 流式调用
+    const stream = await llmWithTools.stream(msgs)
+    let content = ''
+    const tcBuf = new Map<number, { id: string; name: string; args: string }>()
+
+    for await (const chunk of stream) {
+      const text = getChunkText(chunk)
+      if (text) { content += text; onToken(text) }
+
+      const tccs = (chunk as any).tool_call_chunks
+      if (tccs) {
+        for (const tc of tccs) {
+          const idx = tc.index ?? 0
+          const e = tcBuf.get(idx) || { id: '', name: '', args: '' }
+          if (tc.id) e.id = tc.id
+          if (tc.name) e.name += tc.name
+          if (tc.args) e.args += tc.args
+          tcBuf.set(idx, e)
+        }
+      }
     }
-    return `未找到关于 "${query}" 的文档。`
-  },
-  { name: 'search_docs', description: '搜索文档库', schema: z.object({ query: z.string() }) }
-)
 
-const getWeather = tool(
-  async ({ city }: { city: string }) => {
-    console.log('  [tool] getWeather:', city)
-    return JSON.stringify({ city, temp: 22, condition: '晴天', humidity: 45 })
-  },
-  { name: 'get_weather', description: '获取天气', schema: z.object({ city: z.string() }) }
-)
+    const toolCalls = [...tcBuf.values()].filter(tc => tc.id)
+    if (toolCalls.length === 0) return // 无工具调用，结束
 
-async function createAgent() {
-  const llm = new ChatOpenAI({
-    model: CONFIG.model,
-    apiKey: CONFIG.apiKey,
-    configuration: { baseURL: CONFIG.baseURL },
-    temperature: 0.7,
-  })
+    // 添加 AI 消息 + 执行工具
+    const aiMsg = new AIMessage({
+      content: content || '',
+      tool_calls: toolCalls.map(tc => ({
+        id: tc.id,
+        name: tc.name,
+        args: JSON.parse(tc.args || '{}'),
+      })),
+    })
+    msgs.push(aiMsg)
 
-  return createReactAgent({
-    llm,
-    tools: [searchDocs, getWeather],
-    messageModifier: new SystemMessage('你是一个测试助手。用中文回答，简洁准确。'),
-    checkpointSaver: new MemorySaver(),
-  })
+    for (const tc of toolCalls) {
+      let args: any = {}
+      try { args = JSON.parse(tc.args) } catch { /* */ }
+      onToolCall?.(tc.name, args)
+
+      const matched = tools.find(t => t.name === tc.name)
+      const result = matched ? await matched.invoke(args) : 'Tool not found'
+
+      msgs.push({
+        role: 'tool' as any,
+        content: String(result),
+        tool_call_id: tc.id,
+        name: tc.name,
+      } as any)
+    }
+  }
 }
 
-// ── 输出辅助 ────────────────────────────────────────────────────────
-function textOf(msg: any): string {
-  if (!msg) return ''
-  if (typeof msg.content === 'string') return msg.content
-  if (Array.isArray(msg.content)) {
-    return msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
-  }
+function getChunkText(c: any): string {
+  if (typeof c.content === 'string') return c.content
+  if (Array.isArray(c.content)) return c.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
   return ''
 }
 
-// ── 测试 1: 基本对话 ────────────────────────────────────────────────
-async function test1(agent: Awaited<ReturnType<typeof createAgent>>) {
-  console.log('\n=== 测试 1: 基本对话 ===')
-  const stream = await agent.stream(
-    { messages: [new HumanMessage('你好')] },
-    { configurable: { thread_id: 't1' }, streamMode: 'values' }
-  )
-  for await (const chunk of stream) {
-    const last = (chunk as any).messages?.at(-1)
-    if (last?.content) process.stdout.write(textOf(last))
-  }
-  console.log()
-}
-
-// ── 测试 2: 工具调用 ────────────────────────────────────────────────
-async function test2(agent: Awaited<ReturnType<typeof createAgent>>) {
-  console.log('\n=== 测试 2: 工具调用 ===')
-  const stream = await agent.stream(
-    { messages: [new HumanMessage('Zig 语言是什么？')] },
-    { configurable: { thread_id: 't2' }, streamMode: 'values' }
-  )
-  for await (const chunk of stream) {
-    const msgs = (chunk as any).messages
-    if (msgs?.length) {
-      const last = msgs[msgs.length - 1]
-      if (last.tool_calls?.length) {
-        for (const tc of last.tool_calls) console.log(`  🔧 ${tc.name}(${JSON.stringify(tc.args)})`)
-      }
-      if (last.content) process.stdout.write(textOf(last))
-    }
-  }
-  console.log()
-}
-
-// ── 测试 3: 多轮对话 ────────────────────────────────────────────────
-async function test3(agent: Awaited<ReturnType<typeof createAgent>>) {
-  console.log('\n=== 测试 3: 多轮对话（同一 thread） ===')
-
-  console.log('  > 北京天气？')
-  const s1 = await agent.stream(
-    { messages: [new HumanMessage('北京天气？')] },
-    { configurable: { thread_id: 't3' }, streamMode: 'values' }
-  )
-  for await (const c of s1) {
-    const last = (c as any).messages?.at(-1)
-    if (last?.content) process.stdout.write('  ' + textOf(last))
-  }
-  console.log()
-
-  console.log('  > 适合出门吗？')
-  const s2 = await agent.stream(
-    { messages: [new HumanMessage('适合出门吗？')] },
-    { configurable: { thread_id: 't3' }, streamMode: 'values' }
-  )
-  for await (const c of s2) {
-    const last = (c as any).messages?.at(-1)
-    if (last?.content) process.stdout.write('  ' + textOf(last))
-  }
-  console.log()
-}
-
-// ── 测试 4: 流式 Token ──────────────────────────────────────────────
-async function test4(agent: Awaited<ReturnType<typeof createAgent>>) {
-  console.log('\n=== 测试 4: 流式 Token (messages mode) ===')
-  const stream = await agent.stream(
-    { messages: [new HumanMessage('用一句话介绍 Rust')] },
-    { configurable: { thread_id: 't4' }, streamMode: 'messages' }
-  )
-  for await (const [msg, _] of stream) {
-    if (msg.content) {
-      const t = typeof msg.content === 'string' ? msg.content : ''
-      if (t) process.stdout.write(t)
-    }
-  }
-  console.log()
-}
-
-// ── 主函数 ───────────────────────────────────────────────────────────
+// ── 测试 ─────────────────────────────────────────────────────────────
 async function main() {
-  console.log(`LangGraph Agent Test | ${CONFIG.baseURL} | ${CONFIG.model}`)
-  const agent = await createAgent()
-  await test1(agent)
-  await test2(agent)
-  await test3(agent)
-  await test4(agent)
-  console.log('\n✅ 全部测试完成')
+  console.log(`测试: ${PROVIDER.baseUrl} | ${PROVIDER.model}\n`)
+
+  const llm = new ChatOpenAI({
+    model: PROVIDER.model,
+    apiKey: PROVIDER.apiKey,
+    configuration: { baseURL: PROVIDER.baseUrl },
+    temperature: 0.7,
+    streaming: true,
+  })
+
+  // 测试 1: 简单对话
+  console.log('=== 测试 1: 简单对话 ===')
+  await chat(llm, [], [{ role: 'user', content: '你好' }], t => process.stdout.write(t))
+  console.log()
+
+  // 测试 2: 工具调用
+  console.log('\n=== 测试 2: 搜索工具调用 ===')
+  await chat(
+    llm,
+    [searchDocs, getProjectContext, listArticles],
+    [{ role: 'user', content: 'Zig 语言是什么？' }],
+    t => process.stdout.write(t),
+    (name, args) => console.log(`  🔧 ${name}(${JSON.stringify(args)})`)
+  )
+  console.log()
+
+  // 测试 3: 多轮对话
+  console.log('\n=== 测试 3: 多轮对话 ===')
+  const history: Array<{ role: 'user' | 'assistant'; content: string }> = [
+    { role: 'user', content: '项目里有什么文档？' },
+  ]
+  let ai1 = ''
+  await chat(llm, [listArticles, searchDocs], history, t => { ai1 += t; process.stdout.write(t) })
+  history.push({ role: 'assistant', content: ai1 })
+  console.log()
+
+  history.push({ role: 'user', content: '这篇文章讲了什么技术？' })
+  await chat(llm, [listArticles, searchDocs], history, t => process.stdout.write(t))
+  console.log()
+
+  console.log('\n✅ 全部测试通过')
 }
 
-main().catch((e) => {
-  console.error('❌', e.message)
-  process.exit(1)
-})
+main().catch(e => { console.error('❌', e.message); process.exit(1) })
