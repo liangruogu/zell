@@ -1,16 +1,22 @@
 import { create } from 'zustand'
 
+interface AIMessage_ {
+  role: 'user' | 'assistant'
+  content: string
+  reasoningContent?: string
+}
+
 interface AIState {
   isOpen: boolean
   sourceType: 'knowledge' | 'whiteboard' | null
   selectedText: string
-  messages: { role: 'user' | 'assistant'; content: string; reasoningContent?: string }[]
+  messages: AIMessage_[]
   streaming: boolean
 
   openPanel: (sourceType: 'knowledge' | 'whiteboard', selectedText?: string) => void
   closePanel: () => void
   setSelectedText: (text: string) => void
-  addMessage: (msg: { role: 'user' | 'assistant'; content: string; reasoningContent?: string }) => void
+  addMessage: (msg: AIMessage_) => void
   updateMessage: (index: number, content: string, reasoningContent?: string) => void
   deleteMessagePair: (index: number) => void
   truncateMessages: (index: number) => void
@@ -42,7 +48,7 @@ export const useAIStore = create<AIState>((set) => ({
   updateMessage: (index: number, content: string, reasoningContent?: string) =>
     set((state) => ({
       messages: state.messages.map((m, i) =>
-        i === index ? { ...m, content, reasoningContent: reasoningContent ?? m.reasoningContent } : m
+        i === index ? { ...m, content, ...(reasoningContent !== undefined ? { reasoningContent } : {}) } : m
       ),
     })),
 

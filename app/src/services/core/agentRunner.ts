@@ -30,7 +30,14 @@ function buildMessages(systemPrompt: string, messages: CoreMessage[]) {
   ]
   for (const m of messages) {
     if (m.role === 'user') result.push(new HumanMessage(m.content as string))
-    else if (m.role === 'assistant') result.push(new AIMessage(m.content as string))
+    else if (m.role === 'assistant') {
+      const reasoning = (m as any).reasoningContent
+      if (reasoning) {
+        result.push(new AIMessage({ content: m.content as string, additional_kwargs: { reasoning_content: reasoning } } as any))
+      } else {
+        result.push(new AIMessage(m.content as string))
+      }
+    }
   }
   return result
 }
@@ -39,7 +46,7 @@ export async function runAgent(
   messages: CoreMessage[],
   config: AgentConfig,
   callbacks: AgentStreamCallbacks,
-) {
+): Promise<string> {
   const providersRaw = useSettingsStore.getState().settings['ai_providers']
   let providers: Array<{ id: string; name: string; baseUrl: string; apiKey: string; model: string }> = []
   try { providers = JSON.parse(providersRaw || '[]') } catch { /* empty */ }
@@ -51,100 +58,118 @@ export async function runAgent(
 
   if (!prov) {
     callbacks.onError?.('请先在设置中配置 AI 服务。')
-    return
+    return ''
   }
 
-  const llm = new ChatOpenAI({
-    model: config.modelId || prov.model,
-    apiKey: prov.apiKey || 'not-needed',
-    configuration: { baseURL: prov.baseUrl },
-    temperature: 0.7,
-  })
-
-  const llmWithTools = config.tools.length > 0 ? llm.bindTools(config.tools) : llm
-
-  const langMessages = buildMessages(config.systemPrompt, messages)
-
-  // DEBUG: log message format
-  console.log('[agentRunner] sending', langMessages.length, 'messages')
-  for (const m of langMessages) {
-    const role = m._getType()
-    console.log('[agentRunner] msg', role, 'content:', (m as any).content?.slice(0, 100))
-    if ((m as any).additional_kwargs && Object.keys((m as any).additional_kwargs).length > 0) {
-      console.log('[agentRunner]   additional_kwargs:', JSON.stringify((m as any).additional_kwargs).slice(0, 200))
+  // Build raw API messages for DeepSeek reasoning_content support
+  const rawMessages: any[] = [{ role: 'system', content: config.systemPrompt }]
+  for (const m of messages) {
+    if (m.role === 'user') {
+      rawMessages.push({ role: 'user', content: m.content })
+    } else if (m.role === 'assistant') {
+      const msg: any = { role: 'assistant', content: m.content }
+      const reasoning = (m as any).reasoningContent
+      if (reasoning) msg.reasoning_content = reasoning
+      rawMessages.push(msg)
     }
+  }
+
+  const endpoint = `${prov.baseUrl.replace(/\/+$/, '')}/chat/completions`
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${prov.apiKey}`,
   }
 
   try {
-    const stream = await llmWithTools.stream(langMessages, {
-      signal: config.abortSignal,
-    })
+    // First call: get response or tool calls
+    let { text, reasoning, toolCalls } = await streamAndCollect(endpoint, headers, prov.model, rawMessages, config.tools, callbacks, config.abortSignal)
+    if (callbacks.onError) return '' // Error already handled
 
-    let content = ''
-    let toolCalls: any[] = []
-
-    for await (const chunk of stream) {
-      if (chunk.content) {
-        const text = typeof chunk.content === 'string' ? chunk.content : ''
-        if (text) {
-          content += text
-          callbacks.onTextDelta(text)
-        }
-      }
-      if (chunk.tool_calls && chunk.tool_calls.length > 0) {
-        toolCalls = chunk.tool_calls
-      }
-    }
-
+    // Handle tool calls
     if (toolCalls.length > 0 && config.tools.length > 0) {
-      langMessages.push(new AIMessage({ content, tool_calls: toolCalls }))
+      rawMessages.push({ role: 'assistant', content: text || null, tool_calls: toolCalls, reasoning_content: reasoning || undefined })
 
       for (const tc of toolCalls) {
-        const entry: AgentToolCall = {
-          toolCallId: tc.id || '',
-          toolName: tc.name,
-          args: tc.args,
-        }
+        const entry: AgentToolCall = { toolCallId: tc.id || '', toolName: tc.function.name, args: JSON.parse(tc.function.arguments || '{}') }
         callbacks.onToolCall?.(entry)
 
         try {
-          const matchedTool = config.tools.find((t: any) => t.name === tc.name)
+          const matchedTool = config.tools.find((t: any) => t.name === tc.function.name)
           let result = 'Tool not found'
-          if (matchedTool) {
-            result = await matchedTool.invoke(tc.args)
-          }
+          if (matchedTool) result = await matchedTool.invoke(entry.args)
           entry.result = result
           callbacks.onToolResult?.(entry)
-
-          langMessages.push(new ToolMessage({
-            content: typeof result === 'string' ? result : JSON.stringify(result),
-            tool_call_id: tc.id || '',
-          }))
+          rawMessages.push({ role: 'tool', content: result, tool_call_id: tc.id })
         } catch (e: any) {
-          langMessages.push(new ToolMessage({
-            content: `Error: ${e.message || String(e)}`,
-            tool_call_id: tc.id || '',
-          }))
+          rawMessages.push({ role: 'tool', content: `Error: ${e.message}`, tool_call_id: tc.id })
         }
       }
 
-      const stream2 = await llmWithTools.stream(langMessages)
-      for await (const chunk of stream2) {
-        if (chunk.content) {
-          const text = typeof chunk.content === 'string' ? chunk.content : ''
-          if (text) callbacks.onTextDelta(text)
-        }
-      }
+      const second = await streamAndCollect(endpoint, headers, prov.model, rawMessages, config.tools, callbacks, config.abortSignal)
+      return second.reasoning
     }
+    return reasoning
   } catch (e: any) {
-    console.error('[agentRunner] error details:', {
-      name: e.name,
-      message: e.message,
-      status: e.status,
-      code: e.code,
-      response: e.response?.data?.slice?.(0, 300),
-    })
-    if (e.name === 'AbortError') return
+    if (e.name === 'AbortError') return ''
     callbacks.onError?.(`请求失败: ${e.message || String(e)}`)
+    return ''
   }
+}
+
+async function streamAndCollect(
+  endpoint: string, headers: Record<string, string>, model: string,
+  messages: any[], tools: any[], callbacks: AgentStreamCallbacks, _signal?: AbortSignal,
+): Promise<{ text: string; reasoning: string; toolCalls: any[] }> {
+  const toolDefs = tools.map(t => ({
+    type: 'function' as const,
+    function: { name: t.name, description: t.description, parameters: t.lc_kwargs?.schema ?? t.schema ?? { type: 'object', properties: {} } },
+  }))
+
+  const body: any = { model, messages, stream: true }
+  if (toolDefs.length > 0) { body.tools = toolDefs; body.tool_choice = 'auto' }
+
+  const resp = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
+  if (!resp.ok) {
+    const errText = await resp.text()
+    callbacks.onError?.(`API ${resp.status}: ${errText.slice(0, 200)}`)
+    return { text: '', reasoning: '', toolCalls: [] }
+  }
+
+  const reader = resp.body?.getReader()
+  if (!reader) { callbacks.onError?.('No response body'); return { text: '', reasoning: '', toolCalls: [] } }
+
+  const decoder = new TextDecoder()
+  let buf = '', text = '', reasoning = ''
+  const toolCallsMap: Map<number, any> = new Map()
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop() || ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed.startsWith('data: ') || trimmed === 'data: [DONE]') continue
+      try {
+        const d = JSON.parse(trimmed.slice(6))
+        const delta = d.choices?.[0]?.delta
+        if (delta?.reasoning_content) reasoning += delta.reasoning_content
+        if (delta?.content) { text += delta.content; callbacks.onTextDelta(delta.content) }
+        if (delta?.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index ?? 0
+            const existing = toolCallsMap.get(idx) || { id: '', type: 'function', function: { name: '', arguments: '' } }
+            if (tc.id) existing.id = tc.id
+            if (tc.function?.name) existing.function.name += tc.function.name
+            if (tc.function?.arguments) existing.function.arguments += tc.function.arguments
+            toolCallsMap.set(idx, existing)
+          }
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  return { text, reasoning, toolCalls: [...toolCallsMap.values()] }
 }

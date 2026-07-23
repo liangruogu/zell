@@ -73,13 +73,14 @@ export async function sendMessage(userContent: string) {
     .map((m, i) => ({
       role: m.role as 'user' | 'assistant',
       content: m.role === 'user' && i === storeSnapshot.length - 2 ? apiContent : m.content,
+      reasoningContent: (m as any).reasoningContent,
     }))
 
   const config = createKnowledgeAgentConfig()
 
   let accumulated = ''
 
-  await runAgent(messages as any, config, {
+  const reasoning = await runAgent(messages as any, config, {
     onTextDelta(delta) {
       accumulated += delta
       useAIStore.getState().updateMessage(msgIdx, accumulated)
@@ -91,6 +92,10 @@ export async function sendMessage(userContent: string) {
       useAIStore.getState().updateMessage(msgIdx, error)
     },
   })
+
+  if (reasoning) {
+    useAIStore.getState().updateMessage(msgIdx, accumulated, reasoning)
+  }
 
   if (!accumulated) {
     useAIStore.getState().updateMessage(msgIdx, '(没有返回内容)')
