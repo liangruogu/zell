@@ -17,7 +17,6 @@ function renderMarkdown(content: string): string {
   return div.innerHTML
 }
 import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil } from 'lucide-react'
-import hljs from 'highlight.js'
 
 export function AIPanel() {
   const { isOpen, messages, streaming, selectedText, closePanel, clearMessages, deleteMessagePair, truncateMessages, updateMessage } = useAIStore()
