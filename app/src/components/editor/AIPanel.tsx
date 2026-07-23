@@ -64,7 +64,7 @@ function renderMarkdown(content: string): string {
 import { X, Send, Sparkles, AlertCircle, ChevronDown, Trash2, Pencil, Plus, MessageSquare } from 'lucide-react'
 
 export function AIPanel() {
-  const { isOpen, messages, streaming, selectedText, closePanel, clearMessages, deleteMessagePair, truncateMessages, updateMessage, pendingInput, setPendingInput, conversations, activeConversationId, loadConversations, createConversation, switchConversation, deleteConversation } = useAIStore()
+  const { isOpen, messages, streaming, selectedText, closePanel, deleteMessagePair, truncateMessages, updateMessage, pendingInput, setPendingInput, conversations, activeConversationId, loadConversations, createConversation, switchConversation, deleteConversation } = useAIStore()
   const project = useProjectStore((s) => s.currentProject)
   const [showProviders, setShowProviders] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -185,42 +185,8 @@ export function AIPanel() {
   return (
     <div className="border-l border-gray-200 bg-white flex flex-col h-full">
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 shrink-0">
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-bindle-500" />
-          <span className="text-sm font-medium text-gray-700">AI 助手</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {/* Token ring */}
-          <div className="relative w-5 h-5 group/token cursor-pointer">
-            <svg className="w-5 h-5 -rotate-90" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="9" fill="none" stroke="#e5e7eb" strokeWidth="3" />
-              <circle cx="12" cy="12" r="9" fill="none"
-                stroke={tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e'}
-                strokeWidth="3"
-                strokeDasharray={`${tokenPct * 0.565} 56.5`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover/token:block z-20">
-              <div className="bg-white border border-gray-200 text-gray-600 text-[10px] rounded px-2.5 py-1.5 whitespace-nowrap shadow leading-relaxed">
-                <div>已用 {tokenPct}%</div>
-                <div className="text-gray-400">{estimateTokens.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens</div>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={closePanel}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Conversation bar */}
-      <div className="flex items-center gap-1 px-4 py-1.5 border-b border-gray-100 shrink-0 bg-gray-50/50 relative">
+      {/* Header + conversation bar */}
+      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-gray-100 shrink-0 relative">
         <button
           onClick={() => setShowConvList(!showConvList)}
           className="flex items-center gap-1 flex-1 text-xs text-gray-600 hover:text-bindle-600 py-1"
@@ -245,6 +211,32 @@ export function AIPanel() {
             <Plus size={14} />
           </button>
         )}
+
+        {/* Token ring */}
+        <div className="relative w-4 h-4 group/token cursor-pointer shrink-0">
+          <svg className="w-4 h-4 -rotate-90" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="#e5e7eb" strokeWidth="3" />
+            <circle cx="12" cy="12" r="9" fill="none"
+              stroke={tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e'}
+              strokeWidth="3"
+              strokeDasharray={`${tokenPct * 0.565} 56.5`}
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute right-0 top-full mt-1.5 hidden group-hover/token:block z-20">
+            <div className="bg-white border border-gray-200 text-gray-600 text-[10px] rounded px-2.5 py-1.5 whitespace-nowrap shadow leading-relaxed">
+              <div>已用 {tokenPct}%</div>
+              <div className="text-gray-400">{estimateTokens.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens</div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={closePanel}
+          className="p-1 text-gray-400 hover:text-gray-600 rounded shrink-0"
+        >
+          <X size={14} />
+        </button>
 
         {showConvList && (
           <div className="absolute left-3 right-3 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
@@ -379,15 +371,15 @@ export function AIPanel() {
       {/* Input */}
       <div className="p-3 border-t border-gray-100 shrink-0">
         <div className="flex items-end gap-2">
-          {/* Model selector */}
+          {/* Model selector (icon only) */}
           {activeProvider ? (
             <div className="relative shrink-0">
               <button
                 onClick={() => setShowProviders(!showProviders)}
-                className="flex items-center gap-0.5 px-2 py-2 text-xs text-gray-500 hover:text-bindle-600 border border-gray-200 rounded-lg hover:border-bindle-300"
+                className="p-2 text-gray-400 hover:text-bindle-600 border border-gray-200 rounded-lg hover:border-bindle-300"
+                title={activeProvider.name || activeProvider.model}
               >
-                <span className="truncate max-w-[80px]">{activeProvider.name || activeProvider.model}</span>
-                <ChevronDown size={10} />
+                <Sparkles size={14} />
               </button>
               {showProviders && (
                 <div className="absolute bottom-full left-0 mb-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
