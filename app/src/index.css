@@ -91,9 +91,9 @@ html, body, #root {
 
 /* Drag-over indicator for the editor */
 .ProseMirror.drag-over {
-  outline: 2px dashed #7c3aed;
-  outline-offset: -2px;
-  background: rgba(124, 58, 237, 0.05);
+  outline: 2px dashed #3b82f6;
+  outline-offset: -3px;
+  background: rgba(59, 130, 246, 0.04);
 }
 
 /* Remove Tailwind Typography double quotes from blockquote */
