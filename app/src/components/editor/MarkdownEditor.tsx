@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml, setImagesBaseDir } from '@/lib/markdown'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
+import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { format } from '@/lib/format'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { readFile } from '@tauri-apps/plugin-fs'
@@ -55,8 +56,6 @@ export function MarkdownEditor({
 }: MarkdownEditorProps) {
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
-  const onSaveRef = useRef(onSave)
-  onSaveRef.current = onSave
 
   // Load settings on mount to get toolbar preference
   const loadSettings = useSettingsStore((s) => s.loadSettings)
@@ -389,8 +388,11 @@ export function MarkdownEditor({
     prevModeRef.current = mode
     if (prev === 'split' && mode === 'wysiwyg' && splitSource) {
       const html = markdownToHtml(splitSource)
+      const article = useKnowledgeStore.getState().currentArticle
+      if (article) {
+        useKnowledgeStore.getState().updateArticle(article.id, article.title, splitSource)
+      }
       onChangeRef.current?.(html, splitSource)
-      onSaveRef.current?.(html, splitSource)
     }
   }, [mode, splitSource])
 
