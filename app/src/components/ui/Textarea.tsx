@@ -10,7 +10,7 @@ export function Textarea({ label, error, className, id, ...props }: TextareaProp
   return (
     <div className="space-y-1">
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 text-center">
           {label}
         </label>
       )}

@@ -503,7 +503,7 @@ export default function ExternalLinksPage() {
             </div>
           ) : tab === 'files' && currentFile ? (
             <div className="flex-1 overflow-auto p-6">
-              <div className="max-w-xl space-y-4">
+              <div className="max-w-xl mx-auto space-y-4">
                 <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                   <span>{FILE_TYPE_ICONS[currentFile.file_type] || '馃摝'}</span>
                   {currentFile.original_name}
