@@ -89,6 +89,13 @@ html, body, #root {
   font-weight: normal;
 }
 
+/* Drag-over indicator for the editor */
+.ProseMirror.drag-over {
+  outline: 2px dashed #7c3aed;
+  outline-offset: -2px;
+  background: rgba(124, 58, 237, 0.05);
+}
+
 /* Remove Tailwind Typography double quotes from blockquote */
 .prose blockquote p::before,
 .prose blockquote p::after {

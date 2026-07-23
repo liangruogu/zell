@@ -369,6 +369,25 @@ export function MarkdownEditor({
       return btoa(binary)
     }
     const promise = getCurrentWindow().onDragDropEvent((event) => {
+      if (event.payload.type === 'enter' || event.payload.type === 'over') {
+        const ed = editorRef.current
+        if (!ed || mode !== 'wysiwyg') return
+        // Show visual indicator by adding a CSS class
+        ed.view.dom.classList.add('drag-over')
+        // Move cursor to mouse position for placement preview
+        if (event.payload.position) {
+          const pos = ed.view.posAtCoords({
+            left: event.payload.position.x,
+            top: event.payload.position.y,
+          })
+          if (pos) {
+            ed.chain().focus().setTextSelection(pos.pos).run()
+          }
+        }
+      }
+      if (event.payload.type === 'leave' || event.payload.type === 'drop') {
+        editorRef.current?.view.dom.classList.remove('drag-over')
+      }
       if (event.payload.type !== 'drop') return
       for (const filePath of event.payload.paths) {
         const ext = filePath.split('.').pop()?.toLowerCase() || ''
@@ -382,7 +401,7 @@ export function MarkdownEditor({
       }
     })
     return () => { promise.then((fn) => fn()) }
-  }, [insertImage])
+  }, [insertImage, mode])
 
   const handleSave = useCallback(() => {
     const ed = editorRef.current
