@@ -470,6 +470,7 @@ export default function ExternalLinksPage() {
                   <>
                     <Link2 size={48} strokeWidth={1} className="mx-auto mb-3" />
                     <p className="text-lg">选择或添加一个外部链接</p>
+                    <p className="text-sm mt-1">支持网页 / GitHub / Figma / Canva / Notion</p>
                   </>
                 ) : (
                   <>
@@ -507,23 +508,18 @@ export default function ExternalLinksPage() {
                     </span>
                   )}
                 </div>
-                <Textarea id="description" label="描述" placeholder="简要描述..." rows={2} value={linkDescription} onChange={(e) => setLinkDescription(e.target.value)} />
-
-                {(linkType === 'figma' || linkType === 'canva' || linkType === 'notion') && (
-                  <Input id="apiToken" label="API Token" placeholder="输入 API Token..." value={apiToken} onChange={(e) => setApiToken(e.target.value)} />
-                )}
 
                 {currentLink?.last_snapshot && !currentLink.last_snapshot.startsWith('同步失败:') && (
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-sm font-medium text-gray-700">同步内容预览</label>
                       {currentLink.last_snapshot.length > 2000 && (
-                    <button
-                        onClick={() => setShowLinkPreview(true)}
-                        className="text-xs text-bindle-500 hover:text-bindle-600"
-                      >
-                        展开预览
-                      </button>
+                        <button
+                          onClick={() => setShowLinkPreview(true)}
+                          className="text-xs text-bindle-500 hover:text-bindle-600"
+                        >
+                          展开预览
+                        </button>
                       )}
                     </div>
                     <div
@@ -534,6 +530,12 @@ export default function ExternalLinksPage() {
                       <p className="text-xs text-gray-400 mt-1">...（共 {currentLink.last_snapshot.length} 字符，仅显示前 2000）</p>
                     )}
                   </div>
+                )}
+
+                <Textarea id="description" label="描述" placeholder="简要描述..." rows={2} value={linkDescription} onChange={(e) => setLinkDescription(e.target.value)} />
+
+                {(linkType === 'figma' || linkType === 'canva' || linkType === 'notion') && (
+                  <Input id="apiToken" label="API Token" placeholder="输入 API Token..." value={apiToken} onChange={(e) => setApiToken(e.target.value)} />
                 )}
 
                 <div className="flex gap-2 pt-2">
