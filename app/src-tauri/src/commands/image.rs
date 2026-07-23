@@ -59,6 +59,26 @@ pub fn save_project_image(
 }
 
 #[tauri::command]
+pub fn save_project_image_bytes(
+    app: AppHandle,
+    project_id: String,
+    bytes: Vec<u8>,
+    extension: String,
+) -> Result<SavedImage, String> {
+    let ext = extension.trim_start_matches('.').to_lowercase();
+    let dir = images_dir(&app, &project_id)?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let stored_name = format!("{}.{}", Uuid::now_v7(), ext);
+    let dest = dir.join(&stored_name);
+    fs::write(&dest, &bytes).map_err(|e| format!("Write failed: {}", e))?;
+
+    Ok(SavedImage {
+        file_name: stored_name,
+    })
+}
+
+#[tauri::command]
 pub fn resolve_project_image(
     app: AppHandle,
     project_id: String,

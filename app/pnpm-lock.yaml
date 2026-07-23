@@ -24,7 +24,7 @@ importers:
         specifier: ^5.101.0
         version: 5.101.0(react@19.2.7)
       '@tauri-apps/api':
-        specifier: ^2
+        specifier: ^2.11.0
         version: 2.11.0
       '@tauri-apps/plugin-dialog':
         specifier: ^2.7.2

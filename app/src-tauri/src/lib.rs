@@ -69,6 +69,7 @@ pub fn run() {
             commands::resource::search_resources,
             commands::resource::get_resource_content,
             commands::image::save_project_image,
+            commands::image::save_project_image_bytes,
             commands::image::resolve_project_image,
             commands::image::delete_project_image,
             commands::file::import_project_file,

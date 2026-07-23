@@ -25,9 +25,8 @@ import { useProjectStore } from '@/stores/projectStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { format } from '@/lib/format'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { readFile, writeFile } from '@tauri-apps/plugin-fs'
+import { readFile } from '@tauri-apps/plugin-fs'
 import { invoke } from '@tauri-apps/api/core'
-import { tempDir } from '@tauri-apps/api/path'
 import { save } from '@tauri-apps/plugin-dialog'
 
 const lowlight = createLowlight(common)
@@ -125,19 +124,17 @@ export function MarkdownEditor({
 
     if (imageStorage === 'file' && projectId) {
       try {
-        let savePath = sourcePath
-        if (!savePath) {
+        if (sourcePath) {
+          const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
+          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
+        } else {
           const resp = await fetch(dataUrl)
           const blob = await resp.blob()
-          const bytes = new Uint8Array(await blob.arrayBuffer())
+          const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
           const ext = blob.type.split('/')[1] || 'png'
-          const tmpDir = await tempDir()
-          const tmpName = `${tmpDir}bindle_paste_${Date.now()}.${ext}`
-          await writeFile(tmpName, bytes)
-          savePath = tmpName
+          const saved = await invoke<{ file_name: string }>('save_project_image_bytes', { projectId, bytes, extension: ext })
+          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
         }
-        const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath: savePath })
-        ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
         return
       } catch { /* fall through to base64 */ }
     }
