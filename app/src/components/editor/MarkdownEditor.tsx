@@ -281,52 +281,6 @@ export function MarkdownEditor({
 
   editorRef.current = editor
 
-  const pageBreakRef = useRef<HTMLDivElement>(null)
-
-  const updatePageBreaks = useCallback(() => {
-    const container = pageBreakRef.current
-    if (!container) return
-    const old = container.querySelector('.page-break-overlay')
-    old?.remove()
-
-    const overlay = document.createElement('div')
-    overlay.className = 'page-break-overlay absolute left-0 right-0 pointer-events-none z-10'
-    const pxPerMm = 3.779
-    const pageH = 297 * pxPerMm
-    overlay.style.top = '0'
-    overlay.style.height = `${container.scrollHeight}px`
-    const count = Math.max(Math.floor(container.scrollHeight / pageH), 1)
-    for (let i = 1; i <= count; i++) {
-      const y = i * pageH
-      const line = document.createElement('div')
-      line.className = 'absolute left-4 right-4 border-t border-dashed border-gray-300 flex items-center justify-end'
-      line.style.top = `${y}px`
-      const label = document.createElement('span')
-      label.className = 'text-[10px] text-gray-300 bg-white px-1 rounded'
-      label.style.transform = 'translateY(-50%)'
-      label.textContent = `第 ${i + 1} 页`
-      line.appendChild(label)
-      overlay.appendChild(line)
-    }
-    container.appendChild(overlay)
-  }, [])
-
-  // Draw breaks on split mode mount + editor updates
-  useEffect(() => {
-    if (!showPageBreaks || mode !== 'split' || !editor) return
-
-    const schedule = () => requestAnimationFrame(updatePageBreaks)
-    const timer = setTimeout(updatePageBreaks, 100)
-    editor.on('update', schedule)
-    return () => { clearTimeout(timer); editor.off('update', schedule) }
-  }, [showPageBreaks, mode, editor, updatePageBreaks])
-
-  // Re-draw breaks when preview content changes
-  useEffect(() => {
-    if (!showPageBreaks || mode !== 'split') return
-    requestAnimationFrame(updatePageBreaks)
-  }, [resolvedPreviewHtml, showPageBreaks, mode, updatePageBreaks])
-
   const prevContentRef = useRef(content)
   useEffect(() => {
     if (!editor || mode !== 'wysiwyg') return
@@ -576,6 +530,54 @@ export function MarkdownEditor({
   )
 
   const [resolvedPreviewHtml, setResolvedPreviewHtml] = useState('')
+
+  // --- Page break overlay (split mode preview) ---
+  const pageBreakRef = useRef<HTMLDivElement>(null)
+
+  const updatePageBreaks = useCallback(() => {
+    const container = pageBreakRef.current
+    if (!container) return
+    const old = container.querySelector('.page-break-overlay')
+    old?.remove()
+
+    const overlay = document.createElement('div')
+    overlay.className = 'page-break-overlay absolute left-0 right-0 pointer-events-none z-10'
+    const pxPerMm = 3.779
+    const pageH = 297 * pxPerMm
+    overlay.style.top = '0'
+    overlay.style.height = `${container.scrollHeight}px`
+    const count = Math.max(Math.floor(container.scrollHeight / pageH), 1)
+    for (let i = 1; i <= count; i++) {
+      const y = i * pageH
+      const line = document.createElement('div')
+      line.className = 'absolute left-4 right-4 border-t border-dashed border-gray-300 flex items-center justify-end'
+      line.style.top = `${y}px`
+      const label = document.createElement('span')
+      label.className = 'text-[10px] text-gray-300 bg-white px-1 rounded'
+      label.style.transform = 'translateY(-50%)'
+      label.textContent = `第 ${i + 1} 页`
+      line.appendChild(label)
+      overlay.appendChild(line)
+    }
+    container.appendChild(overlay)
+  }, [])
+
+  // Draw breaks on split mode mount + editor updates
+  useEffect(() => {
+    if (!showPageBreaks || mode !== 'split' || !editor) return
+    const schedule = () => requestAnimationFrame(updatePageBreaks)
+    const timer = setTimeout(updatePageBreaks, 100)
+    editor.on('update', schedule)
+    return () => { clearTimeout(timer); editor.off('update', schedule) }
+  }, [showPageBreaks, mode, editor, updatePageBreaks])
+
+  // Re-draw breaks when preview content changes
+  useEffect(() => {
+    if (!showPageBreaks || mode !== 'split') return
+    requestAnimationFrame(updatePageBreaks)
+  }, [resolvedPreviewHtml, showPageBreaks, mode, updatePageBreaks])
+
+  // --- end page break ---
 
   // Generate and resolve preview HTML for split mode
   useEffect(() => {
