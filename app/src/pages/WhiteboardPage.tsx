@@ -40,6 +40,7 @@ export default function ExternalLinksPage() {
 
   const [tab, setTab] = useState<TabType>('links')
   const [isDragOver, setIsDragOver] = useState(false)
+  const [showFullPreview, setShowFullPreview] = useState(false)
 
   // Link form state
   const [title, setTitle] = useState('')
@@ -529,7 +530,15 @@ export default function ExternalLinksPage() {
                 {/* Extracted text preview */}
                 {currentFile.extracted_text ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">提取的文本（AI 上下文）</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700">提取的文本（AI 上下文）</label>
+                      <button
+                        onClick={() => setShowFullPreview(true)}
+                        className="text-xs text-bindle-500 hover:text-bindle-600"
+                      >
+                        展开预览
+                      </button>
+                    </div>
                     <div
                       className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 max-h-48 overflow-auto border border-gray-100 prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{ __html: markdownToHtml(currentFile.extracted_text.slice(0, 3000)) }}
@@ -591,6 +600,16 @@ export default function ExternalLinksPage() {
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setDeleteFileTarget(null)}>取消</Button>
           <Button variant="destructive" onClick={handleDeleteFile}>确认删除</Button>
+        </div>
+      </Dialog>
+
+      <Dialog open={showFullPreview} onOpenChange={setShowFullPreview} title="提取文本预览">
+        <div className="prose prose-sm max-w-none max-h-[60vh] overflow-auto p-4 bg-gray-50 rounded-lg"
+          dangerouslySetInnerHTML={{ __html: markdownToHtml(currentFile?.extracted_text || '') }}
+        />
+        <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
+          <span>共 {currentFile?.extracted_text?.length || 0} 字符</span>
+          <button onClick={() => setShowFullPreview(false)} className="text-bindle-500 hover:text-bindle-600">关闭</button>
         </div>
       </Dialog>
     </AppShell>
