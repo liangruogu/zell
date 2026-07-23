@@ -8,7 +8,7 @@ const turndown = new TurndownService({
   bulletListMarker: '-',
 })
 
-// Preserve image width: convert to ![alt](url =400x)
+// Preserve image width and bindle-img refs
 turndown.addRule('imageWithSize', {
   filter: (node) => node.nodeName === 'IMG',
   replacement: (_content, node) => {
@@ -16,20 +16,27 @@ turndown.addRule('imageWithSize', {
     const alt = el.getAttribute('alt') || ''
     const src = el.getAttribute('src') || ''
     const width = el.getAttribute('width')
-    const title = width ? ` =${width}x` : ''
-    return `![${alt}](${src}${title})`
+
+    // Keep bindle-img: refs as-is
+    if (src.startsWith('bindle-img:')) {
+      const titleAttr = width ? ` "width=${width}"` : ''
+      return `![${alt}](${src}${titleAttr})`
+    }
+
+    return `![${alt}](${src})`
   },
 })
 
-// Custom image renderer: support ![alt](url =400x) syntax
+// Custom image renderer: support width from title attribute
 marked.use({
   renderer: {
-    image({ href, text }: { href: string; text: string }) {
-      const match = href.match(/^(.+?)\s*=\s*(\d+)x$/)
-      if (match) {
-        return `<img src="${match[1]}" alt="${text}" width="${match[2]}">`
+    image({ href, title, text }: { href: string; title: string | null; text: string }) {
+      let widthAttr = ''
+      if (title) {
+        const wm = title.match(/width=(\d+)/)
+        if (wm) widthAttr = ` width="${wm[1]}"`
       }
-      return `<img src="${href}" alt="${text}">`
+      return `<img src="${href}" alt="${text}"${widthAttr}>`
     },
   },
 })

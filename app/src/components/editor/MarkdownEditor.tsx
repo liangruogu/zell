@@ -228,20 +228,22 @@ export function MarkdownEditor({
 
   // Resolve bindle-img: refs in the editor DOM to display images
   useEffect(() => {
-    if (!editor) return
-    const dom = editor.view.dom
-    const imgs = dom.querySelectorAll('img[src^="bindle-img:"]')
-    imgs.forEach(async (img) => {
-      const src = img.getAttribute('src') || ''
-      const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
-      if (!match) return
-      const [, projectId, fileName] = match
-      try {
-        const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
-        img.setAttribute('src', dataUrl)
-      } catch { /* keep placeholder */ }
-    })
-  }, [editor, content])
+    if (!editor || mode !== 'wysiwyg') return
+    const timer = setTimeout(() => {
+      const dom = editor.view.dom
+      const imgs = dom.querySelectorAll('img[src^="bindle-img:"]')
+      imgs.forEach(async (img) => {
+        const src = img.getAttribute('src') || ''
+        const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
+        if (!match) return
+        const [, projectId, fileName] = match
+        try {
+          const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
+          img.setAttribute('src', dataUrl)
+        } catch { /* keep placeholder */ }
+      })
+    }, 50)
+  }, [editor, content, mode])
 
   useEffect(() => {
     if (editor) {
