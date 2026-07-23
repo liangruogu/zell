@@ -631,6 +631,7 @@ export function MarkdownEditor({
             <div className="w-full max-w-3xl px-8 py-4">
               <EditorContent editor={editor} />
             </div>
+          </div>
           <FloatingImageMenu editor={editor} />
         </>
       ) : (
