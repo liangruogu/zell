@@ -308,9 +308,10 @@ export function AIPanel() {
                   )}
                   {msg.role === 'user' && (
                     deleteConfirmIdx === i ? (
-                      <div className="flex items-center gap-0.5">
-                        <button onClick={confirmDelete} className="px-2 py-0.5 text-[10px] bg-red-500 text-white rounded hover:bg-red-600">确认删除</button>
-                        <button onClick={() => setDeleteConfirmIdx(null)} className="px-2 py-0.5 text-[10px] bg-gray-200 text-gray-600 rounded hover:bg-gray-300">取消</button>
+                      <div className="absolute top-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg px-2 py-1.5 flex items-center gap-1.5 z-10">
+                        <span className="text-[10px] text-gray-500">删除这条对话？</span>
+                        <button onClick={confirmDelete} className="px-2 py-0.5 text-[10px] bg-red-500 text-white rounded hover:bg-red-600">确认</button>
+                        <button onClick={() => setDeleteConfirmIdx(null)} className="px-2 py-0.5 text-[10px] bg-gray-100 text-gray-600 rounded hover:bg-gray-200">取消</button>
                       </div>
                     ) : (
                       <button onClick={() => handleDelete(i)} className="p-1 text-gray-400 hover:text-red-500 rounded" title="删除">
