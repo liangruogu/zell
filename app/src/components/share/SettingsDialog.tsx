@@ -379,6 +379,21 @@ function EditorSettings({ parsed, setSetting, showToast }: {
         </select>
         <p className="text-xs text-gray-400 mt-1">Base64 模式：图片直接嵌入 Markdown<br />文件模式：图片保存为独立文件，Markdown 仅存引用</p>
       </div>
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          className="w-4 h-4 accent-bindle-500"
+          checked={parsed.editorPrefs.showPageBreaks === true}
+          onChange={async (e) => {
+            await setSetting('editor_prefs', JSON.stringify({
+              ...parsed.editorPrefs,
+              showPageBreaks: e.target.checked,
+            }))
+            showToast('打印分页线设置已保存')
+          }}
+        />
+        <span className="text-sm text-gray-700">显示打印分页线（A4 尺寸）</span>
+      </label>
       <Button type="submit" size="sm">保存偏好</Button>
     </form>
   )
