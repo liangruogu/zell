@@ -110,7 +110,7 @@ export async function sendMessage(userContent: string) {
           let desc = ''
           if (f.description) desc = ` — ${f.description}`
           if (f.extracted_text) desc += ` (已提取文本, ${f.extracted_text.length} 字符)`
-          ctx += `\n- [${f.original_name}] ${f.file_type}${desc}`
+          ctx += `\n- [${f.original_name}] ${f.file_type} | ID: ${f.id}${desc}`
         }
       }
 
