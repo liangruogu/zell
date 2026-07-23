@@ -37,24 +37,6 @@ turndown.addRule('imageWithSize', {
   },
 })
 
-// Override code block rule: trim trailing newlines from TipTap code blocks
-turndown.addRule('fencedCodeBlock', {
-  filter: (node, options) => {
-    return options.codeBlockStyle === 'fenced' &&
-      node.nodeName === 'PRE' &&
-      node.firstChild?.nodeName === 'CODE'
-  },
-  replacement: (_content, node) => {
-    const code = node.firstChild as HTMLElement
-    const className = code.getAttribute('class') || ''
-    const match = className.match(/language-(\w+)/)
-    const lang = match ? match[1] : ''
-    let text = code.textContent || ''
-    text = text.replace(/\n+$/, '')
-    return '\n\n```' + lang + '\n' + text + '\n```\n\n'
-  },
-})
-
 // Custom image renderer: keep bindle-img refs as-is (resolved later)
 marked.use({
   renderer: {
@@ -72,7 +54,10 @@ marked.use({
 export function htmlToMarkdown(html: string): string {
   if (!html) return ''
   try {
-    return turndown.turndown(html)
+    let result = turndown.turndown(html)
+    // Strip trailing newlines inside fenced code blocks
+    result = result.replace(/```(\w*)\n([\s\S]*?)\n+```/g, '```$1\n$2\n```')
+    return result
   } catch {
     return html
   }
