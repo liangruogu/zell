@@ -178,7 +178,7 @@ export function MarkdownEditor({
     onUpdate: handleUpdate,
     editorProps: {
       attributes: {
-        class: 'prose bindle-prose focus:outline-none min-h-[300px] py-4',
+        class: 'prose bindle-prose focus:outline-none min-h-[300px] pl-8 pr-4 py-4',
       },
       handleKeyDown: (_view, event) => {
         if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {

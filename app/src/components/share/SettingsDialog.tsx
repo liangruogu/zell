@@ -127,13 +127,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
 // ---- Parse stored settings ----
 function parseSettings(settings: Record<string, string>) {
-  let ai: Record<string, unknown> = {}
   let editorPrefs: Record<string, unknown> = {}
   let appearance: Record<string, unknown> = {}
-  try { if (settings['ai_config']) ai = JSON.parse(settings['ai_config']) } catch {}
   try { if (settings['editor_prefs']) editorPrefs = JSON.parse(settings['editor_prefs']) } catch {}
   try { if (settings['appearance']) appearance = JSON.parse(settings['appearance']) } catch {}
-  return { ai, editorPrefs, appearance, serverUrl: settings['server_url'] || '' }
+  return {
+    editorPrefs,
+    appearance,
+    serverUrl: settings['server_url'] || '',
+    aiProviders: settings['ai_providers'] || '[]',
+    activeProvider: settings['ai_active_provider'] || '',
+  }
 }
 
 // ---- Appearance Settings ----
@@ -184,68 +188,146 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
 }
 
 // ---- AI Settings ----
+// ---- AI Settings (multi-provider) ----
 function AISettings({ parsed, setSetting, showToast }: {
   parsed: ReturnType<typeof parseSettings>
   setSetting: (k: string, v: string) => Promise<void>
   showToast: (msg: string) => void
 }) {
-  const { register, handleSubmit, reset } = useForm({
-    defaultValues: {
-      textProvider: String(parsed.ai.text_provider || 'openai'),
-      textModel: String(parsed.ai.text_model || 'gpt-4o'),
-      textApiKey: String(parsed.ai.text_api_key || ''),
-      imageProvider: String(parsed.ai.image_provider || 'openai'),
-      imageModel: String(parsed.ai.image_model || 'dall-e-3'),
-      ollamaUrl: String(parsed.ai.local_ollama_url || 'http://localhost:11434'),
-      ollamaModel: String(parsed.ai.local_ollama_model || 'llama3:8b'),
-    },
-  })
+  const [providers, setProviders] = useState<AIProvider[]>([])
+  const [activeId, setActiveId] = useState('')
+  const [testing, setTesting] = useState<string | null>(null)
 
   useEffect(() => {
-    reset({
-      textProvider: String(parsed.ai.text_provider || 'openai'),
-      textModel: String(parsed.ai.text_model || 'gpt-4o'),
-      textApiKey: String(parsed.ai.text_api_key || ''),
-      imageProvider: String(parsed.ai.image_provider || 'openai'),
-      imageModel: String(parsed.ai.image_model || 'dall-e-3'),
-      ollamaUrl: String(parsed.ai.local_ollama_url || 'http://localhost:11434'),
-      ollamaModel: String(parsed.ai.local_ollama_model || 'llama3:8b'),
-    })
-  }, [parsed.ai.text_provider, parsed.ai.text_model, parsed.ai.text_api_key,
-      parsed.ai.image_provider, parsed.ai.image_model,
-      parsed.ai.local_ollama_url, parsed.ai.local_ollama_model, reset])
+    const raw = parsed.aiProviders
+    try {
+      const list = typeof raw === 'string' ? JSON.parse(raw) : (raw || [])
+      setProviders(list)
+    } catch { setProviders([]) }
+  }, [parsed.aiProviders])
 
-  const onSubmit = useCallback(async (data: Record<string, string>) => {
-    await setSetting('ai_config', JSON.stringify({
-      text_provider: data.textProvider, text_model: data.textModel,
-      text_api_key: data.textApiKey, image_provider: data.imageProvider,
-      image_model: data.imageModel, local_ollama_url: data.ollamaUrl,
-      local_ollama_model: data.ollamaModel, fallback_to_local: true,
-    }))
+  useEffect(() => {
+    setActiveId(parsed.activeProvider || '')
+  }, [parsed.activeProvider])
+
+  const save = useCallback(async (list: AIProvider[], active: string) => {
+    await setSetting('ai_providers', JSON.stringify(list))
+    await setSetting('ai_active_provider', active)
     showToast('AI 配置已保存')
   }, [setSetting, showToast])
 
+  const addProvider = useCallback(() => {
+    const p: AIProvider = { id: crypto.randomUUID(), name: '', baseUrl: 'https://api.openai.com/v1', apiKey: '', model: '' }
+    const list = [...providers, p]
+    setProviders(list)
+    save(list, activeId || p.id)
+  }, [providers, activeId, save])
+
+  const removeProvider = useCallback((id: string) => {
+    const list = providers.filter(p => p.id !== id)
+    setProviders(list)
+    const nextActive = activeId === id ? (list[0]?.id || '') : activeId
+    setActiveId(nextActive)
+    save(list, nextActive)
+  }, [providers, activeId, save])
+
+  const updateProvider = useCallback((id: string, field: keyof AIProvider, value: string) => {
+    const list = providers.map(p => p.id === id ? { ...p, [field]: value } : p)
+    setProviders(list)
+  }, [providers])
+
+  const handleSave = useCallback(() => {
+    save(providers, activeId)
+  }, [providers, activeId, save])
+
+  const handleTest = useCallback(async (provider: AIProvider) => {
+    setTesting(provider.id)
+    const result = await testProviderConnection(provider)
+    setTesting(null)
+    showToast(result.ok ? '连接成功' : result.message)
+  }, [showToast])
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <h3 className="font-semibold text-gray-800">AI 服务配置</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <Input id="textProvider" label="文本生成服务商" {...register('textProvider')} />
-        <Input id="textModel" label="文本模型" placeholder="gpt-4o" {...register('textModel')} />
-        <div className="col-span-2">
-          <Input id="textApiKey" label="API Key" type="password" placeholder="sk-..." {...register('textApiKey')} />
+    <div className="space-y-4">
+      <h3 className="font-semibold text-gray-800">AI 服务</h3>
+      <p className="text-xs text-gray-400">支持任意兼容 OpenAI API 的服务（DeepSeek、Ollama、Groq 等），填写 Base URL 和 API Key 即可。</p>
+
+      {providers.length === 0 && (
+        <p className="text-sm text-gray-400 py-4 text-center">暂无 AI 服务，点击添加</p>
+      )}
+
+      {providers.map((p) => (
+        <div key={p.id} className="border border-gray-200 rounded-lg p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="activeProvider"
+              checked={activeId === p.id || (providers.length === 1 && !activeId)}
+              onChange={() => { setActiveId(p.id); save(providers, p.id) }}
+              className="text-bindle-500"
+            />
+            <input
+              value={p.name}
+              onChange={(e) => updateProvider(p.id, 'name', e.target.value)}
+              placeholder="Provider 名称（如 DeepSeek）"
+              className="flex-1 text-sm font-medium bg-transparent border-none outline-none"
+            />
+            <button onClick={() => removeProvider(p.id)} className="p-1 text-gray-400 hover:text-red-500" title="删除">
+              <Trash2 size={14} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-0.5">Base URL</label>
+              <input
+                value={p.baseUrl}
+                onChange={(e) => updateProvider(p.id, 'baseUrl', e.target.value)}
+                placeholder="https://api.deepseek.com"
+                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-0.5">API Key</label>
+                <input
+                  type="password"
+                  value={p.apiKey}
+                  onChange={(e) => updateProvider(p.id, 'apiKey', e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-0.5">模型</label>
+                <input
+                  value={p.model}
+                  onChange={(e) => updateProvider(p.id, 'model', e.target.value)}
+                  placeholder="deepseek-chat"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleTest(p)}
+                disabled={testing === p.id || !p.baseUrl}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
+              >
+                {testing === p.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                测试连接
+              </button>
+            </div>
+          </div>
         </div>
-        <Input id="imageProvider" label="图片生成服务商" {...register('imageProvider')} />
-        <Input id="imageModel" label="图片模型" placeholder="dall-e-3" {...register('imageModel')} />
-      </div>
+      ))}
 
-      <h3 className="font-semibold text-gray-800 pt-2">本地模型 (Ollama)</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <Input id="ollamaUrl" label="Ollama 地址" placeholder="http://localhost:11434" {...register('ollamaUrl')} />
-        <Input id="ollamaModel" label="本地模型名" placeholder="llama3:8b" {...register('ollamaModel')} />
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" onClick={addProvider}>
+          <Plus size={14} className="mr-1" />添加 Provider
+        </Button>
+        <Button size="sm" onClick={handleSave}>保存配置</Button>
       </div>
-
-      <Button type="submit" size="sm">保存 AI 配置</Button>
-    </form>
+    </div>
   )
 }
 
