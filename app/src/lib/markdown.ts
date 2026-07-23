@@ -27,7 +27,7 @@ turndown.addRule('imageWithSize', {
   },
 })
 
-// Custom image renderer: support width from title attribute
+// Custom image renderer: support width from title attribute, hide bindle-img broken icon
 marked.use({
   renderer: {
     image({ href, title, text }: { href: string; title: string | null; text: string }) {
@@ -35,6 +35,9 @@ marked.use({
       if (title) {
         const wm = title.match(/width=(\d+)/)
         if (wm) widthAttr = ` width="${wm[1]}"`
+      }
+      if (href.startsWith('bindle-img:')) {
+        return `<img src="${href}" alt="${text}"${widthAttr} style="opacity:0;min-width:40px;min-height:40px" onerror="return false">`
       }
       return `<img src="${href}" alt="${text}"${widthAttr}>`
     },
