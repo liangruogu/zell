@@ -58,6 +58,7 @@ pub fn run() {
             commands::link::get_external_links,
             commands::link::update_external_link,
             commands::link::delete_external_link,
+            commands::link::sync_link,
             commands::resource::search_documents,
             commands::resource::search_knowledge,
             commands::resource::search_resources,
