@@ -1,6 +1,6 @@
 # Bindle 开发进度报告
 
-> 最后更新：2026-06-08
+> 最后更新：2026-07-23
 
 ---
 
@@ -52,20 +52,28 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 | 功能 | 状态 | 说明 |
 |------|------|------|
 | 链接 CRUD | ✅ | 4 个 Rust 命令：create/list/update/delete |
-| 链接类型自动检测 | ✅ | 输入 URL 自动识别 GitHub/Figma/Canva/Notion |
-| 一键打开浏览器 | ✅ | `@tauri-apps/plugin-shell::open()` 调用系统浏览器 |
-| AI Skill 字段 | ✅ | 附注说明，供 AI 上下文注入 |
-| 链接表单 | ✅ | 右侧编辑面板，标题/URL/类型/描述/AI Skill |
+| 文件拖入导入 | ✅ | 支持 PDF/Word/PPT/图片/Markdown，自动文本提取 |
+| 文本提取 | ✅ | PDF/TXT/MD 自动提取，索引到 FTS5 |
+| 文件描述字段 | ✅ | 用户可添加描述，注入 AI 上下文 |
+| 文件重命名 | ✅ | 双击内联编辑 |
+| 一键打开浏览器 | ✅ | `opener` crate 跨平台打开文件/链接 |
+| 链接表单 | ✅ | 右侧编辑面板，标题/URL/类型/描述 |
 
-### 阶段五：分享协作（未开始）
+### 阶段五：AI Agent（已完成）
 
-| 功能 | 状态 |
-|------|------|
-| 邀请码生成/管理 | ❌ |
-| 密钥验证中间件 | ❌ |
-| JWT 签发与验证 | ❌ |
-| Go 后端服务 | ❌ |
-| WebSocket 实时协作 | ❌ |
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| LangChain Agent | ✅ | ChatOpenAI + bindTools，6 个工具 |
+| 流式对话 | ✅ | 实时打字机效果 |
+| 多 Provider 管理 | ✅ | 任意 OpenAI 兼容 API（DeepSeek/Ollama/Groq 等） |
+| 知识库搜索工具 | ✅ | search_knowledge：FTS5 全文搜索文章 |
+| 外部资源搜索工具 | ✅ | search_resources：搜索文件/链接提取文本 |
+| 文章读取工具 | ✅ | get_article / list_articles |
+| 资源读取工具 | ✅ | get_resource：读取外部文件完整内容 |
+| 项目上下文注入 | ✅ | 自动注入项目背景 + 文章列表 + 文件描述 |
+| 代码高亮 | ✅ | highlight.js 12 种语言 |
+| Token 用量可视化 | ✅ | SVG 圆环 + hover tooltip |
+| 删除二次确认 | ✅ | 浮动弹窗确认 |
 
 ### 阶段六：完善交付（部分完成）
 
