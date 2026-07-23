@@ -215,7 +215,7 @@ export function AIPanel() {
         </div>
         <div className="flex items-center gap-1">
           {/* Token ring */}
-          <div className="relative w-5 h-5" title={`${estimateTokens.toLocaleString()} / ${TOKEN_LIMIT.toLocaleString()} tokens`}>
+          <div className="relative w-5 h-5 group/token cursor-pointer">
             <svg className="w-5 h-5 -rotate-90" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="9" fill="none" stroke="#e5e7eb" strokeWidth="3" />
               <circle cx="12" cy="12" r="9" fill="none"
@@ -225,6 +225,12 @@ export function AIPanel() {
                 strokeLinecap="round"
               />
             </svg>
+            {/* Hover tooltip */}
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/token:block z-20">
+              <div className="bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
+                已用 {tokenPct}% · {estimateTokens.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens
+              </div>
+            </div>
           </div>
           <button
             onClick={clearMessages}
