@@ -459,48 +459,62 @@ export function MarkdownEditor({
   )
 
   const previewRef = useRef<HTMLDivElement>(null)
-  const previewHtml = useMemo(() => {
-    if (mode === 'split' && splitSource) {
-      const raw = markdownToHtml(splitSource)
+  const [resolvedPreviewHtml, setResolvedPreviewHtml] = useState('')
+
+  // Generate and resolve preview HTML for split mode
+  useEffect(() => {
+    if (mode !== 'split' || !splitSource) {
+      setResolvedPreviewHtml('')
+      return
+    }
+    const raw = markdownToHtml(splitSource)
+    const refs = [...raw.matchAll(/bindle-img:([^\s")<]+)/g)].map(m => m[0])
+    if (refs.length === 0) {
+      // Process code highlighting
       const div = document.createElement('div')
       div.innerHTML = raw
       div.querySelectorAll('pre code[class*="language-"]').forEach((code) => {
         const pre = code.parentElement!
         const match = code.className.match(/language-(\w+)/)
-        if (match) {
-          const lang = match[1]
-          pre.setAttribute('data-language', lang)
-          if (hljs.getLanguage(lang)) {
-            try {
-              const text = code.textContent || ''
-              code.innerHTML = hljs.highlight(text, { language: lang }).value
-              code.classList.add('hljs')
-            } catch { /* fallback */ }
-          }
+        if (match && hljs.getLanguage(match[1])) {
+          try {
+            code.innerHTML = hljs.highlight(code.textContent || '', { language: match[1] }).value
+            code.classList.add('hljs')
+          } catch { /* fallback */ }
         }
       })
-      return div.innerHTML
+      setResolvedPreviewHtml(div.innerHTML)
+      return
     }
-    return ''
-  }, [mode, splitSource])
-
-  // Resolve bindle-img refs in split mode preview
-  useEffect(() => {
-    if (mode !== 'split' || !previewRef.current) return
-    const imgs = previewRef.current.querySelectorAll('img[src^="bindle-img:"]')
-    imgs.forEach(async (img) => {
-      const src = img.getAttribute('src') || ''
-      const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
-      if (!match) return
-      const [, projectId, fileName] = match
+    const uniqueRefs = [...new Set(refs)]
+    Promise.all(uniqueRefs.map(async (ref) => {
+      const parts = ref.replace('bindle-img:', '').split('/')
+      const [, ...rest] = parts
+      const fileName = rest.join('/')
       try {
-        const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
-        if (img.getAttribute('src')?.startsWith('bindle-img:')) {
-          img.setAttribute('src', dataUrl)
+        const dataUrl = await invoke<string>('resolve_project_image', { projectId: parts[0], fileName })
+        return { ref, dataUrl }
+      } catch { return { ref, dataUrl: '' } }
+    })).then((results) => {
+      let html = raw
+      for (const { ref, dataUrl } of results) {
+        if (dataUrl) html = html.replace(new RegExp(ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), dataUrl)
+      }
+      const div = document.createElement('div')
+      div.innerHTML = html
+      div.querySelectorAll('pre code[class*="language-"]').forEach((code) => {
+        const pre = code.parentElement!
+        const match = code.className.match(/language-(\w+)/)
+        if (match && hljs.getLanguage(match[1])) {
+          try {
+            code.innerHTML = hljs.highlight(code.textContent || '', { language: match[1] }).value
+            code.classList.add('hljs')
+          } catch { /* fallback */ }
         }
-      } catch { /* keep */ }
+      })
+      setResolvedPreviewHtml(div.innerHTML)
     })
-  }, [previewHtml, mode])
+  }, [splitSource, mode])
 
   // Current code block language for status bar (Typora style)
   const codeBlockLang = useMemo(() => {
@@ -560,7 +574,7 @@ export function MarkdownEditor({
             <div
               ref={previewRef}
               className="flex-1 overflow-auto p-4 prose bindle-prose"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
+              dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
             />
           </div>
         </div>
