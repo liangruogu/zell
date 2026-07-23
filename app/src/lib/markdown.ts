@@ -55,7 +55,6 @@ export function htmlToMarkdown(html: string): string {
   if (!html) return ''
   try {
     let result = turndown.turndown(html)
-    // Strip trailing newlines inside fenced code blocks
     result = result.replace(/```(\w*)\n([\s\S]*?)\n+```/g, '```$1\n$2\n```')
     return result
   } catch {

@@ -249,10 +249,14 @@ export function MarkdownEditor({
     if (content !== prevContentRef.current) {
       prevContentRef.current = content
       const html = markdownToHtml(content || '')
+      // Strip trailing newlines from code blocks (TipTap adds \n on render)
+      const cleaned = html.replace(/(<code[^>]*>)([\s\S]*?)(\n*)(<\/code>)/gi, (_, open, body, trail, close) => {
+        return open + body.replace(/\n+$/, '') + close
+      })
       // Pre-resolve bindle-img refs before rendering to avoid broken image flash
-      const refs = [...html.matchAll(/bindle-img:([^\s")<]+)/g)].map(m => m[1])
+      const refs = [...cleaned.matchAll(/bindle-img:([^\s")<]+)/g)].map(m => m[1])
       if (refs.length === 0) {
-        editor.commands.setContent(html)
+        editor.commands.setContent(cleaned)
         return
       }
       const uniqueRefs = [...new Set(refs)]
@@ -263,7 +267,7 @@ export function MarkdownEditor({
           return { ref, dataUrl }
         } catch { return { ref, dataUrl: '' } }
       })).then((results) => {
-        let resolved = html
+        let resolved = cleaned
         for (const { ref, dataUrl } of results) {
           if (dataUrl) {
             const bindleRef = `bindle-img:${ref}`
