@@ -76,9 +76,9 @@ fn extract_text(path: &Path, file_type: &str) -> Result<String, String> {
             }
             Ok(all_md)
         }
-        "docx" | "pptx" => {
+        "docx" | "pptx" | "xlsx" => {
             let path_str = path.to_string_lossy().to_string();
-            undoc::extract_text(&path_str).map_err(|e| format!("Extract failed: {}", e))
+            undoc::to_markdown(&path_str).map_err(|e| format!("Extract failed: {}", e))
         }
         _ => Ok(String::new()),
     }
