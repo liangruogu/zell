@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
-import { X, Palette, Bot, FileText, Server, CheckCircle } from 'lucide-react'
+import { X, Palette, Bot, FileText, Server, CheckCircle, Plus, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useForm } from 'react-hook-form'
 import { cn } from '@/lib/utils'
+import { testProviderConnection, type AIProvider } from '@/services/aiService'
 
 type SettingsCategory = 'appearance' | 'ai' | 'editor' | 'server'
 
