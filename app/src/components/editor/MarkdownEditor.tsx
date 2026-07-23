@@ -265,14 +265,23 @@ export function MarkdownEditor({
       })).then((results) => {
         let resolved = html
         for (const { ref, dataUrl } of results) {
-          if (dataUrl) resolved = resolved.replace(new RegExp(`bindle-img:${ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), dataUrl)
+          if (dataUrl) {
+            const bindleRef = `bindle-img:${ref}`
+            // Replace bindle-img src with resolved data URL, but keep bindle ref as attribute
+            const escapedRef = bindleRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            resolved = resolved.replace(
+              new RegExp(`src="${escapedRef}"`, 'g'),
+              `src="${dataUrl}" data-bindle-ref="${bindleRef}" data-bindle-resolved="${dataUrl}"`
+            )
+          }
         }
         if (!editor.isDestroyed) editor.commands.setContent(resolved)
       })
     }
   }, [content, editor, mode])
 
-  // Resolve bindle-img refs inserted by paste/drag or loaded from markdown
+  // Resolve bindle-img refs for display without corrupting the src attribute.
+  // We store the resolved URL in a data- attribute so turndown preserves bindle-img: refs.
   useEffect(() => {
     if (!editor || mode !== 'wysiwyg') return
     const resolve = () => {
@@ -282,8 +291,18 @@ export function MarkdownEditor({
         const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
         if (!match) return
         const [, projectId, fileName] = match
+        const cached = img.getAttribute('data-bindle-resolved')
+        if (cached) {
+          // Already resolved from server, just apply
+          if (img.getAttribute('src')?.startsWith('bindle-img:')) {
+            img.setAttribute('src', cached)
+          }
+          return
+        }
         try {
           const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
+          img.setAttribute('data-bindle-ref', src)
+          img.setAttribute('data-bindle-resolved', dataUrl)
           if (img.getAttribute('src')?.startsWith('bindle-img:')) {
             img.setAttribute('src', dataUrl)
           }
@@ -292,7 +311,6 @@ export function MarkdownEditor({
     }
     editor.on('transaction', resolve)
     editor.on('create', resolve)
-    // Resolve immediately on mount (in case create already fired)
     resolve()
     return () => {
       editor.off('transaction', resolve)

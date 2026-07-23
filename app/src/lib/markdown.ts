@@ -15,7 +15,14 @@ turndown.addRule('imageWithSize', {
     const el = node as HTMLImageElement
     const alt = el.getAttribute('alt') || ''
     const src = el.getAttribute('src') || ''
+    const bindleRef = el.getAttribute('data-bindle-ref')
     const width = el.getAttribute('width')
+
+    // If resolved from bindle-img, use the original ref
+    if (bindleRef) {
+      const titleAttr = width ? ` "width=${width}"` : ''
+      return `![${alt}](${bindleRef}${titleAttr})`
+    }
 
     if (src.startsWith('bindle-img:')) {
       const titleAttr = width ? ` "width=${width}"` : ''
