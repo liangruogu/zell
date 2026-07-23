@@ -4,14 +4,14 @@ interface AIState {
   isOpen: boolean
   sourceType: 'knowledge' | 'whiteboard' | null
   selectedText: string
-  messages: { role: 'user' | 'assistant'; content: string }[]
+  messages: { role: 'user' | 'assistant'; content: string; reasoningContent?: string }[]
   streaming: boolean
 
   openPanel: (sourceType: 'knowledge' | 'whiteboard', selectedText?: string) => void
   closePanel: () => void
   setSelectedText: (text: string) => void
-  addMessage: (msg: { role: 'user' | 'assistant'; content: string }) => void
-  updateMessage: (index: number, content: string) => void
+  addMessage: (msg: { role: 'user' | 'assistant'; content: string; reasoningContent?: string }) => void
+  updateMessage: (index: number, content: string, reasoningContent?: string) => void
   deleteMessagePair: (index: number) => void
   truncateMessages: (index: number) => void
   setStreaming: (v: boolean) => void
@@ -39,9 +39,11 @@ export const useAIStore = create<AIState>((set) => ({
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
 
-  updateMessage: (index: number, content: string) =>
+  updateMessage: (index: number, content: string, reasoningContent?: string) =>
     set((state) => ({
-      messages: state.messages.map((m, i) => (i === index ? { ...m, content } : m)),
+      messages: state.messages.map((m, i) =>
+        i === index ? { ...m, content, reasoningContent: reasoningContent ?? m.reasoningContent } : m
+      ),
     })),
 
   deleteMessagePair: (index: number) =>

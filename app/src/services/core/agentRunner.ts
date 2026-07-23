@@ -30,8 +30,15 @@ function buildMessages(systemPrompt: string, messages: CoreMessage[]) {
     new SystemMessage(systemPrompt),
   ]
   for (const m of messages) {
-    if (m.role === 'user') result.push(new HumanMessage(m.content as string))
-    else if (m.role === 'assistant') result.push(new AIMessage(m.content as string))
+    if (m.role === 'user') {
+      result.push(new HumanMessage(m.content as string))
+    } else if (m.role === 'assistant') {
+      const reasoning = (m as any).reasoningContent
+      result.push(new AIMessage({
+        content: m.content as string,
+        additional_kwargs: reasoning ? { reasoning_content: reasoning } : undefined,
+      } as any))
+    }
   }
   return result
 }
@@ -40,7 +47,7 @@ export async function runAgent(
   messages: CoreMessage[],
   config: AgentConfig,
   callbacks: AgentStreamCallbacks,
-) {
+): Promise<string> {
   const providersRaw = useSettingsStore.getState().settings['ai_providers']
   let providers: Array<{ id: string; name: string; baseUrl: string; apiKey: string; model: string }> = []
   try { providers = JSON.parse(providersRaw || '[]') } catch { /* empty */ }
@@ -52,7 +59,7 @@ export async function runAgent(
 
   if (!prov) {
     callbacks.onError?.('请先在设置中配置 AI 服务。')
-    return
+    return ''
   }
 
   const modelName = config.modelId || prov.model
@@ -135,15 +142,22 @@ export async function runAgent(
 
       // Second call with tool results
       const stream2 = await llmWithTools.stream(langMessages)
+      let reasoning2 = ''
       for await (const chunk of stream2) {
+        if ((chunk as any).additional_kwargs?.reasoning_content) {
+          reasoning2 += (chunk as any).additional_kwargs.reasoning_content
+        }
         if (chunk.content) {
           const text = typeof chunk.content === 'string' ? chunk.content : ''
           if (text) callbacks.onTextDelta(text)
         }
       }
+      return reasoning2
     }
+    return reasoningContent
   } catch (e: any) {
-    if (e.name === 'AbortError') return
+    if (e.name === 'AbortError') return ''
     callbacks.onError?.(`请求失败: ${e.message || String(e)}`)
+    return ''
   }
 }
