@@ -32,14 +32,20 @@ export function useResizablePanel(
   snapThreshold = 80
 ): ResizablePanelState {
   const [width, setWidth] = useState(defaultWidth)
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('bindle_panel_collapsed') === '1' } catch { return false }
+  })
   const [dragging, setDragging] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
   const effectiveWidth = collapsed ? 0 : width
 
+  const persistCollapsed = (v: boolean) => { try { localStorage.setItem('bindle_panel_collapsed', v ? '1' : '0') } catch { /* */ } }
+
   const toggle = useCallback(() => {
-    setCollapsed((c) => !c)
+    setCollapsed((c) => {
+      const next = !c; persistCollapsed(next); return next
+    })
   }, [])
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
@@ -59,13 +65,13 @@ export function useResizablePanel(
       if (collapsed) {
         newWidth = e.clientX - rect.left
         if (newWidth < snapThreshold) return
-        setCollapsed(false)
+        setCollapsed(false); persistCollapsed(false)
       }
       if (newWidth < snapThreshold) {
-        setCollapsed(true)
+        setCollapsed(true); persistCollapsed(true)
         setWidth(Math.max(minWidth, newWidth))
       } else {
-        setCollapsed(false)
+        setCollapsed(false); persistCollapsed(false)
         setWidth(Math.min(maxWidth, Math.max(minWidth, newWidth)))
       }
     }

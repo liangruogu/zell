@@ -1,5 +1,15 @@
 import { create } from 'zustand'
 
+const STORAGE_OPEN_KEY = 'bindle_ai_open'
+
+function loadAIOpen(): boolean {
+  try { return localStorage.getItem(STORAGE_OPEN_KEY) === '1' } catch { return false }
+}
+
+function saveAIOpen(v: boolean) {
+  try { localStorage.setItem(STORAGE_OPEN_KEY, v ? '1' : '0') } catch { /* */ }
+}
+
 interface AIMessage_ {
   role: 'user' | 'assistant'
   content: string
@@ -25,20 +35,22 @@ interface AIState {
 }
 
 export const useAIStore = create<AIState>((set) => ({
-  isOpen: false,
+  isOpen: loadAIOpen(),
   sourceType: null,
   selectedText: '',
   messages: [],
   streaming: false,
 
-  openPanel: (sourceType, selectedText) =>
+  openPanel: (sourceType, selectedText) => {
+    saveAIOpen(true)
     set((state) => ({
       isOpen: true,
       sourceType,
       selectedText: selectedText !== undefined ? selectedText : state.selectedText,
-    })),
+    }))
+  },
 
-  closePanel: () => set({ isOpen: false }),
+  closePanel: () => { saveAIOpen(false); set({ isOpen: false }) },
 
   setSelectedText: (selectedText: string) => set({ selectedText }),
 

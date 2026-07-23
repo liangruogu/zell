@@ -16,11 +16,6 @@ export function AppShell({ children }: AppShellProps) {
 
   const showAI = location.pathname.includes('/knowledge')
 
-  // Close AI panel when leaving knowledge base
-  useEffect(() => {
-    if (!showAI && isAIOpen) closePanel()
-  }, [showAI, isAIOpen, closePanel])
-
   const handleAIDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     setAiDragging(true)
