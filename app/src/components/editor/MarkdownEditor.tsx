@@ -238,7 +238,7 @@ export function MarkdownEditor({
     onUpdate: handleUpdate,
     editorProps: {
       attributes: {
-        class: 'prose bindle-prose focus:outline-none min-h-[300px] px-8 py-4 max-w-3xl mx-auto',
+        class: 'prose bindle-prose focus:outline-none min-h-[300px]',
       },
       handleKeyDown: (_view, event) => {
         if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {
@@ -627,9 +627,10 @@ export function MarkdownEditor({
 
       {mode === 'wysiwyg' ? (
         <>
-          <div className="flex-1 overflow-auto">
-            <EditorContent editor={editor} />
-          </div>
+          <div className="flex-1 overflow-auto flex justify-center">
+            <div className="w-full max-w-3xl px-8 py-4">
+              <EditorContent editor={editor} />
+            </div>
           <FloatingImageMenu editor={editor} />
         </>
       ) : (
