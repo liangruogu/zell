@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { Image } from '@tiptap/extension-image'
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
@@ -176,6 +178,26 @@ export function MarkdownEditor({
       Placeholder.configure({ placeholder }),
       CharacterCount,
       CodeBlockLowlight.configure({ lowlight }),
+      // ProseMirror plugin: auto-trim trailing newlines from code blocks
+      new Plugin({
+        key: new PluginKey('trimCodeBlockTrailingNewline'),
+        appendTransaction: (_transactions, oldState, newState) => {
+          if (oldState.doc.eq(newState.doc)) return null
+          let tr = newState.tr
+          let changed = false
+          newState.doc.descendants((node, pos) => {
+            if (node.type.name === 'codeBlock') {
+              const text = node.textContent
+              const newlines = text.match(/\n+$/)
+              if (newlines && newlines[0].length > 0) {
+                tr.delete(pos + text.length - newlines[0].length + 1, pos + text.length + 1)
+                changed = true
+              }
+            }
+          })
+          return changed ? tr : null
+        },
+      }),
     ],
     content: initialHtml,
     editable: editable,

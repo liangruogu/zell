@@ -89,6 +89,12 @@ html, body, #root {
   font-weight: normal;
 }
 
+/* Remove Tailwind Typography double quotes from blockquote */
+.prose blockquote p::before,
+.prose blockquote p::after {
+  content: none;
+}
+
 /* Language label on code blocks (via data-language attr set by JS) */
 .prose.bindle-prose pre[data-language] {
   position: relative;
