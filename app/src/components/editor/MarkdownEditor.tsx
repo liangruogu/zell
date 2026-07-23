@@ -144,6 +144,9 @@ export function MarkdownEditor({
     ed.chain().focus().setImage({ src: dataUrl }).run()
   }, [imageStorage])
 
+  const insertImageRef = useRef(insertImage)
+  insertImageRef.current = insertImage
+
   const [internalMode, setInternalMode] = useState<EditorMode>('wysiwyg')
   const mode = externalMode ?? internalMode
 
@@ -278,7 +281,7 @@ export function MarkdownEditor({
               const reader = new FileReader()
               reader.onload = (e) => {
                 const dataUrl = e.target?.result as string
-                insertImage(dataUrl)
+                insertImageRef.current(dataUrl)
               }
               reader.readAsDataURL(file)
               return true
@@ -295,7 +298,7 @@ export function MarkdownEditor({
             const reader = new FileReader()
             reader.onload = (e) => {
               const dataUrl = e.target?.result as string
-              editorRef.current?.chain().focus().setImage({ src: dataUrl }).run()
+              insertImageRef.current(dataUrl, (file as any).path)
             }
             reader.readAsDataURL(file)
             return true
@@ -384,12 +387,12 @@ export function MarkdownEditor({
     }
     editor.on('create', resolve)
     const onUpdate = () => {
-      // Only run on content changes (not every transaction like resize)
       const imgs = editor.view.dom.querySelectorAll('img[src^="bindle-img:"]:not([data-bindle-resolved])')
       if (imgs.length > 0) resolve()
     }
     editor.on('update', onUpdate)
-    resolve()
+    // Use rAF to ensure DOM is ready after mode switch
+    requestAnimationFrame(resolve)
     return () => {
       editor.off('create', resolve)
       editor.off('update', onUpdate)
