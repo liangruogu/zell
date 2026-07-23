@@ -226,8 +226,8 @@ export function AIPanel() {
               />
             </svg>
             {/* Hover tooltip */}
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/token:block z-20">
-              <div className="bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover/token:block z-20">
+              <div className="bg-white border border-gray-200 text-gray-600 text-[10px] rounded px-2 py-1 whitespace-nowrap shadow">
                 已用 {tokenPct}% · {estimateTokens.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens
               </div>
             </div>
