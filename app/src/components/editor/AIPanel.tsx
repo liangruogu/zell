@@ -68,6 +68,7 @@ export function AIPanel() {
   const [showProviders, setShowProviders] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
+  const [deleteConfirmIdx, setDeleteConfirmIdx] = useState<number | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -116,8 +117,26 @@ export function AIPanel() {
   )
 
   const handleDelete = (index: number) => {
-    deleteMessagePair(index)
+    setDeleteConfirmIdx(index)
   }
+
+  const confirmDelete = () => {
+    if (deleteConfirmIdx !== null) {
+      deleteMessagePair(deleteConfirmIdx)
+      setDeleteConfirmIdx(null)
+    }
+  }
+
+  // Token estimation: ~1.5 chars per token for mixed zh/en
+  const estimateTokens = useMemo(() => {
+    const SYSTEM_BASE = 800 // rough estimate for system prompt + tools
+    let chars = SYSTEM_BASE * 1.5
+    for (const m of messages) chars += m.content.length
+    return Math.ceil(chars / 1.5)
+  }, [messages])
+
+  const TOKEN_LIMIT = 65536 // DeepSeek v4 context window
+  const tokenPct = Math.min(100, Math.round((estimateTokens / TOKEN_LIMIT) * 100))
 
   const handleEdit = (index: number, content: string) => {
     setEditingIndex(index)
@@ -202,6 +221,23 @@ export function AIPanel() {
         </div>
       </div>
 
+      {/* Token usage bar */}
+      <div className="px-4 py-1.5 border-b border-gray-100 shrink-0">
+        <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+          <span>上下文 {estimateTokens.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens</span>
+          <span>{tokenPct}%</span>
+        </div>
+        <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{
+              width: `${tokenPct}%`,
+              background: tokenPct > 80 ? '#ef4444' : tokenPct > 50 ? '#f59e0b' : '#22c55e',
+            }}
+          />
+        </div>
+      </div>
+
       {/* Messages */}
       <div ref={listRef} className="flex-1 overflow-auto px-4 py-3 space-y-3">
         {!hasAI && (
@@ -260,9 +296,16 @@ export function AIPanel() {
                     </button>
                   )}
                   {msg.role === 'user' && (
-                    <button onClick={() => handleDelete(i)} className="p-1 text-gray-400 hover:text-red-500 rounded" title="删除">
-                      <Trash2 size={13} />
-                    </button>
+                    deleteConfirmIdx === i ? (
+                      <div className="flex items-center gap-0.5">
+                        <button onClick={confirmDelete} className="px-2 py-0.5 text-[10px] bg-red-500 text-white rounded hover:bg-red-600">确认删除</button>
+                        <button onClick={() => setDeleteConfirmIdx(null)} className="px-2 py-0.5 text-[10px] bg-gray-200 text-gray-600 rounded hover:bg-gray-300">取消</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => handleDelete(i)} className="p-1 text-gray-400 hover:text-red-500 rounded" title="删除">
+                        <Trash2 size={13} />
+                      </button>
+                    )
                   )}
                 </div>
               </>
