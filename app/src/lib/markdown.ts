@@ -10,9 +10,10 @@ export function setImagesBaseDir(dir: string) {
 
 function bindleImgToSrc(ref: string): string {
   if (!_imagesBaseDir) return ref
-  // ref format: "projId/fileName"
-  const path = `${_imagesBaseDir}/projects/${ref}`
-  return convertFileSrc(path)
+  const sep = _imagesBaseDir.endsWith('\\') || _imagesBaseDir.endsWith('/') ? '' : '/'
+  const path = `${_imagesBaseDir}${sep}projects/${ref}`
+  const url = convertFileSrc(path)
+  return url
 }
 
 const turndown = new TurndownService({

@@ -55,6 +55,8 @@ export function MarkdownEditor({
 }: MarkdownEditorProps) {
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const onSaveRef = useRef(onSave)
+  onSaveRef.current = onSave
 
   // Load settings on mount to get toolbar preference
   const loadSettings = useSettingsStore((s) => s.loadSettings)
@@ -101,7 +103,8 @@ export function MarkdownEditor({
           const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
           // Get the images dir path and convert to asset URL for direct rendering
           const dir = await appDataDir()
-          const imgPath = `${dir}projects/${projectId}/images/${saved.file_name}`
+          const sep = dir.endsWith('\\') || dir.endsWith('/') ? '' : '\\'
+          const imgPath = `${dir}${sep}projects\\${projectId}\\images\\${saved.file_name}`
           const assetUrl = convertFileSrc(imgPath)
           ed.chain().focus().setImage({ src: assetUrl }).run()
           return
@@ -378,6 +381,18 @@ export function MarkdownEditor({
       }
     }
   }, [mode])
+
+  // Track previous mode for split → wysiwyg sync
+  const prevModeRef = useRef(mode)
+  useEffect(() => {
+    const prev = prevModeRef.current
+    prevModeRef.current = mode
+    if (prev === 'split' && mode === 'wysiwyg' && splitSource) {
+      const html = markdownToHtml(splitSource)
+      onChangeRef.current?.(html, splitSource)
+      onSaveRef.current?.(html, splitSource)
+    }
+  }, [mode, splitSource])
 
   const handleSplitChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {

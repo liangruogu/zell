@@ -7,6 +7,13 @@
     "core:default",
     "shell:allow-open",
     "fs:default",
-    "dialog:default"
+    "dialog:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$APPDATA/**" },
+        { "path": "$APPDATA/projects/**" }
+      ]
+    }
   ]
 }
