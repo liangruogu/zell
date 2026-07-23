@@ -186,41 +186,10 @@ export function AIPanel() {
     <div className="border-l border-gray-200 bg-white flex flex-col h-full">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-bindle-500" />
-          {activeProvider ? (
-            <div className="relative">
-              <button
-                onClick={() => setShowProviders(!showProviders)}
-                className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-bindle-600"
-              >
-                {activeProvider.name || 'AI 助手'}
-                <ChevronDown size={12} />
-              </button>
-              {showProviders && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
-                  {providers.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => handleSwitchProvider(p.id)}
-                      className={cn(
-                        'w-full text-left px-3 py-2 text-sm hover:bg-gray-50',
-                        (activeId === p.id || (!activeId && p === providers[0])) && 'text-bindle-600 font-medium',
-                      )}
-                    >
-                      {p.name || p.model}
-                      {(activeId === p.id || (!activeId && p === providers[0])) && (
-                        <span className="float-right text-bindle-500">✓</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <span className="text-sm font-medium text-gray-700">AI 助手</span>
-          )}
+          <span className="text-sm font-medium text-gray-700">AI 助手</span>
         </div>
         <div className="flex items-center gap-1">
           {/* Token ring */}
@@ -234,7 +203,6 @@ export function AIPanel() {
                 strokeLinecap="round"
               />
             </svg>
-            {/* Hover tooltip */}
             <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover/token:block z-20">
               <div className="bg-white border border-gray-200 text-gray-600 text-[10px] rounded px-2.5 py-1.5 whitespace-nowrap shadow leading-relaxed">
                 <div>已用 {tokenPct}%</div>
@@ -242,13 +210,6 @@ export function AIPanel() {
               </div>
             </div>
           </div>
-          <button
-            onClick={clearMessages}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded text-xs"
-            title="清空对话"
-          >
-            清空
-          </button>
           <button
             onClick={closePanel}
             className="p-1 text-gray-400 hover:text-gray-600 rounded"
@@ -267,9 +228,7 @@ export function AIPanel() {
           <MessageSquare size={12} />
           <span className="truncate">
             {activeConversationId
-              ? conversations.find(c => c.id === activeConversationId)?.created_at
-                ? new Date(conversations.find(c => c.id === activeConversationId)!.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                : '对话'
+              ? (conversations.find(c => c.id === activeConversationId)?.title || '对话')
               : '新对话'}
           </span>
           <ChevronDown size={10} />
@@ -288,7 +247,7 @@ export function AIPanel() {
         )}
 
         {showConvList && (
-          <div className="absolute top-[72px] left-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
+          <div className="absolute left-3 right-3 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
             {conversations.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-400 text-center">暂无历史对话</p>
             ) : (
@@ -302,7 +261,7 @@ export function AIPanel() {
                   onClick={() => { switchConversation(c.id); setShowConvList(false) }}
                 >
                   <span className="truncate flex-1">
-                    {new Date(c.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {c.title || new Date(c.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </span>
                   <button
                     onClick={(e) => {
@@ -419,7 +378,35 @@ export function AIPanel() {
 
       {/* Input */}
       <div className="p-3 border-t border-gray-100 shrink-0">
-        <div className="flex gap-2">
+        <div className="flex items-end gap-2">
+          {/* Model selector */}
+          {activeProvider ? (
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setShowProviders(!showProviders)}
+                className="flex items-center gap-0.5 px-2 py-2 text-xs text-gray-500 hover:text-bindle-600 border border-gray-200 rounded-lg hover:border-bindle-300"
+              >
+                <span className="truncate max-w-[80px]">{activeProvider.name || activeProvider.model}</span>
+                <ChevronDown size={10} />
+              </button>
+              {showProviders && (
+                <div className="absolute bottom-full left-0 mb-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                  {providers.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleSwitchProvider(p.id)}
+                      className={cn(
+                        'w-full text-left px-3 py-2 text-sm hover:bg-gray-50',
+                        (activeId === p.id || (!activeId && p === providers[0])) && 'text-bindle-600 font-medium',
+                      )}
+                    >
+                      {p.name || p.model}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
           <textarea
             ref={inputRef}
             value={pendingInput}

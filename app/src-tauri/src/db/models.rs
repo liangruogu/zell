@@ -66,6 +66,7 @@ pub struct AiConversation {
     pub source_id: Option<String>,
     pub selected_text: Option<String>,
     pub messages: String,
+    pub title: String,
     pub created_at: String,
     pub updated_at: String,
 }

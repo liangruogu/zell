@@ -481,30 +481,21 @@ export default function ExternalLinksPage() {
               </div>
             </div>
           ) : tab === 'links' && (currentLink || isNewLink) ? (
-            <div className="flex-1 overflow-auto p-6">
-              <div className="max-w-xl space-y-4">
-                <h3 className="font-semibold text-gray-800">{isNewLink ? '添加外部链接' : '编辑链接'}</h3>
+            <div className="flex-1 overflow-auto p-4">
+              <div className="max-w-xl space-y-3">
+                <h3 className="font-semibold text-gray-800 text-sm">{isNewLink ? '添加外部链接' : '编辑链接'}</h3>
                 <Input id="title" label="标题" placeholder="链接名称" value={title} onChange={(e) => setTitle(e.target.value)} />
                 <Input id="url" label="URL" placeholder="https://..." value={url}
                   onChange={(e) => { setUrl(e.target.value); setLinkType(detectLinkType(e.target.value)) }} />
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-500">类型:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">类型:</span>
                   <select value={linkType} onChange={(e) => setLinkType(e.target.value)}
-                    className="px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400">
+                    className="px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400">
                     {Object.entries(LINK_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
-                </div>
-                <Textarea id="description" label="描述" placeholder="简要描述这个资源..." rows={3} value={linkDescription} onChange={(e) => setLinkDescription(e.target.value)} />
-
-                {(linkType === 'figma' || linkType === 'canva' || linkType === 'notion') && (
-                  <Input id="apiToken" label="API Token" placeholder="输入 API Token..." value={apiToken} onChange={(e) => setApiToken(e.target.value)} />
-                )}
-
-                {currentLink && (
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>同步状态:</span>
+                  {currentLink && (
                     <span className={cn(
-                      'font-medium',
+                      'text-xs font-medium ml-auto',
                       currentLink.sync_status === 'synced' && 'text-green-600',
                       currentLink.sync_status === 'syncing' && 'text-amber-600',
                       currentLink.sync_status === 'error' && 'text-red-600',
@@ -512,13 +503,14 @@ export default function ExternalLinksPage() {
                     )}>
                       {currentLink.sync_status === 'synced' ? '已同步' :
                        currentLink.sync_status === 'syncing' ? '同步中' :
-                       currentLink.sync_status === 'error' ? '同步失败' :
-                       '待同步'}
+                       currentLink.sync_status === 'error' ? '同步失败' : '待同步'}
                     </span>
-                    {currentLink.last_synced_at && (
-                      <span>路 {format.relativeTime(currentLink.last_synced_at)}</span>
-                    )}
-                  </div>
+                  )}
+                </div>
+                <Textarea id="description" label="描述" placeholder="简要描述..." rows={2} value={linkDescription} onChange={(e) => setLinkDescription(e.target.value)} />
+
+                {(linkType === 'figma' || linkType === 'canva' || linkType === 'notion') && (
+                  <Input id="apiToken" label="API Token" placeholder="输入 API Token..." value={apiToken} onChange={(e) => setApiToken(e.target.value)} />
                 )}
 
                 {currentLink?.last_snapshot && !currentLink.last_snapshot.startsWith('同步失败:') && (

@@ -175,5 +175,14 @@ pub fn run_migrations(conn: &Connection) -> Result<(), Box<dyn std::error::Error
         }
     }
 
+    // Migration: add title column to ai_conversations
+    conn.execute_batch(
+        "ALTER TABLE ai_conversations ADD COLUMN title TEXT DEFAULT '';",
+    )
+    .or_else(|_| {
+        // column may already exist, ignore
+        Ok::<_, rusqlite::Error>(())
+    })?;
+
     Ok(())
 }

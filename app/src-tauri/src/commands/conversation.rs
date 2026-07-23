@@ -20,16 +20,17 @@ pub fn create_ai_conversation(
     )
     .map_err(|e| e.to_string())?;
 
-    Ok(AiConversation {
-        id,
-        project_id,
-        source_type,
-        source_id: None,
-        selected_text: None,
-        messages: "[]".to_string(),
-        created_at: now.clone(),
-        updated_at: now,
-    })
+        Ok(AiConversation {
+            id,
+            project_id,
+            source_type,
+            source_id: None,
+            selected_text: None,
+            messages: "[]".to_string(),
+            title: String::new(),
+            created_at: now.clone(),
+            updated_at: now,
+        })
 }
 
 #[tauri::command]
@@ -39,7 +40,7 @@ pub fn get_ai_conversations(
 ) -> Result<Vec<AiConversation>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT id, project_id, source_type, source_id, selected_text, messages, created_at, updated_at FROM ai_conversations WHERE project_id = ?1 ORDER BY updated_at DESC")
+        .prepare("SELECT id, project_id, source_type, source_id, selected_text, messages, title, created_at, updated_at FROM ai_conversations WHERE project_id = ?1 ORDER BY updated_at DESC")
         .map_err(|e| e.to_string())?;
 
     let conversations = stmt
@@ -51,8 +52,9 @@ pub fn get_ai_conversations(
                 source_id: row.get(3)?,
                 selected_text: row.get(4)?,
                 messages: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                title: row.get::<_, Option<String>>(6)?.unwrap_or_default(),
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -67,12 +69,13 @@ pub fn save_ai_conversation(
     db: State<'_, Database>,
     id: String,
     messages_json: String,
+    title: String,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE ai_conversations SET messages = ?1, updated_at = ?2 WHERE id = ?3",
-        rusqlite::params![messages_json, now, id],
+        "UPDATE ai_conversations SET messages = ?1, title = ?2, updated_at = ?3 WHERE id = ?4",
+        rusqlite::params![messages_json, title, now, id],
     )
     .map_err(|e| e.to_string())?;
     Ok(())
@@ -99,7 +102,7 @@ pub fn get_ai_conversation(
 ) -> Result<AiConversation, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.query_row(
-        "SELECT id, project_id, source_type, source_id, selected_text, messages, created_at, updated_at FROM ai_conversations WHERE id = ?1",
+        "SELECT id, project_id, source_type, source_id, selected_text, messages, title, created_at, updated_at FROM ai_conversations WHERE id = ?1",
         rusqlite::params![id],
         |row| {
             Ok(AiConversation {
@@ -109,8 +112,9 @@ pub fn get_ai_conversation(
                 source_id: row.get(3)?,
                 selected_text: row.get(4)?,
                 messages: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                title: row.get::<_, Option<String>>(6)?.unwrap_or_default(),
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
             })
         },
     )

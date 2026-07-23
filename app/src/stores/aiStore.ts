@@ -26,6 +26,7 @@ interface AIMessage_ {
 interface ConversationMeta {
   id: string
   project_id: string
+  title: string
   created_at: string
   updated_at: string
 }
@@ -175,12 +176,15 @@ export const useAIStore = create<AIState>((set, get) => ({
     })
   },
 
-  saveConversation: async () => {
+  saveConversation: async (title?: string) => {
     const { activeConversationId, messages } = get()
     if (!activeConversationId) return
+    const firstUserMsg = messages.find(m => m.role === 'user')?.content || ''
+    const t = title || (firstUserMsg.slice(0, 30).replace(/\n/g, ' ') + (firstUserMsg.length > 30 ? '...' : ''))
     await invoke('save_ai_conversation', {
       id: activeConversationId,
       messagesJson: JSON.stringify(messages),
+      title: t,
     })
   },
 }))
