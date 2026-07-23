@@ -18,23 +18,49 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const [imgWidth, setImgWidth] = useState(400)
   const [imgSrc, setImgSrc] = useState('')
+  const [savedPos, setSavedPos] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
+  const savedWidthRef = useRef<string>('')
+
+  // Save width attribute when menu closes
+  useEffect(() => {
+    if (!visible && savedWidthRef.current) {
+      const { state, view } = editor
+      if (savedPos < state.doc.content.size) {
+        const node = state.doc.nodeAt(savedPos)
+        if (node?.type.name === 'image') {
+          const tr = state.tr.setNodeMarkup(savedPos, undefined, {
+            ...node.attrs,
+            width: savedWidthRef.current === 'full' ? '100%' : savedWidthRef.current || null,
+          })
+          view.dispatch(tr)
+        }
+      }
+      savedWidthRef.current = ''
+    }
+  }, [visible, editor])
 
   const updateImageWidth = useCallback((width: number | string | null) => {
     const { state, view } = editor
     const { from } = state.selection
     const node = state.doc.nodeAt(from)
-    if (node?.type.name === 'image' || node?.type.name === 'inlineImage') {
-      if (width === 'full') {
-        editor.chain().setNodeSelection(from).updateAttributes('image', { width: '100%' }).run()
-        const img = view.dom.querySelector(`img[src="${node.attrs.src}"]`) as HTMLElement | null
-        if (img) { img.style.width = '100%'; img.style.maxWidth = '100%' }
-      } else {
-        const numeric = width === null ? null : Number(width)
-        editor.chain().setNodeSelection(from).updateAttributes('image', { width: numeric }).run()
-        const img = view.dom.querySelector(`img[src="${node.attrs.src}"]`) as HTMLElement | null
-        if (img) img.style.width = numeric ? `${numeric}px` : ''
-      }
+    if (node?.type.name !== 'image') return
+
+    const img = view.nodeDOM(from) as HTMLElement | null
+    if (!img) return
+
+    if (width === 'full') {
+      img.style.width = '100%'
+      img.style.maxWidth = '100%'
+      savedWidthRef.current = 'full'
+    } else if (width === null) {
+      img.style.width = ''
+      img.style.maxWidth = ''
+      savedWidthRef.current = ''
+    } else {
+      img.style.width = `${width}px`
+      img.style.maxWidth = ''
+      savedWidthRef.current = String(width)
     }
   }, [editor])
 
@@ -58,6 +84,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
 
         setImgWidth(Math.min(currentWidth || 400, 800))
         setImgSrc(img.src)
+        setSavedPos(pos)
         setPos({ x: e.clientX, y: e.clientY })
         setVisible(true)
       }
