@@ -283,7 +283,7 @@ export function AIPanel() {
         {messages.length === 0 && hasAI && (
           <div className="text-center text-sm text-gray-400 py-8">
             <Sparkles size={32} strokeWidth={1} className="mx-auto mb-2 text-gray-300" />
-            <p>直接提问，或者选中编辑器中的文字后右键"引用到 AI 助手"</p>
+            <p>输入问题开始对话</p>
           </div>
         )}
 
