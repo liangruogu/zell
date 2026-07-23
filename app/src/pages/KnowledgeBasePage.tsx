@@ -134,16 +134,28 @@ export default function KnowledgeBasePage() {
     updateArticle(currentArticle.id, currentArticle.title, markdown)
   }, [currentArticle, updateArticle])
 
-  const handleExport = useCallback((article: KnowledgeArticle) => {
+  const handleExport = useCallback(async (article: KnowledgeArticle, format: 'pdf' | 'docx') => {
     const html = markdownToHtml(article.content)
-    const docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${article.title}</title></head><body>${html}</body></html>`
-    const blob = new Blob([docHtml], { type: 'application/msword' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${article.title}.doc`
-    a.click()
-    URL.revokeObjectURL(url)
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:system-ui;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.7}pre{background:#f5f5f5;padding:12px;border-radius:6px;overflow:auto}code{font-size:0.9em}img{max-width:100%}blockquote{border-left:3px solid #ddd;margin-left:0;padding-left:16px;color:#666}table{border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${html}</body></html>`
+
+    if (format === 'docx') {
+      const { default: htmlDocx } = await import('html-docx-js')
+      const blob = await htmlDocx.asBlob(fullHtml)
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${article.title}.docx`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } else {
+      const { default: html2pdf } = await import('html2pdf.js')
+      html2pdf().set({
+        margin: 10,
+        filename: `${article.title}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      }).from(fullHtml).save()
+    }
   }, [])
 
   const handleRename = useCallback((article: KnowledgeArticle, newTitle: string) => {
@@ -432,7 +444,7 @@ function ArticleItem({
 }: {
   article: KnowledgeArticle; isActive: boolean
   onSelect: (a: KnowledgeArticle) => void
-  onExport: (a: KnowledgeArticle) => void
+  onExport: (a: KnowledgeArticle, format: 'pdf' | 'docx') => void
   onDelete: (a: KnowledgeArticle) => void
   onRename: (a: KnowledgeArticle, newTitle: string) => void
 }) {
@@ -479,7 +491,7 @@ function ArticleItem({
         <span className="truncate flex-1">{article.title}</span>
       )}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button onClick={(e) => { e.stopPropagation(); onExport(article) }} className="p-0.5 rounded hover:bg-bindle-200" title="导出 Word">
+        <button onClick={(e) => { e.stopPropagation(); onExport(article, 'pdf') }} className="p-0.5 rounded hover:bg-bindle-200" title="导出 PDF">
           <FileOutput size={13} className="text-gray-400 hover:text-bindle-600" />
         </button>
         <button onClick={(e) => { e.stopPropagation(); onDelete(article) }} className="p-0.5 rounded hover:bg-red-100" title="删除">

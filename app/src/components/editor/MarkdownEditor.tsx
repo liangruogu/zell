@@ -19,7 +19,7 @@ import { FloatingImageMenu } from './FloatingImageMenu'
 import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
 import { useAIStore } from '@/stores/aiStore'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Download } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
@@ -88,16 +88,35 @@ export function MarkdownEditor({
     }
   } catch { /* use default */ }
 
-  // Read page break setting
-  let showPageBreaks = false
-  try {
-    if (editorPrefs) {
-      const parsed = JSON.parse(editorPrefs)
-      if (typeof parsed.showPageBreaks === 'boolean') showPageBreaks = parsed.showPageBreaks
-    }
-  } catch { /* */ }
-
   const [justSaved, setJustSaved] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+
+  const handleExport = useCallback(async (format: 'pdf' | 'docx') => {
+    setShowExport(false)
+    const article = useKnowledgeStore.getState().currentArticle
+    const fileName = article?.title || 'document'
+    const html = markdownToHtml(content)
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:system-ui;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.7}pre{background:#f5f5f5;padding:12px;border-radius:6px;overflow:auto}code{font-size:0.9em}img{max-width:100%}blockquote{border-left:3px solid #ddd;margin-left:0;padding-left:16px;color:#666}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${html}</body></html>`
+
+    if (format === 'docx') {
+      const { default: htmlDocx } = await import('html-docx-js')
+      const blob = await htmlDocx.asBlob(fullHtml)
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${fileName}.docx`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } else {
+      const { default: html2pdf } = await import('html2pdf.js')
+      html2pdf().set({
+        margin: 10,
+        filename: `${fileName}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      }).from(fullHtml).save()
+    }
+  }, [content])
 
   // Helper: insert image based on storage mode
   const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
@@ -529,58 +548,8 @@ export function MarkdownEditor({
     []
   )
 
+  const previewRef = useRef<HTMLDivElement>(null)
   const [resolvedPreviewHtml, setResolvedPreviewHtml] = useState('')
-
-  // --- Page break overlay (split mode preview) ---
-  const pageBreakWrapperRef = useRef<HTMLDivElement>(null)
-  const pageBreakContentRef = useRef<HTMLDivElement>(null)
-
-  const updatePageBreaks = useCallback(() => {
-    const wrapper = pageBreakWrapperRef.current
-    const content = pageBreakContentRef.current
-    if (!wrapper || !content) return
-    const old = wrapper.querySelector('.page-break-overlay')
-    old?.remove()
-
-    const overlay = document.createElement('div')
-    overlay.className = 'page-break-overlay absolute left-0 right-0 pointer-events-none z-10'
-    const pxPerMm = 3.779
-    const pageH = 297 * pxPerMm
-    const contentH = content.scrollHeight
-    overlay.style.top = '0'
-    overlay.style.height = `${contentH}px`
-    const count = Math.max(Math.floor(contentH / pageH), 1)
-    for (let i = 1; i <= count; i++) {
-      const y = i * pageH
-      const line = document.createElement('div')
-      line.className = 'absolute left-4 right-4 border-t border-dashed border-gray-300 flex items-center justify-end'
-      line.style.top = `${y}px`
-      const label = document.createElement('span')
-      label.className = 'text-[10px] text-gray-300 bg-white px-1 rounded'
-      label.style.transform = 'translateY(-50%)'
-      label.textContent = `第 ${i + 1} 页`
-      line.appendChild(label)
-      overlay.appendChild(line)
-    }
-    wrapper.appendChild(overlay)
-  }, [])
-
-  // Draw breaks on split mode mount + editor updates
-  useEffect(() => {
-    if (!showPageBreaks || mode !== 'split' || !editor) return
-    const schedule = () => requestAnimationFrame(updatePageBreaks)
-    const timer = setTimeout(updatePageBreaks, 100)
-    editor.on('update', schedule)
-    return () => { clearTimeout(timer); editor.off('update', schedule) }
-  }, [showPageBreaks, mode, editor, updatePageBreaks])
-
-  // Re-draw breaks when preview content changes
-  useEffect(() => {
-    if (!showPageBreaks || mode !== 'split') return
-    requestAnimationFrame(updatePageBreaks)
-  }, [resolvedPreviewHtml, showPageBreaks, mode, updatePageBreaks])
-
-  // --- end page break ---
 
   // Generate and resolve preview HTML for split mode
   useEffect(() => {
@@ -692,13 +661,11 @@ export function MarkdownEditor({
             <div className="px-3 py-1 text-xs text-gray-400 bg-gray-50 border-b border-gray-100 shrink-0">
               预览
             </div>
-            <div ref={pageBreakWrapperRef} className="flex-1 overflow-auto relative">
-              <div
-                ref={pageBreakContentRef}
-                className="py-4 prose bindle-prose max-w-[210mm] mx-auto"
-                dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
-              />
-            </div>
+            <div
+              ref={previewRef}
+              className="flex-1 overflow-auto py-4 prose bindle-prose max-w-3xl mx-auto"
+              dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
+            />
           </div>
         </div>
       )}
@@ -719,6 +686,33 @@ export function MarkdownEditor({
           )}
         </span>
         <span className="flex items-center gap-1">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExport(!showExport)}
+              className="hover:text-gray-600 transition-colors cursor-pointer flex items-center gap-0.5"
+              title="导出"
+            >
+              <Download size={13} />
+            </button>
+            {showExport && (
+              <div className="absolute bottom-full right-0 mb-1 w-24 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 overflow-hidden">
+                <button
+                  onClick={() => handleExport('pdf')}
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50"
+                >
+                  PDF
+                </button>
+                <button
+                  onClick={() => handleExport('docx')}
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50"
+                >
+                  DOCX
+                </button>
+              </div>
+            )}
+          </div>
+          <span className="text-gray-300">|</span>
           <button
             type="button"
             onClick={handleModeToggle}
