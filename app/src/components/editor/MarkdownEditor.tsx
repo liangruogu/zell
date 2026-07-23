@@ -222,28 +222,60 @@ export function MarkdownEditor({
     }
     if (content !== prevContentRef.current) {
       prevContentRef.current = content
-      editor.commands.setContent(markdownToHtml(content || ''))
+      const html = markdownToHtml(content || '')
+      // Resolve bindle-img: refs before rendering to avoid flash
+      const bindleRegex = /bindle-img:(.+?)\/([^\s")]+)/g
+      const refs: string[] = []
+      let m: RegExpExecArray | null
+      while ((m = bindleRegex.exec(html)) !== null) {
+        if (!refs.includes(m[0])) refs.push(m[0])
+      }
+      if (refs.length === 0) {
+        editor.commands.setContent(html)
+        return
+      }
+      // Resolve all refs asynchronously then set content
+      Promise.all(refs.map(async (ref) => {
+        const parts = ref.replace('bindle-img:', '').split('/')
+        const projId = parts[0]
+        const fileName = parts.slice(1).join('/')
+        try {
+          return { ref, dataUrl: await invoke<string>('resolve_project_image', { projectId: projId, fileName }) }
+        } catch { return { ref, dataUrl: '' } }
+      })).then((results) => {
+        let resolvedHtml = html
+        for (const { ref, dataUrl } of results) {
+          if (dataUrl) resolvedHtml = resolvedHtml.replace(new RegExp(ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), dataUrl)
+        }
+        if (editor.isDestroyed) return
+        editor.commands.setContent(resolvedHtml)
+      })
     }
   }, [content, editor, mode])
 
-  // Resolve bindle-img: refs in the editor DOM to display images
+  // Resolve bindle-img: refs inserted by paste/drag (before content sync)
   useEffect(() => {
     if (!editor || mode !== 'wysiwyg') return
-    const timer = setTimeout(() => {
-      const dom = editor.view.dom
-      const imgs = dom.querySelectorAll('img[src^="bindle-img:"]')
-      imgs.forEach(async (img) => {
-        const src = img.getAttribute('src') || ''
-        const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
-        if (!match) return
-        const [, projectId, fileName] = match
-        try {
-          const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
-          img.setAttribute('src', dataUrl)
-        } catch { /* keep placeholder */ }
+    const handleTransaction = () => {
+      requestAnimationFrame(() => {
+        const imgs = editor.view.dom.querySelectorAll('img[src^="bindle-img:"]')
+        imgs.forEach(async (img) => {
+          const src = img.getAttribute('src') || ''
+          const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
+          if (!match) return
+          const [, projectId, fileName] = match
+          try {
+            const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
+            if (img.getAttribute('src')?.startsWith('bindle-img:')) {
+              img.setAttribute('src', dataUrl)
+            }
+          } catch { /* keep */ }
+        })
       })
-    }, 50)
-  }, [editor, content, mode])
+    }
+    editor.on('transaction', handleTransaction)
+    return () => { editor.off('transaction', handleTransaction) }
+  }, [editor, mode])
 
   useEffect(() => {
     if (editor) {
