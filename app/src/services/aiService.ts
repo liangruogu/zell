@@ -1,5 +1,7 @@
 import { useAIStore } from '@/stores/aiStore'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useProjectStore } from '@/stores/projectStore'
+import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { runAgent, type AgentToolCall } from '@/services/core/agentRunner'
 import { createKnowledgeAgentConfig } from '@/services/agents/knowledgeAgent'
 
@@ -77,6 +79,31 @@ export async function sendMessage(userContent: string) {
     }))
 
   const config = createKnowledgeAgentConfig()
+
+  // Pre-inject project context into system prompt to save initial tool calls
+  try {
+    const project = useProjectStore.getState().currentProject
+    if (project) {
+      let ctx = `\n\n【当前项目上下文 - 无需调用工具获取】\n项目名称: ${project.name}`
+      if (project.background) ctx += `\n项目背景: ${project.background}`
+      try {
+        const s = JSON.parse(project.settings || '{}')
+        if (s.status) ctx += `\n项目状态: ${s.status}`
+      } catch { /* */ }
+      // Add article list
+      const articles = useKnowledgeStore.getState().articles
+      if (articles.length > 0) {
+        ctx += `\n\n知识库文章 (${articles.length} 篇):`
+        for (const a of articles.slice(0, 20)) {
+          const preview = (a.content || '').replace(/[#*`\[\]()]/g, '').slice(0, 80)
+          ctx += `\n- [${a.title}] ${preview}`
+        }
+        if (articles.length > 20) ctx += `\n... 共 ${articles.length} 篇`
+      }
+      config.systemPrompt += ctx
+    }
+  } catch { /* best effort */ }
+
   let accumulated = ''
 
   await runAgent(messages as any, config, {
