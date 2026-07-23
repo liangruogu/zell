@@ -29,6 +29,7 @@ uuid = { version = "1", features = ["v7"] }
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 scraper = "0.21"
 html-to-markdown-rs = "3"
+regex = "1"
 chrono = { version = "0.4", features = ["serde"] }
 ring = "0.17"
 aes-gcm = "0.10"

@@ -283,6 +283,7 @@ dependencies = [
  "log",
  "opener",
  "pdf_oxide",
+ "regex",
  "reqwest 0.12.28",
  "ring",
  "rusqlite",
