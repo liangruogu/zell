@@ -107,9 +107,9 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       onMouseLeave={() => setHoverSide(null)}
     >
       {/* Left click zone */}
-      <div className="absolute left-0 top-0 bottom-0 w-1/2 z-10" onClick={goPrev} />
+      <div className="absolute left-0 top-0 bottom-0 w-1/2 z-10" onClick={goPrev} style={{ cursor: 'default' }} />
       {/* Right click zone */}
-      <div className="absolute right-0 top-0 bottom-0 w-1/2 z-10" onClick={goNext} />
+      <div className="absolute right-0 top-0 bottom-0 w-1/2 z-10" onClick={goNext} style={{ cursor: 'default' }} />
         onClick={goNext}
       />
       {/* Slide content — fills viewport height, 16:9 aspect */}
