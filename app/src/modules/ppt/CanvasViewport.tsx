@@ -95,13 +95,15 @@ export function CanvasViewport() {
     }
   }, []) // no deps — uses refs
 
-  // Click outside canvas → deselect
+  // Click outside canvas → deselect (but not on properties panel)
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       const cEl = containerRef.current
       if (!cEl) return
-      // only deselect when clicking OUTSIDE the container (inside is handled by marquee)
       if (cEl.contains(e.target as Node)) return
+      // don't deselect when clicking on properties panel
+      const target = e.target as HTMLElement
+      if (target.closest('[data-panel="props"]')) return
       const st = usePptStore.getState()
       if (st.selectedIds.length > 0) st.setSelectedIds([])
       if (st.selectedSlideIds.length > 0) usePptStore.setState({ selectedSlideIds: [] })

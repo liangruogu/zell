@@ -36,6 +36,13 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   const slide = visible[idx]
   const { setCurrentSlide } = usePptStore()
 
+  // Request fullscreen
+  useEffect(() => {
+    const el = document.documentElement
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {})
+    return () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}) }
+  }, [])
+
   // ESC to exit
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -43,8 +50,13 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goNext()
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goPrev()
     }
+    const onFsChange = () => { if (!document.fullscreenElement) onClose() }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('fullscreenchange', onFsChange)
+    }
   }, [idx, visible.length])
 
   const goNext = useCallback(() => {
@@ -78,12 +90,13 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
         e.currentTarget.style.cursor = e.clientX > midX ? 'e-resize' : 'w-resize'
       }}
     >
-      {/* Slide content */}
+      {/* Slide content — fills viewport height, 16:9 aspect */}
       <div
-        className="relative shadow-2xl"
+        className="relative shadow-2xl flex-shrink-0"
         style={{
-          width: `min(95vw, calc(85vh * ${SLIDE_W/SLIDE_H}))`,
-          height: `min(85vh, calc(95vw * ${SLIDE_H/SLIDE_W}))`,
+          width: `calc(100vh * ${SLIDE_W / SLIDE_H})`,
+          maxWidth: '100vw',
+          height: `min(100vh, calc(100vw * ${SLIDE_H / SLIDE_W}))`,
           background: slide.background || '#ffffff',
         }}
       >
