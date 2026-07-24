@@ -102,8 +102,8 @@ export function CanvasViewport() {
       // only deselect if clicking on canvas area (not on props panel etc.)
       const cEl = containerRef.current
       if (!cEl || !cEl.contains(target)) return
-      // don't deselect if clicking on an element with position:absolute (it will handle its own selection)
-      if (target.closest('[style*="position: absolute"]')) return
+      // don't deselect if clicking on an element (has data-el-id)
+      if (target.closest('[data-el-id]')) return
       const st = usePptStore.getState()
       if (st.selectedIds.length > 0) st.setSelectedIds([])
       if (st.selectedSlideIds.length > 0) usePptStore.setState({ selectedSlideIds: [] })
@@ -121,7 +121,7 @@ export function CanvasViewport() {
       if (e.button !== 0) return
       const target = e.target as HTMLElement
       // start marquee when clicking on canvas bg or container empty area
-      if (target.closest('[style*="position: absolute"]')) return // clicked an element
+      if (target.closest('[data-el-id]')) return // clicked an element
       if (target.closest('[data-canvas="bg"]') || target === el || el.contains(target)) {
         dragging = true
         const rect = el.getBoundingClientRect()

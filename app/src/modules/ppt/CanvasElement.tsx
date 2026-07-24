@@ -168,13 +168,13 @@ interface EP { el: CanvasElement; isSelected: boolean }
 
 function ImageEl({ el, isSelected }: EP) {
   const { onMouseDown } = useDrag(el.id)
-  return <img src={el.props.src || ''} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} draggable={false} />
+  return <img src={el.props.src || ''} data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} draggable={false} />
 }
 
 function TextEl({ el, isSelected }: EP) {
   const { onMouseDown, dragging } = useDrag(el.id)
   const ss = shadowStyle(el.props)
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', cursor: dragging ? 'grabbing' : 'text', boxShadow: ss, outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} contentEditable={isSelected} suppressContentEditableWarning onBlur={e => { const s = usePptStore.getState(); if (s.currentSlideId) s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, text: e.currentTarget.textContent || '' } }) }}>{el.props.text || '双击编辑文本'}</div>
+  return <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', cursor: dragging ? 'grabbing' : 'text', boxShadow: ss, outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} contentEditable={isSelected} suppressContentEditableWarning onBlur={e => { const s = usePptStore.getState(); if (s.currentSlideId) s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, text: e.currentTarget.textContent || '' } }) }}>{el.props.text || '双击编辑文本'}</div>
 }
 
 function EllipseEl({ el, isSelected }: EP) {
@@ -182,7 +182,7 @@ function EllipseEl({ el, isSelected }: EP) {
   const ss = shadowStyle(el.props)
   const sw = el.props.strokeWidth ?? 0
   const hasStroke = sw > 0 && el.props.stroke
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, cursor: dragging ? 'grabbing' : 'default', outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} />
+  return <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, cursor: dragging ? 'grabbing' : 'default', outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} />
 }
 
 function ArrowEl({ el, isSelected }: EP) {
@@ -205,7 +205,7 @@ function RectEl({ el, isSelected }: EP) {
   const ss = shadowStyle(el.props)
   const sw = el.props.strokeWidth ?? 0
   const hasStroke = sw > 0 && el.props.stroke
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, cursor: dragging ? 'grabbing' : 'default', outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} />
+  return <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, cursor: dragging ? 'grabbing' : 'default', outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} />
 }
 
 export function CanvasElementView({ element, isSelected }: { element: CanvasElement; isSelected: boolean }) {
