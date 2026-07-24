@@ -3,6 +3,7 @@ import { PptToolbar } from './PptToolbar'
 import { SlideStrip } from './SlideStrip'
 import { CanvasViewport } from './CanvasViewport'
 import { PropsPanel } from './PropsPanel'
+import { PreviewButton } from './SlidePreview'
 import { usePptStore } from './store'
 import type { PptData } from './types'
 import { Presentation, Plus } from 'lucide-react'
@@ -28,9 +29,12 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 flex min-h-0 relative">
-        <div className="flex-1 min-w-0 flex items-center justify-center bg-gray-100">
+        <div className="flex-1 min-w-0 flex items-center justify-center bg-gray-100 relative">
           {hasSlides ? (
-            <CanvasViewport />
+            <>
+              <CanvasViewport />
+              <PreviewButton />
+            </>
           ) : (
             <div className="text-center text-gray-500">
               <Presentation size={48} strokeWidth={1} className="mx-auto mb-3" />
