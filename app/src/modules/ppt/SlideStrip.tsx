@@ -208,7 +208,9 @@ export function SlideStrip() {
         }}>
           <div className="w-full h-full bg-white rounded overflow-hidden relative">
             <MiniSlide slide={slides[dragIdx]} />
-            <span className="absolute bottom-0.5 left-1 text-[10px] text-white/80 font-medium select-none">{dragIdx! + 1}</span>
+            <span className="absolute bottom-0.5 left-1 text-[10px] text-gray-900 font-medium select-none">
+              {/^幻灯片\s*\d+$/.test(slides[dragIdx].name) ? dragIdx! + 1 : slides[dragIdx].name}
+            </span>
           </div>
         </div>
       )}
@@ -267,9 +269,11 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
   onClick: (e: React.MouseEvent, id: string, idx: number) => void
   onDuplicate: () => void; onDelete: () => void
 }) {
+  const isDefaultName = /^幻灯片\s*\d+$/.test(slide.name)
   return (
     <div
       onClick={e => onClick(e, slide.id, index)}
+      onDoubleClick={e => onStartRename(e, slide.id, slide.name)}
       className={cn('group relative w-32 h-[72px] border rounded cursor-pointer shrink-0 transition-all select-none',
         isActive ? 'border-bindle-400 ring-2 ring-bindle-200' : isSelected ? 'border-blue-300' : 'border-gray-300 hover:border-gray-400',
         isDragging && 'opacity-30')}
@@ -281,10 +285,11 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
         <input autoFocus value={renameVal} onChange={e => onChangeRenameVal(e.target.value)}
           onBlur={onSubmitRename} onKeyDown={e => { if (e.key === 'Enter') onSubmitRename(); if (e.key === 'Escape') { onChangeRenameVal(slide.name); onSubmitRename() } }}
           onClick={e => e.stopPropagation()}
-          className="absolute bottom-0.5 left-1 right-1 bg-black/60 text-white text-[9px] outline-none rounded px-0.5" />
+          className="absolute bottom-0.5 left-1 right-1 bg-white/90 text-gray-900 text-[9px] outline-none rounded px-0.5 border border-gray-200" />
       ) : (
-        <span className="absolute bottom-0.5 left-1 text-[10px] text-white/80 font-medium pointer-events-none select-none"
-          onDoubleClick={e => onStartRename(e, slide.id, slide.name)}>{index + 1}</span>
+        <span className="absolute bottom-0.5 left-1 text-[10px] text-gray-900 font-medium select-none">
+          {isDefaultName ? index + 1 : slide.name}
+        </span>
       )}
       <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 flex">
         <button onClick={e => { e.stopPropagation(); onDuplicate() }} className="p-0.5 bg-white border border-gray-200 rounded-bl hover:bg-bindle-50"><Copy size={9} /></button>
