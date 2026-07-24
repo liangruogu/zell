@@ -282,12 +282,12 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
           <ScrubInput label="边框粗细" value={el.props.strokeWidth ?? 0} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
           {el.type === 'rect' && (
             <>
-              <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v })} min={0} max={200} />
+              <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v, borderRadiusTL: undefined, borderRadiusTR: undefined, borderRadiusBL: undefined, borderRadiusBR: undefined })} min={0} max={200} />
               <div className="grid grid-cols-2 gap-2">
-                <ScrubInput label="TL" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
-                <ScrubInput label="TR" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
-                <ScrubInput label="BL" labelLeft value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v })} min={0} max={200} />
-                <ScrubInput label="BR" labelLeft value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v })} min={0} max={200} />
+                <ScrubInput label="TL" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v, borderRadius: undefined })} min={0} max={200} />
+                <ScrubInput label="TR" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v, borderRadius: undefined })} min={0} max={200} />
+                <ScrubInput label="BL" labelLeft value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v, borderRadius: undefined })} min={0} max={200} />
+                <ScrubInput label="BR" labelLeft value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v, borderRadius: undefined })} min={0} max={200} />
               </div>
             </>
           )}
