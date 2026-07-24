@@ -41,6 +41,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
 
   const display = integer ? Math.round(value) : Number(value.toFixed(1))
   const inputCls = 'h-[24px] px-1.5 text-xs border border-gray-200 rounded outline-none leading-none'
+  const divCls = 'h-[24px] px-1.5 text-xs border border-gray-200 rounded select-none hover:border-bindle-300 flex items-center'
   const labelEl = <span className="text-[10px] text-gray-500 shrink-0">{label}</span>
 
   if (labelLeft) {
@@ -58,7 +59,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
           <div
             onPointerDown={onPointerDown}
             onClick={() => { setText(String(display)); setEdit(true) }}
-            className={`flex-1 min-w-0 ${inputCls} select-none hover:border-bindle-300`}
+            className={`flex-1 min-w-0 ${divCls}`}
             style={{ cursor: SCRUB.cursor }}
           >{display}</div>
         )}
@@ -80,7 +81,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
         <div
           onPointerDown={onPointerDown}
           onClick={() => { setText(String(display)); setEdit(true) }}
-          className={`w-full ${inputCls} select-none hover:border-bindle-300`}
+          className={`w-full ${divCls}`}
           style={{ cursor: SCRUB.cursor }}
         >{display}</div>
       )}
@@ -176,10 +177,10 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
             <>
               <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v })} min={0} max={200} />
               <div className="grid grid-cols-2 gap-2">
-                <ScrubInput label="↖" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
-                <ScrubInput label="↗" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
-                <ScrubInput label="↙" labelLeft value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v })} min={0} max={200} />
-                <ScrubInput label="↘" labelLeft value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v })} min={0} max={200} />
+                <ScrubInput label="┌" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
+                <ScrubInput label="┐" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
+                <ScrubInput label="└" labelLeft value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v })} min={0} max={200} />
+                <ScrubInput label="┘" labelLeft value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v })} min={0} max={200} />
               </div>
             </>
           )}
