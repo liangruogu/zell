@@ -9,7 +9,7 @@ import { useWhiteboardStore } from '@/stores/whiteboardStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { Whiteboard } from '@/types/whiteboard'
-import { Plus, PenTool, Trash2, AlertCircle, Presentation, LayoutTemplate } from 'lucide-react'
+import { Plus, PenTool, Trash2, AlertCircle, Presentation, LayoutTemplate, Copy, GripHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tldraw, createTLStore, getSnapshot, loadSnapshot, DefaultSpinner, defaultShapeUtils, defaultBindingUtils } from 'tldraw'
 import type { TLStore } from 'tldraw'
@@ -241,6 +241,7 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
   const [editor, setEditor] = useState<any>(null)
   const [slides, setSlides] = useState<any[]>([])
   const [currentSlideId, setCurrentSlideId] = useState<string | null>(null)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
 
   // Track slide frames in the store
   useEffect(() => {
@@ -250,6 +251,7 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
       const shapes = records
         .filter((r: any) => r.typeName === 'shape' && r.type === 'frame')
         .filter((r: any) => r.props?.meta?.slideType === 'slide')
+        .sort((a: any, b: any) => (a.props?.meta?.slideIndex ?? 0) - (b.props?.meta?.slideIndex ?? 0))
       setSlides(shapes)
     }
     const unsub = store.listen(refresh)
@@ -257,7 +259,6 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
     return () => unsub()
   }, [store])
 
-  // When editor mounts, position camera to current slide
   const focusSlide = useCallback((slideId: string) => {
     if (!editor) return
     setCurrentSlideId(slideId)
@@ -267,22 +268,22 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
       constraints: {
         initialZoom: 'fit-max',
         baseZoom: 'fit-max',
-        bounds: { x: shape.x - 40, y: shape.y - 40, w: shape.props.w + 80, h: shape.props.h + 80 },
+        bounds: { x: shape.x - 60, y: shape.y - 60, w: shape.props.w + 120, h: shape.props.h + 120 },
         behavior: 'contain',
         origin: { x: 0.5, y: 0.5 },
-        padding: { x: 30, y: 30 },
+        padding: { x: 20, y: 20 },
       },
     })
     editor.zoomToBounds(
-      { x: shape.x - 40, y: shape.y - 40, w: shape.props.w + 80, h: shape.props.h + 80 },
-      { animation: { duration: 300 } }
+      { x: shape.x - 60, y: shape.y - 60, w: shape.props.w + 120, h: shape.props.h + 120 },
+      { animation: { duration: 250 } }
     )
   }, [editor])
 
-  const addSlide = useCallback(() => {
+  const addSlide = useCallback((afterIndex?: number) => {
     if (!editor) return
-    const count = slides.length
-    const x = 100 + count * 1400
+    const idx = afterIndex ?? slides.length
+    const x = 100 + idx * 1400
     const id = editor.createShapeId()
     editor.createShape({
       id,
@@ -290,91 +291,184 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
       x,
       y: 100,
       props: {
-        name: `幻灯片 ${count + 1}`,
+        name: `幻灯片 ${idx + 1}`,
         w: 1280,
         h: 720,
-        meta: { slideType: 'slide', slideIndex: count },
+        meta: { slideType: 'slide', slideIndex: idx },
       },
     })
+    // Renumber subsequent slides
+    editor.batch(() => {
+      for (let j = idx + 1; j <= slides.length; j++) {
+        const s = slides[j - 1]
+        if (s) {
+          editor.updateShape({
+            id: s.id,
+            type: 'frame',
+            x: 100 + j * 1400,
+            props: { ...s.props, name: `幻灯片 ${j + 1}`, meta: { ...s.props.meta, slideIndex: j } },
+          })
+        }
+      }
+    })
     focusSlide(id)
-  }, [editor, slides.length, focusSlide])
+  }, [editor, slides, focusSlide])
+
+  const duplicateSlide = useCallback((e: React.MouseEvent, slideId: string) => {
+    e.stopPropagation()
+    if (!editor) return
+    const idx = slides.findIndex(s => s.id === slideId)
+    if (idx < 0) return
+    addSlide(idx)
+  }, [editor, slides, addSlide])
 
   const deleteSlide = useCallback((e: React.MouseEvent, slideId: string) => {
     e.stopPropagation()
     if (!editor) return
+    if (slides.length <= 1) return
+    const idx = slides.findIndex(s => s.id === slideId)
     editor.deleteShape(slideId)
-  }, [editor])
+    // Renumber
+    const remaining = slides.filter(s => s.id !== slideId)
+    editor.batch(() => {
+      remaining.forEach((s: any, i: number) => {
+        editor.updateShape({
+          id: s.id,
+          type: 'frame',
+          x: 100 + i * 1400,
+          props: { ...s.props, name: `幻灯片 ${i + 1}`, meta: { ...s.props.meta, slideIndex: i } },
+        })
+      })
+    })
+    if (currentSlideId === slideId && remaining.length > 0) {
+      focusSlide(remaining[0].id)
+    }
+  }, [editor, slides, currentSlideId, focusSlide])
+
+  // Reorder: swap x positions and indices
+  const moveSlide = useCallback((fromIdx: number, toIdx: number) => {
+    if (!editor || fromIdx === toIdx) return
+    const a = slides[fromIdx]
+    const b = slides[toIdx]
+    if (!a || !b) return
+    editor.batch(() => {
+      editor.updateShape({ id: a.id, type: 'frame', x: 100 + toIdx * 1400, props: { ...a.props, name: `幻灯片 ${toIdx + 1}`, meta: { ...a.props.meta, slideIndex: toIdx } } })
+      editor.updateShape({ id: b.id, type: 'frame', x: 100 + fromIdx * 1400, props: { ...b.props, name: `幻灯片 ${fromIdx + 1}`, meta: { ...b.props.meta, slideIndex: fromIdx } } })
+    })
+  }, [editor, slides])
+
+  const handleDragStart = useCallback((e: React.DragEvent, idx: number) => {
+    setDragIdx(idx)
+    e.dataTransfer.effectAllowed = 'move'
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent, toIdx: number) => {
+    e.preventDefault()
+    if (dragIdx !== null && dragIdx !== toIdx) {
+      moveSlide(dragIdx, toIdx)
+    }
+    setDragIdx(null)
+  }, [dragIdx, moveSlide])
 
   // Select first slide when editor mounts
   useEffect(() => {
     if (!editor || slides.length === 0) return
-    if (!currentSlideId) focusSlide(slides[0].id)
+    if (!currentSlideId || !slides.find(s => s.id === currentSlideId)) {
+      focusSlide(slides[0].id)
+    }
   }, [editor, slides, currentSlideId, focusSlide])
 
   return (
-    <div className="flex h-full">
-      {/* Left: slide thumbnails */}
-      <div className="w-48 border-r border-gray-200 bg-gray-50 flex flex-col shrink-0">
-        <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between">
-          <span className="text-xs font-medium text-gray-600">{slides.length} 张幻灯片</span>
-          <button onClick={addSlide} className="p-1 text-gray-400 hover:text-bindle-600 rounded" title="新建幻灯片">
-            <Plus size={14} />
-          </button>
+    <div className="flex flex-col h-full">
+      {/* Center: canvas + right panel */}
+      <div className="flex-1 flex min-h-0">
+        <div className="flex-1 relative bg-gray-300">
+          {slides.length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center text-gray-500">
+                <Presentation size={48} strokeWidth={1} className="mx-auto mb-3" />
+                <p className="text-lg mb-2">创建你的第一张幻灯片</p>
+                <button onClick={() => addSlide()} className="px-4 py-2 bg-bindle-500 text-white rounded-lg text-sm hover:bg-bindle-600">
+                  <Plus size={14} className="inline mr-1" />新建幻灯片
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Tldraw
+              key={whiteboardId}
+              store={store}
+              onMount={(ed) => setEditor(ed)}
+            />
+          )}
         </div>
-        <div className="flex-1 overflow-auto py-1 space-y-1">
+
+        {/* Right: properties panel */}
+        <div className="w-48 border-l border-gray-200 bg-white shrink-0 p-3">
+          <p className="text-xs text-gray-400 text-center pt-4">
+            {currentSlideId ? '选中元素后可编辑属性' : '点击幻灯片开始编辑'}
+          </p>
+        </div>
+      </div>
+
+      {/* Bottom: horizontal slide strip */}
+      <div className="h-28 border-t border-gray-200 bg-gray-50 flex items-center px-3 gap-2 shrink-0">
+        <button
+          onClick={() => addSlide()}
+          className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors"
+        >
+          <Plus size={20} />
+        </button>
+        <div className="flex gap-2 overflow-x-auto py-1">
           {slides.map((s: any, i: number) => (
             <div
               key={s.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, i)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, i)}
               onClick={() => focusSlide(s.id)}
+              onDoubleClick={() => {
+                // Double click to rename
+                const newName = prompt('幻灯片名称', s.props?.name || `幻灯片 ${i + 1}`)
+                if (newName && editor) {
+                  editor.updateShape({
+                    id: s.id,
+                    type: 'frame',
+                    props: { ...s.props, name: newName },
+                  })
+                }
+              }}
               className={cn(
-                'px-2 py-1 mx-1 rounded cursor-pointer text-xs transition-colors',
-                currentSlideId === s.id ? 'bg-bindle-100 ring-1 ring-bindle-400' : 'hover:bg-gray-100'
+                'group relative w-28 h-[72px] border rounded cursor-pointer shrink-0 transition-all',
+                currentSlideId === s.id
+                  ? 'border-bindle-400 ring-2 ring-bindle-200'
+                  : 'border-gray-300 hover:border-gray-400',
+                dragIdx === i && 'opacity-50'
               )}
             >
-              <div
-                className="w-full bg-white border border-gray-300 rounded mb-1 flex items-center justify-center text-gray-300 text-[8px]"
-                style={{ aspectRatio: '16/9' }}
-              >
+              <div className="w-full h-full bg-white rounded flex items-center justify-center text-[10px] text-gray-400">
                 {i + 1}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="truncate text-gray-600">{s.props?.name || `幻灯片 ${i + 1}`}</span>
-                <button
-                  onClick={(e) => deleteSlide(e, s.id)}
-                  className="p-0.5 text-gray-400 hover:text-red-500 rounded opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 size={10} />
+              <div className="absolute bottom-0 left-0 right-0 bg-black/30 text-white text-[9px] px-1 py-0.5 rounded-b flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="truncate flex-1">{s.props?.name || `幻灯片 ${i + 1}`}</span>
+                <GripHorizontal size={9} className="cursor-grab shrink-0 ml-0.5" />
+              </div>
+              <div className="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={(e) => duplicateSlide(e, s.id)} className="p-0.5 bg-white border border-gray-200 rounded-bl hover:bg-bindle-50" title="复制">
+                  <Copy size={9} />
+                </button>
+                <button onClick={(e) => deleteSlide(e, s.id)} className="p-0.5 bg-white border border-gray-200 rounded-br hover:bg-red-50" title="删除">
+                  <Trash2 size={9} className="text-red-400" />
                 </button>
               </div>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Center: tldraw canvas */}
-      <div className="flex-1 relative bg-gray-200">
-        {slides.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-gray-400">
-              <LayoutTemplate size={48} strokeWidth={1} className="mx-auto mb-3" />
-              <p className="text-lg mb-2">创建你的第一张幻灯片</p>
-              <button onClick={addSlide} className="px-4 py-2 bg-bindle-500 text-white rounded-lg text-sm hover:bg-bindle-600">
-                <Plus size={14} className="inline mr-1" />新建幻灯片
-              </button>
-            </div>
-          </div>
-        ) : (
-          <Tldraw
-            key={whiteboardId}
-            store={store}
-            onMount={(ed) => setEditor(ed)}
-          />
-        )}
-      </div>
-
-      {/* Right: properties panel placeholder */}
-      <div className="w-56 border-l border-gray-200 bg-white shrink-0 p-3">
-        <p className="text-xs text-gray-400 text-center pt-8">选中元素后可编辑属性</p>
       </div>
     </div>
   )
