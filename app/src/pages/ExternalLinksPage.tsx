@@ -9,9 +9,9 @@ import { useWhiteboardStore } from '@/stores/whiteboardStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { Whiteboard } from '@/types/whiteboard'
-import { Plus, PenTool, Trash2, AlertCircle, Presentation, LayoutTemplate, Copy, GripHorizontal } from 'lucide-react'
+import { Plus, PenTool, Trash2, AlertCircle, Presentation, LayoutTemplate, Copy, GripHorizontal, Type, Square, ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Tldraw, createTLStore, getSnapshot, loadSnapshot, DefaultSpinner, defaultShapeUtils, defaultBindingUtils } from 'tldraw'
+import { Tldraw, createTLStore, getSnapshot, loadSnapshot, DefaultSpinner, defaultShapeUtils, defaultBindingUtils, createShapeId } from 'tldraw'
 import type { TLStore } from 'tldraw'
 import 'tldraw/tldraw.css'
 
@@ -285,7 +285,7 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
     if (!editor) return
     const idx = afterIndex ?? slides.length
     const x = 100 + idx * 1400
-    const id = editor.createShapeId()
+    const id = createShapeId()
     editor.createShape({
       id,
       type: 'frame',
@@ -390,12 +390,48 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
 
   return (
     <div className="flex flex-col h-full">
+      {/* Top toolbar */}
+      <div className="h-9 border-b border-gray-200 bg-white flex items-center px-3 gap-1 shrink-0">
+        {editor && (
+          <>
+            <button onClick={() => editor.setCurrentTool('select')} className="px-2 py-1 text-xs rounded hover:bg-gray-100">选择</button>
+            <span className="text-gray-200">|</span>
+            <button onClick={() => editor.setCurrentTool('text')} className="p-1 text-xs rounded hover:bg-gray-100" title="文本"><Type size={14} /></button>
+            <button onClick={() => editor.setCurrentTool('geo')} className="p-1 text-xs rounded hover:bg-gray-100" title="形状"><Square size={14} /></button>
+            <button onClick={() => editor.setCurrentTool('draw')} className="p-1 text-xs rounded hover:bg-gray-100" title="画笔"><PenTool size={14} /></button>
+            <button onClick={() => editor.setCurrentTool('arrow')} className="p-1 text-xs rounded hover:bg-gray-100" title="箭头">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="12 5 19 5 19 12"/></svg>
+            </button>
+            <span className="text-gray-200">|</span>
+            <button
+              onClick={async () => {
+                const input = document.createElement('input')
+                input.type = 'file'
+                input.accept = 'image/*'
+                input.onchange = async (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = (ev) => {
+                    const dataUrl = ev.target?.result as string
+                    editor.createShape({ id: createShapeId(), type: 'image', x: 300, y: 200, props: { src: dataUrl, w: 400, h: 300 } })
+                  }
+                  reader.readAsDataURL(file)
+                }
+                input.click()
+              }}
+              className="p-1 text-xs rounded hover:bg-gray-100" title="插入图片"><ImageIcon size={14} /></button>
+          </>
+        )}
+      </div>
+
       {/* Center: canvas + right panel */}
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 relative bg-gray-300">
           <Tldraw
             key={whiteboardId}
             store={store}
+            hideUi
             onMount={(ed) => setEditor(ed)}
           />
           {slides.length === 0 && (
