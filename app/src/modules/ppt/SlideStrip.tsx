@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Plus, Trash2, Copy, GripHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
@@ -8,10 +8,17 @@ export function SlideStrip() {
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
+  const lastClickedRef = useRef<number | null>(null)
+  const dragStartedRef = useRef(false)
 
   const handleDragStart = useCallback((e: React.DragEvent, idx: number) => {
+    dragStartedRef.current = true
     setDragIdx(idx); e.dataTransfer.effectAllowed = 'move'
   }, [])
+  const handleDragEnd = useCallback(() => {
+    setDragIdx(null); setTimeout(() => { dragStartedRef.current = false }, 50)
+  }, [])
+
   const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault() }, [])
   const handleDrop = useCallback((e: React.DragEvent, toIdx: number) => {
     e.preventDefault()
@@ -19,16 +26,20 @@ export function SlideStrip() {
     setDragIdx(null)
   }, [dragIdx, moveSlide])
 
-  const handleSlideClick = useCallback((e: React.MouseEvent, id: string) => {
+  const handleSlideClick = useCallback((e: React.MouseEvent, id: string, idx: number) => {
+    if (dragStartedRef.current) { dragStartedRef.current = false; return }
     if (e.ctrlKey || e.metaKey) {
-      usePptStore.setState(s => ({
-        selectedSlideIds: s.selectedSlideIds.includes(id)
-          ? s.selectedSlideIds.filter(sid => sid !== id)
-          : [...s.selectedSlideIds, id],
-      }))
+      usePptStore.setState(s => ({ selectedSlideIds: s.selectedSlideIds.includes(id) ? s.selectedSlideIds.filter(sid => sid !== id) : [...s.selectedSlideIds, id] }))
+      lastClickedRef.current = idx
+    } else if (e.shiftKey && lastClickedRef.current !== null) {
+      const from = Math.min(lastClickedRef.current, idx)
+      const to = Math.max(lastClickedRef.current, idx)
+      const range = usePptStore.getState().slides.slice(from, to + 1).map(s => s.id)
+      usePptStore.setState({ selectedSlideIds: range })
     } else {
       setCurrentSlide(id)
       usePptStore.setState({ selectedSlideIds: [] })
+      lastClickedRef.current = idx
     }
   }, [setCurrentSlide])
 
@@ -58,8 +69,8 @@ export function SlideStrip() {
       <div className="flex gap-2 overflow-x-auto py-1">
         {slides.map((s, i) => (
           <div key={s.id} draggable
-            onDragStart={e => handleDragStart(e, i)} onDragOver={handleDragOver} onDrop={e => handleDrop(e, i)}
-            onClick={e => handleSlideClick(e, s.id)}
+            onDragStart={e => handleDragStart(e, i)} onDragOver={handleDragOver} onDrop={e => handleDrop(e, i)} onDragEnd={handleDragEnd}
+            onClick={e => handleSlideClick(e, s.id, i)}
             className={cn('group relative w-28 h-[72px] border rounded cursor-pointer shrink-0 transition-all',
               s.id === currentSlideId ? 'border-bindle-400 ring-2 ring-bindle-200' : selectedSlideIds.includes(s.id) ? 'border-blue-300 bg-blue-50' : 'border-gray-300 hover:border-gray-400',
               dragIdx === i && 'opacity-50')}
@@ -70,7 +81,7 @@ export function SlideStrip() {
                 <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
                   onBlur={submitRename} onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenamingId(null) }}
                   onClick={e => e.stopPropagation()}
-                  className="flex-1 bg-transparent outline-none text-[9px] min-w-0" />
+                  className="flex-1 bg-transparent outline-none text-[9px] text-gray-800 min-w-0" />
               ) : (
                 <span className="truncate flex-1" onDoubleClick={e => startRename(e, s.id, s.name)} title="双击重命名">{s.name}</span>
               )}
