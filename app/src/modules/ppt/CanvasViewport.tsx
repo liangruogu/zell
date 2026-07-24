@@ -118,8 +118,9 @@ export function CanvasViewport() {
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return
       const target = e.target as HTMLElement
-      // start marquee when clicking on canvas bg or container empty area
-      if (target.closest('[data-el-id]')) return // clicked an element
+      // don't start marquee when clicking on elements or resize handles
+      if (target.closest('[data-el-id]') || target.closest('[data-handle]')) return
+      // marquee on canvas bg or container
       if (target.closest('[data-canvas="bg"]') || target === el || el.contains(target)) {
         dragging = true
         const rect = el.getBoundingClientRect()
@@ -396,7 +397,7 @@ function GroupBoundingBox({ elements, zoom }: { elements: CanvasElement[]; zoom:
     <div style={{ position: 'absolute', left: x1, top: y1, width: w, height: h, pointerEvents: 'none', zIndex: 2 }}>
       <div style={{ position: 'absolute', inset: `-${2 / zoom}px`, border: `${2 / zoom}px dashed rgba(59,130,246,0.6)`, pointerEvents: 'none' }} />
       {handles.map(p => (
-        <div key={p} style={{ ...hStyle(p), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
+        <div key={p} data-handle="" style={{ ...hStyle(p), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
       ))}
     </div>
   )

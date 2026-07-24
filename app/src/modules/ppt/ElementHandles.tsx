@@ -138,7 +138,7 @@ export function ElementHandles({ element, zoom }: Props) {
         pointerEvents: 'none',
       }} />
       {handles.map(p => (
-        <div key={p} style={{ ...hStyle(p, zoom), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
+        <div key={p} data-handle="" style={{ ...hStyle(p, zoom), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
       ))}
     </div>
   )
