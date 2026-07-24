@@ -45,15 +45,21 @@ interface PptState {
 function genId(): string { return crypto.randomUUID() }
 
 let historyTimer: any = null
+function pushSnapshot(slides: Slide[]) {
+  const s = usePptStore.getState()
+  if (s._undo.length >= 100) s._undo = s._undo.slice(-99)
+  usePptStore.setState({
+    _undo: [...s._undo, clone(slides)],
+    _redo: [],
+  })
+}
+
 function pushHistory() {
   if (historyTimer) clearTimeout(historyTimer)
   historyTimer = setTimeout(() => {
     const s = usePptStore.getState()
     if (s.slides.length === 0) return
-    usePptStore.setState({
-      _undo: [...s._undo.slice(-99), clone(s.slides)],
-      _redo: [],
-    })
+    pushSnapshot(s.slides)
   }, 400)
 }
 
@@ -76,7 +82,7 @@ function mutate(set: any, fn: (s: PptState) => Partial<PptState>) {
   set((s: PptState) => {
     const result = fn(s)
     const next = result.slides || s.slides
-    if (JSON.stringify(prev) !== JSON.stringify(next)) pushHistory()
+    if (JSON.stringify(prev) !== JSON.stringify(next)) pushSnapshot(prev)
     return result
   })
 }
