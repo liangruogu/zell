@@ -325,8 +325,69 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       {(el.type === 'rect' || el.type === 'ellipse') && (
         <>
           <ColorChip label="填充" color={el.props.fill || '#e2e8f0'} onChange={v => updateProps({ fill: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
-          <ColorChip label="边框色" color={el.props.stroke || '#cbd5e1'} onChange={v => updateProps({ stroke: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
-          <ScrubInput label="边框粗细" value={el.props.strokeWidth ?? 0} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
+          <StrokeSection el={el} updateProps={updateProps} />
+function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
+  const hasStroke = (el.props.strokeWidth ?? 0) > 0 && el.props.stroke
+  const [editW, setEditW] = useState(false)
+  const [wText, setWText] = useState('')
+  const wRef = useRef({ v0: 0, mx: 0 })
+  const w = el.props.strokeWidth ?? 1
+
+  const onWGrip = (e: React.PointerEvent) => {
+    e.stopPropagation()
+    wRef.current = { v0: w, mx: e.clientX }
+    const onMove = (ev: PointerEvent) => {
+      const v = Math.max(0, Math.min(20, Math.round(wRef.current.v0 + (ev.clientX - wRef.current.mx))))
+      updateProps({ strokeWidth: v })
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  return (
+    <div className="flex items-center justify-between">
+      <label className="text-[11px] text-gray-500">边框</label>
+      {!hasStroke ? (
+        <button onClick={() => updateProps({ stroke: '#cbd5e1', strokeWidth: 1 })}
+          className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
+          <svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        </button>
+      ) : (
+        <div className="flex items-center gap-1">
+          <div className="relative shrink-0">
+            <input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => updateProps({ stroke: e.target.value })}
+              className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
+            />
+            <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: el.props.stroke || '#cbd5e1' }} />
+          </div>
+          <div className="flex items-center h-[24px] bg-gray-100 rounded overflow-hidden">
+            <div onPointerDown={onWGrip} className="h-full shrink-0" style={{ cursor: 'ew-resize', touchAction: 'none' }}>
+              <Grip size={10} />
+            </div>
+            {editW ? (
+              <input autoFocus type="text" value={wText}
+                onChange={e => setWText(e.target.value)}
+                onBlur={() => { const n = parseInt(wText); if (!isNaN(n)) updateProps({ strokeWidth: Math.max(0, Math.min(20, n)) }); setEditW(false) }}
+                onKeyDown={e => { if (e.key === 'Enter') { const n = parseInt(wText); if (!isNaN(n)) updateProps({ strokeWidth: Math.max(0, Math.min(20, n)) }); setEditW(false) }; if (e.key === 'Escape') setEditW(false) }}
+                className="w-8 h-full text-xs text-center bg-transparent outline-none select-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            ) : (
+              <span onClick={() => { setWText(String(w)); setEditW(true) }} className="w-8 text-xs text-gray-700 text-center cursor-default select-none">{w}px</span>
+            )}
+          </div>
+          <button onClick={() => updateProps({ stroke: undefined, strokeWidth: undefined })}
+            className="p-0.5 text-gray-400 hover:text-red-500 rounded shrink-0">
+            <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
           <ShadowSection el={el} updateProps={updateProps} />
           {el.type === 'rect' && <CornerSection el={el} updateProps={updateProps} />}
         </>
