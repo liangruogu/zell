@@ -35,7 +35,7 @@ export function CanvasViewport() {
   return (
     <div
       ref={containerRef}
-      className="flex-1 bg-gray-300 flex items-center justify-center overflow-hidden"
+      className="flex-1 bg-transparent flex items-center justify-center overflow-hidden"
       onMouseDown={handleCanvasClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}

@@ -19,9 +19,6 @@ export function SlideStrip() {
 
   return (
     <div className="h-28 border-t border-gray-200 bg-gray-50 flex items-center px-3 gap-2 shrink-0">
-      <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors">
-        <Plus size={20} />
-      </button>
       <div className="flex gap-2 overflow-x-auto py-1">
         {slides.map((s, i) => (
           <div key={s.id} draggable
@@ -44,6 +41,9 @@ export function SlideStrip() {
           </div>
         ))}
       </div>
+      <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors">
+        <Plus size={20} />
+      </button>
     </div>
   )
 }

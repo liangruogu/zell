@@ -49,9 +49,11 @@ export default function WhiteboardPage() {
 
   const handleCreate = useCallback(async () => {
     if (!projectId || !newName.trim()) return
+    const dup = whiteboards.find(w => w.name === newName.trim() && w.wb_type === newType)
+    if (dup) { alert('same name and type already exists'); return }
     const wb = await createWhiteboard(projectId, newName.trim(), newType)
     setNewName(''); setShowCreate(false); setNewType('free'); setCurrentWhiteboard(wb)
-  }, [projectId, newName, newType, createWhiteboard, setCurrentWhiteboard])
+  }, [projectId, newName, newType, whiteboards, createWhiteboard, setCurrentWhiteboard])
 
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return; await deleteWhiteboard(deleteTarget.id); setDeleteTarget(null)
