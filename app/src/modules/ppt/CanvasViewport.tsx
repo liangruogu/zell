@@ -16,13 +16,30 @@ export function CanvasViewport() {
     forceUpdate(n => n + 1)
   }, [])
 
+  // Ctrl key cursor feedback
+  useEffect(() => {
+    const onDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control' && containerRef.current) {
+        containerRef.current.style.cursor = 'zoom-in'
+      }
+    }
+    const onUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control' && containerRef.current) {
+        containerRef.current.style.cursor = ''
+      }
+    }
+    window.addEventListener('keydown', onDown)
+    window.addEventListener('keyup', onUp)
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp) }
+  }, [])
+
   // Ctrl+wheel zoom at mouse position
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) {
-        e.preventDefault()
+        e.preventDefault(); e.stopPropagation()
         const rect = el.getBoundingClientRect()
         const mx = e.clientX - rect.left - rect.width / 2 - panRef.current.x
         const my = e.clientY - rect.top - rect.height / 2 - panRef.current.y
@@ -103,7 +120,7 @@ export function CanvasViewport() {
 
   return (
     <div ref={containerRef}
-      className="w-full h-full overflow-auto flex items-center justify-center"
+      className="w-full h-full overflow-hidden flex items-center justify-center"
       style={{ cursor: 'default' }}
       onMouseDown={handleCanvasClick} tabIndex={0}
       onContextMenu={e => e.preventDefault()}
