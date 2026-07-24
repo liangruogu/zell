@@ -248,7 +248,8 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
                   </div>
                 </>
               )}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
         {hexEdit ? (
