@@ -439,7 +439,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
         </button>
       </div>
       {shadows.map((s, i) => (
-        <div key={i} className="mt-1">
+        <div key={i} className="mt-1 relative">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setEditIdx(editIdx === i ? null : i)}
