@@ -10,6 +10,8 @@ export function CanvasViewport() {
   const slide = slides.find(s => s.id === currentSlideId)
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
+  const panRef = useRef({ x: 0, y: 0 })
+  panRef.current = { x: panX, y: panY }
 
   // Ctrl+wheel zoom at mouse position
   useEffect(() => {
@@ -52,8 +54,9 @@ export function CanvasViewport() {
     let panning = false, sx = 0, sy = 0, spx = 0, spy = 0
     const onDown = (e: MouseEvent) => {
       if (e.button !== 1) return
-      e.preventDefault()
-      panning = true; sx = e.clientX; sy = e.clientY; spx = panX; spy = panY
+      e.preventDefault(); e.stopPropagation()
+      panning = true; sx = e.clientX; sy = e.clientY
+      spx = panRef.current.x; spy = panRef.current.y
       el.style.cursor = 'grabbing'
     }
     const onMove = (e: MouseEvent) => {
@@ -70,9 +73,10 @@ export function CanvasViewport() {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
-  }, [panX, panY])
+  }, []) // no deps — uses refs
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return
     if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.canvas === 'bg') {
       usePptStore.getState().setSelectedIds([])
     }
