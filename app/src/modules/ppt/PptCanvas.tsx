@@ -35,11 +35,9 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
               <CanvasViewport />
               <div className="absolute bottom-3 right-3 z-50 flex gap-2">
                 <PreviewButton />
-                {(zoom !== 1) && (
-                  <button onClick={() => setZoom(1)} className="p-2 bg-white/80 backdrop-blur rounded-lg shadow hover:bg-white transition" title="重置视图">
-                    <Crosshair size={16} className="text-gray-600" />
-                  </button>
-                )}
+                <button onClick={() => setZoom(1)} className="p-2 bg-white/80 backdrop-blur rounded-lg shadow hover:bg-white transition" title="重置视图">
+                  <Crosshair size={16} className="text-gray-600" />
+                </button>
               </div>
             </>
           ) : (
