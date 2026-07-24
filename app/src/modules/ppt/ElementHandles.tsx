@@ -4,6 +4,7 @@ import { usePptStore } from './store'
 
 interface Props { element: CanvasElement }
 const HS = 8
+const CS = 10 // corner size
 
 export function ElementHandles({ element }: Props) {
   const [activeHandle, setActiveHandle] = useState<string | null>(null)
@@ -59,16 +60,22 @@ export function ElementHandles({ element }: Props) {
     const isCorner = pos.length === 2
     const isH = pos === 'w' || pos === 'e'
     const isV = pos === 'n' || pos === 's'
+    const cSize = isCorner ? CS : HS
+    const barLen = isV ? 18 : (isH ? 18 : cSize)  // bar handle length (18px for edges)
     return {
       position: 'absolute',
       background: '#3b82f6', border: '2px solid white',
       borderRadius: isCorner ? '50%' : '3px',
       cursor: isV ? 'ns-resize' : isH ? 'ew-resize'
         : pos === 'nw' || pos === 'se' ? 'nwse-resize' : 'nesw-resize',
-      width: isV ? 18 : HS,
-      height: isH ? 18 : HS,
-      ...(pos.includes('n') ? { top: isV ? -5 : -HS / 2 } : pos.includes('s') ? { bottom: isV ? -5 : -HS / 2 } : { top: '50%', marginTop: isH ? -9 : -HS / 2 }),
-      ...(pos.includes('w') ? { left: isH ? -5 : -HS / 2 } : pos.includes('e') ? { right: isH ? -5 : -HS / 2 } : { left: '50%', marginLeft: isV ? -9 : -HS / 2 }),
+      width: isV ? barLen : cSize,
+      height: isH ? barLen : cSize,
+      // perpendicular offset from edge: half the handle size in that direction
+      ...(pos.includes('n') ? { top: -(cSize / 2) } : pos.includes('s') ? { bottom: -(cSize / 2) } : {}),
+      ...(pos.includes('w') ? { left: -(cSize / 2) } : pos.includes('e') ? { right: -(cSize / 2) } : {}),
+      // parallel centering for edge handles
+      ...(isV ? { left: '50%', marginLeft: -(barLen / 2) } : {}),
+      ...(isH ? { top: '50%', marginTop: -(barLen / 2) } : {}),
     }
   }
 
