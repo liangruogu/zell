@@ -186,19 +186,23 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
           </button>
           {showPicker && (
             <div ref={pickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 108 }}>
+              <span className="text-[9px] text-gray-400">取色器</span>
               <div className="flex items-center gap-1">
                 <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-5 h-5 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
                 <span className="text-[11px] text-gray-600 font-mono">{color}</span>
               </div>
               {recentColors.length > 0 && (
-                <div className="flex gap-0.5 flex-wrap">
-                  {recentColors.slice(0, 14).map(c => (
-                    <button key={c} onClick={() => { handleColorChange(c); setShowPicker(false) }}
-                      className="w-4 h-4 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
-                      style={{ background: c }} title={c}
-                    />
-                  ))}
-                </div>
+                <>
+                  <span className="text-[9px] text-gray-400">最近使用</span>
+                  <div className="flex gap-0.5 flex-wrap">
+                    {recentColors.slice(0, 14).map(c => (
+                      <button key={c} onClick={() => { handleColorChange(c); setShowPicker(false) }}
+                        className="w-4 h-4 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                        style={{ background: c }} title={c}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           )}
