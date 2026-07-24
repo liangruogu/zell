@@ -453,7 +453,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             </button>
           </div>
           {editIdx === i && (
-            <div ref={popRef} className="absolute left-full top-0 ml-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 space-y-1">
+            <div ref={popRef} className="absolute right-full top-0 mr-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 space-y-1">
               <div className="text-[10px] text-gray-500 font-medium">阴影 {i + 1}</div>
               <ColorChip label="" color={s.color} onChange={v => updateShadow(i, { color: v })} />
               <div className="grid grid-cols-3 gap-1">
