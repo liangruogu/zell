@@ -12,6 +12,8 @@ export function SlideStrip() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
   const lastClickedRef = useRef<number | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragIdxRef = useRef<number | null>(null)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -29,6 +31,81 @@ export function SlideStrip() {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
+
+  // native drag handlers — bypass React synthetic events for dataTransfer reliability
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const handleDragStart = (e: DragEvent) => {
+      const target = e.target as HTMLElement
+      const dragEl = target.closest('[data-slide-idx]') as HTMLElement | null
+      if (!dragEl) return
+      const idx = parseInt(dragEl.dataset.slideIdx || '', 10)
+      if (isNaN(idx)) return
+      console.log('[native] dragStart idx=', idx, 'target.tagName=', target.tagName)
+      e.dataTransfer!.setData('text/plain', 'slide')
+      e.dataTransfer!.effectAllowed = 'move'
+      setDragIdx(idx)
+      dragIdxRef.current = idx
+    }
+
+    const handleDragEnd = () => {
+      console.log('[native] dragEnd')
+      setDragIdx(null); setDragOverIdx(null)
+      dragIdxRef.current = null
+    }
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      const target = e.target as HTMLElement
+      const slideEl = target.closest('[data-slide-idx]') as HTMLElement | null
+      const idx = slideEl ? parseInt(slideEl.dataset.slideIdx || '', 10) : -1
+      if (idx >= 0) {
+        console.log('[native] dragOver idx=', idx)
+        setDragOverIdx(idx)
+      }
+    }
+
+    const handleDragLeave = (e: DragEvent) => {
+      const target = e.target as HTMLElement
+      const slideEl = target.closest('[data-slide-idx]') as HTMLElement | null
+      // only clear if leaving the slide container entirely
+      if (!slideEl) {
+        console.log('[native] dragLeave (left container)')
+        setDragOverIdx(null)
+      }
+    }
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault()
+      const target = e.target as HTMLElement
+      const slideEl = target.closest('[data-slide-idx]') as HTMLElement | null
+      const toIdx = slideEl ? parseInt(slideEl.dataset.slideIdx || '', 10) : -1
+      const fromIdx = dragIdxRef.current
+      console.log('[native] drop toIdx=', toIdx, 'fromIdx=', fromIdx)
+      if (toIdx >= 0 && fromIdx !== null && fromIdx !== toIdx) {
+        console.log('[native] moving', fromIdx, '->', toIdx)
+        moveSlide(fromIdx, toIdx)
+      }
+      setDragIdx(null); setDragOverIdx(null)
+      dragIdxRef.current = null
+    }
+
+    el.addEventListener('dragstart', handleDragStart, { capture: false })
+    el.addEventListener('dragend', handleDragEnd, { capture: false })
+    el.addEventListener('dragover', handleDragOver, { capture: false })
+    el.addEventListener('dragleave', handleDragLeave, { capture: false })
+    el.addEventListener('drop', handleDrop, { capture: false })
+
+    return () => {
+      el.removeEventListener('dragstart', handleDragStart, { capture: false })
+      el.removeEventListener('dragend', handleDragEnd, { capture: false })
+      el.removeEventListener('dragover', handleDragOver, { capture: false })
+      el.removeEventListener('dragleave', handleDragLeave, { capture: false })
+      el.removeEventListener('drop', handleDrop, { capture: false })
+    }
+  }, [moveSlide])
 
   const handleClick = useCallback((e: React.MouseEvent, id: string, idx: number) => {
     if (e.ctrlKey || e.metaKey) {
@@ -61,36 +138,29 @@ export function SlideStrip() {
 
   return (
     <div className="h-28 border-t border-gray-200 flex items-center px-3 gap-2 shrink-0 bg-gray-100">
-      <div className="flex gap-2 overflow-x-auto py-1 items-center">
+      <div ref={containerRef} className="flex gap-2 overflow-x-auto py-1 items-center">
         {slides.map((sl, i) => (
-          <div key={sl.id}>
+          <div key={sl.id} data-slide-idx={i} className="flex shrink-0 items-center">
             {dragOverIdx === i && dragIdx !== null && dragIdx !== i && (
-              <div className="w-1 h-[72px] bg-blue-500 rounded shrink-0" />
+              <div className="w-1 h-[72px] bg-blue-500 rounded shrink-0 mr-0.5" />
             )}
-            <SlideThumb
-              slide={sl}
-              index={i}
-              isActive={sl.id === currentSlideId}
-              isSelected={selectedSlideIds.includes(sl.id)}
-              isDragging={dragIdx === i}
-              renamingId={renamingId}
-              renameVal={renameVal}
-              onChangeRenameVal={setRenameVal}
-              onSubmitRename={submitRename}
-              onStartRename={startRename}
-              onClick={handleClick}
-              onDragStart={(e) => { console.log('dragStart', i, 'dataTransfer:', e.dataTransfer); e.dataTransfer.setData('text/plain', 'slide'); e.dataTransfer.effectAllowed = 'move'; setDragIdx(i) }}
-              onDragOver={(e) => { e.preventDefault(); console.log('dragOver', i, 'effect:', e.dataTransfer?.effectAllowed); setDragOverIdx(i) }}
-              onDragLeave={(e) => { console.log('dragLeave', i, 'relatedTarget:', e.relatedTarget); setDragOverIdx(null) }}
-              onDragEnd={() => { console.log('dragEnd'); setDragIdx(null); setDragOverIdx(null) }}
-              onDrop={() => {
-                console.log('drop at', i, 'from idx', dragIdx)
-                if (dragIdx !== null && dragIdx !== i) { console.log('moving', dragIdx, '->', i); moveSlide(dragIdx, i) }
-                setDragIdx(null); setDragOverIdx(null)
-              }}
-              onDuplicate={() => duplicateSlide(sl.id)}
-              onDelete={() => deleteSlide(sl.id)}
-            />
+            <div draggable>
+              <SlideThumb
+                slide={sl}
+                index={i}
+                isActive={sl.id === currentSlideId}
+                isSelected={selectedSlideIds.includes(sl.id)}
+                isDragging={dragIdx === i}
+                renamingId={renamingId}
+                renameVal={renameVal}
+                onChangeRenameVal={setRenameVal}
+                onSubmitRename={submitRename}
+                onStartRename={startRename}
+                onClick={handleClick}
+                onDuplicate={() => duplicateSlide(sl.id)}
+                onDelete={() => deleteSlide(sl.id)}
+              />
+            </div>
           </div>
         ))}
         {dragOverIdx === slides.length && dragIdx !== null && (
@@ -109,19 +179,16 @@ export function SlideStrip() {
   )
 }
 
-function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId, renameVal, onChangeRenameVal, onSubmitRename, onStartRename, onClick, onDragStart, onDragOver, onDragLeave, onDragEnd, onDrop, onDuplicate, onDelete }: {
+function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId, renameVal, onChangeRenameVal, onSubmitRename, onStartRename, onClick, onDuplicate, onDelete }: {
   slide: Slide; index: number; isActive: boolean; isSelected: boolean; isDragging: boolean
   renamingId: string | null; renameVal: string
   onChangeRenameVal: (v: string) => void; onSubmitRename: () => void
   onStartRename: (e: React.MouseEvent, id: string, name: string) => void
   onClick: (e: React.MouseEvent, id: string, idx: number) => void
-  onDragStart: (e: React.DragEvent) => void; onDragOver: (e: React.DragEvent) => void; onDragLeave: (e: React.DragEvent) => void; onDragEnd: () => void; onDrop: () => void
   onDuplicate: () => void; onDelete: () => void
 }) {
   return (
     <div
-      draggable
-      onDragStart={onDragStart} onDragOver={onDragOver} onDragLeave={onDragLeave} onDragEnd={onDragEnd} onDrop={onDrop}
       onClick={e => onClick(e, slide.id, index)}
       className={cn('group relative w-32 h-[72px] border rounded cursor-pointer shrink-0 transition-all select-none',
         isActive ? 'border-bindle-400 ring-2 ring-bindle-200' : isSelected ? 'border-blue-300' : 'border-gray-300 hover:border-gray-400',
