@@ -396,13 +396,6 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
     </div>
   )
 }
-          <ShadowSection el={el} updateProps={updateProps} />
-          {el.type === 'rect' && <CornerSection el={el} updateProps={updateProps} />}
-        </>
-      )}
-    </div>
-  )
-}
 
 function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
   const shadows: { x: number; y: number; blur: number; color: string }[] = el.props.shadows || (el.props.shadowBlur ? [{ x: el.props.shadowX ?? 0, y: el.props.shadowY ?? 2, blur: el.props.shadowBlur ?? 4, color: el.props.shadowColor ?? 'rgba(0,0,0,0.15)' }] : [])
