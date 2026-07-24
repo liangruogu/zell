@@ -5,6 +5,15 @@ import type { CanvasElement } from './types'
 
 const SCRUB = { threshold: 3, speed: 1 }
 
+// recent color palette (shared across all ColorChips)
+const recentColors: string[] = []
+function addRecentColor(c: string) {
+  const idx = recentColors.indexOf(c)
+  if (idx >= 0) recentColors.splice(idx, 1)
+  recentColors.unshift(c)
+  if (recentColors.length > 12) recentColors.pop()
+}
+
 /* ── CSS-only grip indicator (two vertical lines) ── */
 function Grip({ size = 12 }: { size?: number }) {
   return (
@@ -125,6 +134,11 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
   const opRef = useRef({ v0: 0, mx: 0 })
   const opDisplay = Math.round((opacity ?? 1) * 100)
 
+  const handleColorChange = (c: string) => {
+    addRecentColor(c)
+    onChange(c)
+  }
+
   const onOpGrip = (e: React.PointerEvent) => {
     e.stopPropagation()
     opRef.current = { v0: opDisplay, mx: e.clientX }
@@ -142,7 +156,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
 
   const commitHex = () => {
     const expanded = expandHex(hexText)
-    if (expanded && expanded.length === 6) onChange('#' + expanded)
+    if (expanded && expanded.length === 6) handleColorChange('#' + expanded)
     setHexEdit(false)
   }
   const commitOp = () => {
@@ -153,10 +167,10 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
 
   return (
     <div>
-      <label className="text-[10px] text-gray-500">{label}</label>
+      {label && <label className="text-[10px] text-gray-500">{label}</label>}
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
         <div className="relative shrink-0">
-          <input type="color" value={color} onChange={e => onChange(e.target.value)}
+          <input type="color" value={color} onChange={e => handleColorChange(e.target.value)}
             className="absolute inset-0 opacity-0 cursor-pointer" style={{ width: 16, height: 16 }}
           />
           <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
@@ -190,6 +204,16 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
           </div>
         )}
       </div>
+      {recentColors.length > 0 && (
+        <div className="flex gap-0.5 mt-0.5 flex-wrap">
+          {recentColors.slice(0, 8).map(c => (
+            <button key={c} onClick={() => handleColorChange(c)}
+              className="w-4 h-4 rounded-sm border border-gray-300 hover:scale-125 transition-transform"
+              style={{ background: c }} title={c}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -280,6 +304,15 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
           <ColorChip label="填充" color={el.props.fill || '#e2e8f0'} onChange={v => updateProps({ fill: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
           <ColorChip label="边框色" color={el.props.stroke || '#cbd5e1'} onChange={v => updateProps({ stroke: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
           <ScrubInput label="边框粗细" value={el.props.strokeWidth ?? 0} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
+          <div className="pt-1 border-t border-gray-100">
+            <label className="text-[10px] text-gray-500">阴影</label>
+            <ColorChip label="" color={el.props.shadowColor || 'rgba(0,0,0,0.15)'} onChange={v => updateProps({ shadowColor: v })} />
+            <div className="grid grid-cols-3 gap-1 mt-1">
+              <ScrubInput label="X" value={el.props.shadowX ?? 0} onChange={v => updateProps({ shadowX: v })} min={-50} max={50} />
+              <ScrubInput label="Y" value={el.props.shadowY ?? 2} onChange={v => updateProps({ shadowY: v })} min={-50} max={50} />
+              <ScrubInput label="模糊" value={el.props.shadowBlur ?? 0} onChange={v => updateProps({ shadowBlur: v })} min={0} max={100} />
+            </div>
+          </div>
           {el.type === 'rect' && (
             <>
               <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v, borderRadiusTL: undefined, borderRadiusTR: undefined, borderRadiusBL: undefined, borderRadiusBR: undefined })} min={0} max={200} />

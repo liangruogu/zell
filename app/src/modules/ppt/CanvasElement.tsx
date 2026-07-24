@@ -100,6 +100,11 @@ function ArrowHd(x1: number, y1: number, x2: number, y2: number, shape: string |
   return null
 }
 
+function shadowStyle(p: CanvasElement['props']): string | undefined {
+  if (!p.shadowBlur || p.shadowBlur <= 0) return undefined
+  return `${p.shadowX || 0}px ${p.shadowY || 2}px ${p.shadowBlur}px ${p.shadowColor || 'rgba(0,0,0,0.15)'}`
+}
+
 // Element renderers
 interface EP { el: CanvasElement; isSelected: boolean }
 
@@ -110,14 +115,16 @@ function ImageEl({ el }: EP) {
 
 function TextEl({ el, isSelected }: EP) {
   const { onMouseDown, dragging } = useDrag(el.id)
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', cursor: dragging ? 'grabbing' : 'text' }} onMouseDown={onMouseDown} contentEditable={isSelected} suppressContentEditableWarning onBlur={e => { const s = usePptStore.getState(); if (s.currentSlideId) s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, text: e.currentTarget.textContent || '' } }) }}>{el.props.text || '双击编辑文本'}</div>
+  const ss = shadowStyle(el.props)
+  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', cursor: dragging ? 'grabbing' : 'text', boxShadow: ss }} onMouseDown={onMouseDown} contentEditable={isSelected} suppressContentEditableWarning onBlur={e => { const s = usePptStore.getState(); if (s.currentSlideId) s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, text: e.currentTarget.textContent || '' } }) }}>{el.props.text || '双击编辑文本'}</div>
 }
 
 function EllipseEl({ el }: EP) {
   const { onMouseDown, dragging } = useDrag(el.id)
+  const ss = shadowStyle(el.props)
   const sw = el.props.strokeWidth ?? 0
   const hasStroke = sw > 0 && el.props.stroke
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', cursor: dragging ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} />
+  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, cursor: dragging ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} />
 }
 
 function ArrowEl({ el }: EP) {
@@ -137,9 +144,10 @@ function ArrowEl({ el }: EP) {
 function RectEl({ el }: EP) {
   const { onMouseDown, dragging } = useDrag(el.id)
   const br = el.props.borderRadius || 0
+  const ss = shadowStyle(el.props)
   const sw = el.props.strokeWidth ?? 0
   const hasStroke = sw > 0 && el.props.stroke
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', cursor: dragging ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} />
+  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, cursor: dragging ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} />
 }
 
 export function CanvasElementView({ element, isSelected }: { element: CanvasElement; isSelected: boolean }) {

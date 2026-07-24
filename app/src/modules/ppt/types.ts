@@ -18,6 +18,7 @@ export interface CanvasElement {
     borderRadiusTL?: number; borderRadiusTR?: number; borderRadiusBL?: number; borderRadiusBR?: number
     startShape?: string; endShape?: string
     src?: string
+    shadowX?: number; shadowY?: number; shadowBlur?: number; shadowColor?: string
   }
 }
 
