@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Play, ChevronLeft, ChevronRight } from 'lucide-react'
 import { usePptStore } from './store'
 import { SLIDE_W, SLIDE_H } from './types'
@@ -74,8 +74,28 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   }, [idx, visible])
 
   const [hoverSide, setHoverSide] = useState<'left' | 'right' | null>(null)
+  const cursorTimer = useRef<ReturnType<typeof setTimeout>>()
 
-  if (!slide) return null
+  // auto-hide cursor
+  useEffect(() => {
+    const show = () => {
+      document.body.style.cursor = 'default'
+      clearTimeout(cursorTimer.current)
+      cursorTimer.current = setTimeout(() => { document.body.style.cursor = 'none' }, 2000)
+    }
+    show()
+    window.addEventListener('mousemove', show)
+    return () => { window.removeEventListener('mousemove', show); clearTimeout(cursorTimer.current); document.body.style.cursor = 'default' }
+  }, [])
+
+  const ended = idx >= visible.length
+  if (ended) {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center">
+        <p className="text-white/60 text-lg">已经到最后一张幻灯片了，按 ESC 退出</p>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -136,9 +156,9 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       </div>
 
       {/* Bottom bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/15">
         <div
-          className="h-full bg-white/40 transition-all duration-300"
+          className="h-full bg-bindle-500 transition-all duration-300"
           style={{ width: `${((idx + 1) / visible.length) * 100}%` }}
         />
       </div>
