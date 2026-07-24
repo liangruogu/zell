@@ -333,40 +333,58 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
 }
 
 function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
-  const hasShadow = (el.props.shadowBlur ?? 0) > 0
-  const [expanded, setExpanded] = useState(hasShadow)
+  const shadows: { x: number; y: number; blur: number; color: string }[] = el.props.shadows || (el.props.shadowBlur ? [{ x: el.props.shadowX ?? 0, y: el.props.shadowY ?? 2, blur: el.props.shadowBlur ?? 4, color: el.props.shadowColor ?? 'rgba(0,0,0,0.15)' }] : [])
+  const [editIdx, setEditIdx] = useState<number | null>(null)
+
+  const updateShadow = (idx: number, s: Partial<{ x: number; y: number; blur: number; color: string }>) => {
+    const ns = shadows.map((sh, i) => i === idx ? { ...sh, ...s } : sh)
+    updateProps({ shadows: ns })
+  }
+  const removeShadow = (idx: number) => {
+    const ns = shadows.filter((_, i) => i !== idx)
+    updateProps({ shadows: ns.length > 0 ? ns : undefined })
+    setEditIdx(null)
+  }
+  const addShadow = () => {
+    const ns = [...shadows, { x: 0, y: 2, blur: 4, color: 'rgba(0,0,0,0.15)' }]
+    updateProps({ shadows: ns })
+    setEditIdx(ns.length - 1)
+  }
 
   return (
     <div className="pt-2 border-t border-gray-100">
       <div className="flex items-center justify-between">
         <label className="text-[11px] text-gray-500">阴影</label>
-        {!hasShadow ? (
-          <button onClick={() => { updateProps({ shadowBlur: 4, shadowY: 2, shadowColor: 'rgba(0,0,0,0.15)' }); setExpanded(true) }}
-            className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
-            <svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
-        ) : (
-          <button onClick={() => setExpanded(!expanded)}
-            className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
-            <svg width="12" height="12" viewBox="0 0 12 12" style={{ transform: expanded ? 'rotate(180deg)' : '' }}><path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-        )}
+        <button onClick={addShadow} className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
+          <svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        </button>
       </div>
-      {(hasShadow || expanded) && hasShadow && (
-        <div className={expanded ? 'mt-1 space-y-1' : 'hidden'}>
-          <ColorChip label="" color={el.props.shadowColor || 'rgba(0,0,0,0.15)'} onChange={v => updateProps({ shadowColor: v })} />
-          <div className="grid grid-cols-3 gap-1">
-            <ScrubInput label="X" value={el.props.shadowX ?? 0} onChange={v => updateProps({ shadowX: v })} min={-50} max={50} />
-            <ScrubInput label="Y" value={el.props.shadowY ?? 2} onChange={v => updateProps({ shadowY: v })} min={-50} max={50} />
-            <ScrubInput label="模糊" value={el.props.shadowBlur ?? 4} onChange={v => updateProps({ shadowBlur: v })} min={0} max={100} />
+      {shadows.map((s, i) => (
+        <div key={i} className="mt-1">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setEditIdx(editIdx === i ? null : i)}
+              className="flex items-center gap-1 flex-1 h-[24px] bg-gray-100 rounded px-1 hover:bg-gray-200 transition"
+            >
+              <div className="rounded-sm border border-gray-300" style={{ width: 14, height: 14, background: s.color, boxShadow: `${s.x}px ${s.y}px ${s.blur}px ${s.color}` }} />
+              <span className="text-[10px] text-gray-500 truncate">{s.color} · {s.blur}px</span>
+            </button>
+            <button onClick={() => removeShadow(i)} className="p-0.5 text-gray-400 hover:text-red-500 rounded">
+              <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="5" x2="8" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            </button>
           </div>
-          <button onClick={() => { updateProps({ shadowBlur: undefined, shadowX: undefined, shadowY: undefined, shadowColor: undefined }); setExpanded(false) }}
-            className="flex items-center gap-0.5 text-[10px] text-gray-400 hover:text-red-500 mt-0.5">
-            <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            移除阴影
-          </button>
+          {editIdx === i && (
+            <div className="mt-1 p-2 bg-gray-50 rounded space-y-1">
+              <ColorChip label="" color={s.color} onChange={v => updateShadow(i, { color: v })} />
+              <div className="grid grid-cols-3 gap-1">
+                <ScrubInput label="X" value={s.x} onChange={v => updateShadow(i, { x: v })} min={-50} max={50} />
+                <ScrubInput label="Y" value={s.y} onChange={v => updateShadow(i, { y: v })} min={-50} max={50} />
+                <ScrubInput label="模糊" value={s.blur} onChange={v => updateShadow(i, { blur: v })} min={0} max={100} />
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      ))}
     </div>
   )
 }

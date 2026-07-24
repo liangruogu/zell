@@ -19,6 +19,7 @@ export interface CanvasElement {
     startShape?: string; endShape?: string
     src?: string
     shadowX?: number; shadowY?: number; shadowBlur?: number; shadowColor?: string
+    shadows?: { x: number; y: number; blur: number; color: string }[]
   }
 }
 

@@ -101,8 +101,14 @@ function ArrowHd(x1: number, y1: number, x2: number, y2: number, shape: string |
 }
 
 function shadowStyle(p: CanvasElement['props']): string | undefined {
-  if (!p.shadowBlur || p.shadowBlur <= 0) return undefined
-  return `${p.shadowX || 0}px ${p.shadowY || 2}px ${p.shadowBlur}px ${p.shadowColor || 'rgba(0,0,0,0.15)'}`
+  if (p.shadows && p.shadows.length > 0) {
+    return p.shadows.map(s => `${s.x || 0}px ${s.y || 2}px ${s.blur}px ${s.color || 'rgba(0,0,0,0.15)'}`).join(', ')
+  }
+  // legacy single shadow
+  if (p.shadowBlur && p.shadowBlur > 0) {
+    return `${p.shadowX || 0}px ${p.shadowY || 2}px ${p.shadowBlur}px ${p.shadowColor || 'rgba(0,0,0,0.15)'}`
+  }
+  return undefined
 }
 
 // Element renderers
