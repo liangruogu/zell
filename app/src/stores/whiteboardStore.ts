@@ -24,12 +24,9 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
     set({ loading: true })
     try {
       const boards = await invoke<Whiteboard[]>('get_whiteboards', { projectId })
-      console.log(boards);
       set({ whiteboards: boards, loading: false })
-      console.log("鑾峰彇鎴愬姛")
     } catch (e: any){
       set({ loading: false })
-      console.log(e);
     }
   },
 

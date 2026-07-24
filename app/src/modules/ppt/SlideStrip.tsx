@@ -62,12 +62,13 @@ export function SlideStrip() {
               onSubmitRename={submitRename}
               onStartRename={startRename}
               onClick={handleClick}
-              onDragStart={() => setDragIdx(i)}
-              onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i) }}
-              onDragLeave={() => setDragOverIdx(null)}
-              onDragEnd={() => { setDragIdx(null); setDragOverIdx(null) }}
+              onDragStart={() => { console.log('dragStart', i); setDragIdx(i) }}
+              onDragOver={(e) => { e.preventDefault(); console.log('dragOver', i); setDragOverIdx(i) }}
+              onDragLeave={() => { console.log('dragLeave', i); setDragOverIdx(null) }}
+              onDragEnd={() => { console.log('dragEnd'); setDragIdx(null); setDragOverIdx(null) }}
               onDrop={() => {
-                if (dragIdx !== null && dragIdx !== i) moveSlide(dragIdx, i)
+                console.log('drop at', i, 'from idx', dragIdx)
+                if (dragIdx !== null && dragIdx !== i) { console.log('moving', dragIdx, '->', i); moveSlide(dragIdx, i) }
                 setDragIdx(null); setDragOverIdx(null)
               }}
               onDuplicate={() => duplicateSlide(sl.id)}
