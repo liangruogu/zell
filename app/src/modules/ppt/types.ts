@@ -13,7 +13,10 @@ export interface CanvasElement {
   opacity: number
   props: {
     text?: string; fontSize?: number; fontColor?: string; fontWeight?: string
-    fill?: string; stroke?: string; strokeWidth?: number; borderRadius?: number
+    fill?: string; stroke?: string; strokeWidth?: number
+    borderRadius?: number
+    borderRadiusTL?: number; borderRadiusTR?: number; borderRadiusBL?: number; borderRadiusBR?: number
+    startShape?: string; endShape?: string
     src?: string
   }
 }

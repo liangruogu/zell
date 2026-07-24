@@ -14,7 +14,7 @@ export function PptToolbar() {
       rect: { type: 'rect', x: 200, y: 150, w: 200, h: 120, opacity: 1, props: { fill: '#e2e8f0', stroke: '#cbd5e1', strokeWidth: 1, borderRadius: 4 } },
       ellipse: { type: 'ellipse', x: 200, y: 150, w: 120, h: 120, opacity: 1, props: { fill: '#e2e8f0', stroke: '#cbd5e1', strokeWidth: 1 } },
       line: { type: 'line', x: 100, y: 300, w: 200, h: 2, opacity: 1, props: { stroke: '#94a3b8', strokeWidth: 2 } },
-      arrow: { type: 'arrow', x: 100, y: 300, w: 200, h: 2, opacity: 1, props: { stroke: '#94a3b8', strokeWidth: 2 } },
+      arrow: { type: 'arrow', x: 100, y: 300, w: 300, h: 30, opacity: 1, props: { stroke: '#94a3b8', strokeWidth: 2, endShape: 'arrow', startShape: 'none' } },
       image: { type: 'image', x: 200, y: 100, w: 400, h: 300, opacity: 1, props: { src: '' } },
     }
     const el = { id: genId(), ...defaults[type] } as CanvasElement
@@ -42,13 +42,15 @@ export function PptToolbar() {
   }
 
   return (
-    <div className="h-9 border-b border-gray-200 bg-white flex items-center px-3 gap-1 shrink-0">
-      <button onClick={() => add('text')} className="p-1.5 rounded hover:bg-gray-100" title="文本"><Type size={14} /></button>
-      <button onClick={() => add('rect')} className="p-1.5 rounded hover:bg-gray-100" title="矩形"><Square size={14} /></button>
-      <button onClick={() => add('ellipse')} className="p-1.5 rounded hover:bg-gray-100" title="圆形"><Circle size={14} /></button>
-      <button onClick={() => add('line')} className="p-1.5 rounded hover:bg-gray-100" title="线条"><Minus size={14} /></button>
-      <button onClick={() => add('arrow')} className="p-1.5 rounded hover:bg-gray-100" title="箭头"><ArrowRight size={14} /></button>
-      <button onClick={addImage} className="p-1.5 rounded hover:bg-gray-100" title="插入图片"><ImageIcon size={14} /></button>
+    <div className="h-10 border-t border-gray-200 bg-white flex items-center justify-center px-3 gap-2 shrink-0">
+      <button onClick={() => add('text')} className="p-2 rounded hover:bg-gray-100" title="文本"><Type size={16} /></button>
+      <button onClick={() => add('rect')} className="p-2 rounded hover:bg-gray-100" title="矩形"><Square size={16} /></button>
+      <button onClick={() => add('ellipse')} className="p-2 rounded hover:bg-gray-100" title="圆形"><Circle size={16} /></button>
+      <span className="text-gray-300">|</span>
+      <button onClick={() => add('line')} className="p-2 rounded hover:bg-gray-100" title="线条"><Minus size={16} /></button>
+      <button onClick={() => add('arrow')} className="p-2 rounded hover:bg-gray-100" title="箭头"><ArrowRight size={16} /></button>
+      <span className="text-gray-300">|</span>
+      <button onClick={addImage} className="p-2 rounded hover:bg-gray-100" title="插入图片"><ImageIcon size={16} /></button>
     </div>
   )
 }
