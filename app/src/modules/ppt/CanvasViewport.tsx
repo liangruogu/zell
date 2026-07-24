@@ -97,6 +97,7 @@ export function CanvasViewport() {
     if (e.button !== 0) return
     if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.canvas === 'bg') {
       usePptStore.getState().setSelectedIds([])
+      usePptStore.setState({ selectedSlideIds: [] })
     }
   }, [])
 
@@ -125,7 +126,7 @@ export function CanvasViewport() {
 
   return (
     <div ref={containerRef}
-      className="w-full h-full overflow-hidden flex items-center justify-center"
+      className="w-full h-full overflow-hidden flex items-center justify-center outline-none"
       style={{ cursor: 'default' }}
       onMouseDown={handleCanvasClick} tabIndex={0}
       onContextMenu={e => e.preventDefault()}
