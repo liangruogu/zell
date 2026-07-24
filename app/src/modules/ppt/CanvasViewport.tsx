@@ -102,9 +102,11 @@ export function CanvasViewport() {
     let dragging = false
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return
-      // only start marquee on canvas bg, not on elements
       const target = e.target as HTMLElement
-      if (target.closest('[data-canvas="bg"]') && !target.closest('[style*="position: absolute"]')) {
+      // only start marquee when clicking directly on canvas bg
+      const onBg = target.closest('[data-canvas="bg"]') && !(target as HTMLElement).closest('[style*="position: absolute"]')
+      console.log('[marquee] onDown target:', target.tagName, target.className?.slice(0,30), 'onBg:', onBg)
+      if (onBg) {
         dragging = true
         const rect = el.getBoundingClientRect()
         marqueeRef.current = { sx: e.clientX - rect.left, sy: e.clientY - rect.top, ex: e.clientX - rect.left, ey: e.clientY - rect.top }
@@ -132,14 +134,16 @@ export function CanvasViewport() {
 
       const containerRect = el.getBoundingClientRect()
       const z = st.zoom
-      const px = panRef.current.x + containerRect.width / 2
-      const py = panRef.current.y + containerRect.height / 2
+      const px = containerRect.width / 2 + panRef.current.x
+      const py = containerRect.height / 2 + panRef.current.y
+
+      console.log('[marquee] screen:', { sx: m.sx, sy: m.sy, ex: m.ex, ey: m.ey }, 'cont:', containerRect.width, containerRect.height, 'pan:', panRef.current.x, panRef.current.y, 'zoom:', z)
 
       // marquee rect in screen coords relative to slide center
-      const mx1 = m.sx - containerRect.width / 2 - px
-      const my1 = m.sy - containerRect.height / 2 - py
-      const mx2 = m.ex - containerRect.width / 2 - px
-      const my2 = m.ey - containerRect.height / 2 - py
+      const mx1 = m.sx - px
+      const my1 = m.sy - py
+      const mx2 = m.ex - px
+      const my2 = m.ey - py
 
       // convert to canvas coords
       const x1 = Math.min(mx1, mx2) / z + SLIDE_W / 2
@@ -155,10 +159,12 @@ export function CanvasViewport() {
       }
 
       const hitIds: string[] = []
-      for (const el of cSlide.elements) {
-        if (el.x < x2 && el.x + el.w > x1 && el.y < y2 && el.y + el.h > y1) {
-          hitIds.push(el.id)
-        }
+      console.log('[marquee] elements count:', cSlide.elements.length, 'marquee canvas:', { x1, y1, x2, y2 })
+      for (let i = 0; i < cSlide.elements.length; i++) {
+        const el = cSlide.elements[i]
+        const hit = el.x < x2 && el.x + el.w > x1 && el.y < y2 && el.y + el.h > y1
+        console.log('[marquee] el', i, el.type, '@', el.x, el.y, el.w, el.h, 'hit=', hit)
+        if (hit) hitIds.push(el.id)
       }
       if (e.shiftKey) {
         const prev = new Set(st.selectedIds)
