@@ -95,15 +95,13 @@ export function CanvasViewport() {
     }
   }, []) // no deps — uses refs
 
-  // Click outside elements → deselect
+  // Click outside canvas → deselect
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      // only deselect if clicking on canvas area (not on props panel etc.)
       const cEl = containerRef.current
-      if (!cEl || !cEl.contains(target)) return
-      // don't deselect if clicking on an element (has data-el-id)
-      if (target.closest('[data-el-id]')) return
+      if (!cEl) return
+      // only deselect when clicking OUTSIDE the container (inside is handled by marquee)
+      if (cEl.contains(e.target as Node)) return
       const st = usePptStore.getState()
       if (st.selectedIds.length > 0) st.setSelectedIds([])
       if (st.selectedSlideIds.length > 0) usePptStore.setState({ selectedSlideIds: [] })
@@ -168,6 +166,8 @@ export function CanvasViewport() {
       const y2 = Math.max(my1, my2) / z + SLIDE_H / 2
 
       if (Math.abs(x2 - x1) < 3 && Math.abs(y2 - y1) < 3) {
+        st.setSelectedIds([])
+        usePptStore.setState({ selectedSlideIds: [] })
         return
       }
 
