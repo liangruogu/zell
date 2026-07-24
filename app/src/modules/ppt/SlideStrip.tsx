@@ -218,11 +218,10 @@ export function SlideStrip() {
         {slides.map((sl, i) => (
           <div key={sl.id} data-slide-idx={i} className="flex shrink-0 items-center">
             <div
-              className="h-[72px] bg-blue-500 rounded shrink-0 transition-all duration-200 ease-out"
+              className="h-[72px] bg-blue-500 rounded shrink-0 transition-[width,margin] duration-200 ease-out overflow-hidden"
               style={{
                 width: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 4 : 0,
-                marginRight: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 2 : 0,
-                opacity: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 1 : 0,
+                marginRight: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 4 : 0,
               }}
             />
             <SlideThumb
@@ -243,11 +242,10 @@ export function SlideStrip() {
           </div>
         ))}
         <div
-          className="h-[72px] bg-blue-500 rounded shrink-0 transition-all duration-200 ease-out"
+          className="h-[72px] bg-blue-500 rounded shrink-0 transition-[width,margin] duration-200 ease-out overflow-hidden"
           style={{
             width: (dragOverIdx === slides.length && dragIdx !== null) ? 4 : 0,
-            marginRight: (dragOverIdx === slides.length && dragIdx !== null) ? 2 : 0,
-            opacity: (dragOverIdx === slides.length && dragIdx !== null) ? 1 : 0,
+            marginRight: (dragOverIdx === slides.length && dragIdx !== null) ? 4 : 0,
           }}
         />
       </div>
