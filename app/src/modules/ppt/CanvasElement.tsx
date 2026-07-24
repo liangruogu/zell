@@ -2,18 +2,29 @@ import { useCallback, useRef, useState, useEffect } from 'react'
 import type { CanvasElement } from './types'
 import { usePptStore } from './store'
 
-// Shared drag hook
+const SNAP = 6
+
 function useDrag(elementId: string) {
   const [dragging, setDragging] = useState(false)
-  const ref = useRef({ mx: 0, my: 0, ox: 0, oy: 0 })
+  const ref = useRef({ mx: 0, my: 0, ox: 0, oy: 0, shift: false, alt: false, clonedId: '' })
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     const s = usePptStore.getState()
-    s.setSelectedIds(e.shiftKey ? (s.selectedIds.includes(elementId) ? s.selectedIds.filter(id => id !== elementId) : [...s.selectedIds, elementId]) : [elementId])
+    if (e.shiftKey && !e.altKey) {
+      s.setSelectedIds(s.selectedIds.includes(elementId) ? s.selectedIds : [...s.selectedIds, elementId])
+    } else if (!e.shiftKey) {
+      s.setSelectedIds([elementId])
+    }
     setDragging(true)
     const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === elementId)
-    if (el) ref.current = { mx: e.clientX, my: e.clientY, ox: el.x, oy: el.y }
+    ref.current = { mx: e.clientX, my: e.clientY, ox: el?.x ?? 0, oy: el?.y ?? 0, shift: e.shiftKey, alt: e.altKey, clonedId: '' }
+
+    if (e.altKey && s.currentSlideId && el) {
+      const clone: CanvasElement = { ...el, id: crypto.randomUUID(), x: el.x + 30, y: el.y + 30 }
+      s.addElement(s.currentSlideId, clone)
+      ref.current.clonedId = clone.id; ref.current.ox = clone.x; ref.current.oy = clone.y
+    }
   }, [elementId])
 
   useEffect(() => {
@@ -21,11 +32,16 @@ function useDrag(elementId: string) {
     const onMove = (e: MouseEvent) => {
       const s = usePptStore.getState()
       if (!s.currentSlideId) return
-      const z = s.zoom || 1
-      s.updateElement(s.currentSlideId, elementId, {
-        x: Math.round(ref.current.ox + (e.clientX - ref.current.mx) / z),
-        y: Math.round(ref.current.oy + (e.clientY - ref.current.my) / z),
-      })
+      const z = s.zoom || 1; const tid = ref.current.clonedId || elementId
+      let dx = (e.clientX - ref.current.mx) / z; let dy = (e.clientY - ref.current.my) / z
+      if (ref.current.shift) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0 }
+      let nx = Math.round(ref.current.ox + dx); let ny = Math.round(ref.current.oy + dy)
+      const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === tid)
+      if (el) {
+        const others = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.filter(ee => ee.id !== tid) || []
+        const sn = snapPos(el, others, nx, ny); nx = sn.x; ny = sn.y
+      }
+      s.updateElement(s.currentSlideId, tid, { x: nx, y: ny })
     }
     const onUp = () => setDragging(false)
     window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
@@ -35,87 +51,70 @@ function useDrag(elementId: string) {
   return { onMouseDown, dragging }
 }
 
-// Arrow SVG
-function renderArrowHead(x1: number, y1: number, x2: number, y2: number, shape: string | undefined, color: string, sw: number, isEnd: boolean) {
-  if (!shape || shape === 'none') return null
-  const size = sw * 5
-  const dx = x2 - x1; const dy = y2 - y1
-  const len = Math.sqrt(dx * dx + dy * dy) || 1
-  const ux = dx / len; const uy = dy / len
-  // Arrow tip goes beyond the endpoint
-  const tipX = isEnd ? x2 + size * ux : x1 - size * ux
-  const tipY = isEnd ? y2 + size * uy : y1 - size * uy
-  const baseX = isEnd ? x2 : x1
-  const baseY = isEnd ? y2 : y1
+function snapPos(el: CanvasElement, others: CanvasElement[], x: number, y: number) {
+  const elx = x, ely = y, erx = x + el.w, eby = y + el.h, ecx = x + el.w / 2, ecy = y + el.h / 2
+  let sx = x, sy = y
+  // Canvas center (1280x720)
+  if (Math.abs(ecx - 640) < SNAP) sx = 640 - el.w / 2
+  if (Math.abs(ecy - 360) < SNAP) sy = 360 - el.h / 2
+  for (const o of others) {
+    const ocx = o.x + o.w / 2, ocy = o.y + o.h / 2
+    if (Math.abs(ecx - ocx) < SNAP) sx = ocx - el.w / 2
+    if (Math.abs(ecy - ocy) < SNAP) sy = ocy - el.h / 2
+    if (Math.abs(elx - o.x) < SNAP) sx = o.x
+    if (Math.abs(erx - (o.x + o.w)) < SNAP) sx = o.x + o.w - el.w
+    if (Math.abs(ely - o.y) < SNAP) sy = o.y
+    if (Math.abs(eby - (o.y + o.h)) < SNAP) sy = o.y + o.h - el.h
+  }
+  return { x: Math.round(sx), y: Math.round(sy) }
+}
 
-  if (shape === 'arrow') {
-    const px = -uy * size * 0.5; const py = ux * size * 0.5
-    return <polygon points={`${tipX},${tipY} ${baseX + px},${baseY + py} ${baseX - px},${baseY - py}`} fill={color} />
-  }
-  if (shape === 'circle') {
-    return <circle cx={baseX} cy={baseY} r={size * 0.4} fill={color} />
-  }
-  if (shape === 'square') {
-    const px = -uy * size * 0.4; const py = ux * size * 0.4
-    return <rect x={baseX + px - size * 0.4} y={baseY + py - size * 0.4} width={size * 0.8} height={size * 0.8} fill='none' stroke={color} strokeWidth={sw} />
-  }
+// Arrow
+function ArrowHead(x1: number, y1: number, x2: number, y2: number, shape: string | undefined, color: string, sw: number) {
+  if (!shape || shape === 'none') return null
+  const size = sw * 5, dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy) || 1, ux = dx / len, uy = dy / len, cx = x2, cy = y2
+  if (shape === 'arrow') { const p = size * .5; return <polygon points={`${cx + size * ux},${cy + size * uy} ${cx - uy * p},${cy + ux * p} ${cx + uy * p},${cy - ux * p}`} fill={color} opacity={1} /> }
+  if (shape === 'circle') return <circle cx={cx} cy={cy} r={size * .4} fill={color} />
+  if (shape === 'square') return <rect x={cx - size * .4} y={cy - size * .4} width={size * .8} height={size * .8} fill='none' stroke={color} strokeWidth={sw} />
   return null
 }
 
-// ---- Element renderers ----
+// Elements
+interface EP { el: CanvasElement; isSelected: boolean }
 
-interface EProps { el: CanvasElement; isSelected: boolean }
-
-function ImageEl({ el }: EProps) {
+function ImageEl({ el }: EP) {
   const { onMouseDown } = useDrag(el.id)
-  return <img src={el.props.src || ''} alt="" style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity }} onMouseDown={onMouseDown} draggable={false} />
+  return <img src={el.props.src || ''} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity }} onMouseDown={onMouseDown} draggable={false} />
 }
-
-function TextEl({ el, isSelected }: EProps) {
+function TextEl({ el, isSelected }: EP) {
   const { onMouseDown } = useDrag(el.id)
-  return (
-    <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: '8px', overflow: 'hidden', whiteSpace: 'pre-wrap', cursor: 'grab' }}
-      onMouseDown={onMouseDown} contentEditable={isSelected} suppressContentEditableWarning
-      onBlur={e => { const s = usePptStore.getState(); if (s.currentSlideId) s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, text: e.currentTarget.textContent || '' } }) }}>
-      {el.props.text || '双击编辑文本'}
-    </div>
-  )
+  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', cursor: 'grab' }} onMouseDown={onMouseDown} contentEditable={isSelected} suppressContentEditableWarning onBlur={e => { const s = usePptStore.getState(); if (s.currentSlideId) s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, text: e.currentTarget.textContent || '' } }) }}>{el.props.text || '双击编辑文本'}</div>
 }
-
-function EllipseEl({ el }: EProps) {
+function EllipseEl({ el }: EP) {
   const { onMouseDown } = useDrag(el.id)
   return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: el.props.stroke ? `${el.props.strokeWidth || 1}px solid ${el.props.stroke}` : 'none', cursor: 'grab' }} onMouseDown={onMouseDown} />
 }
-
-function ArrowEl({ el }: EProps) {
+function ArrowEl({ el }: EP) {
   const { onMouseDown } = useDrag(el.id)
-  const sw = el.props.strokeWidth || 2; const color = el.props.stroke || '#94a3b8'
+  const sw = el.props.strokeWidth || 2, c = el.props.stroke || '#94a3b8', hs = sw * 5
+  const x1 = el.props.startShape && el.props.startShape !== 'none' ? hs : 0
+  const x2 = el.props.endShape && el.props.endShape !== 'none' ? el.w - hs : el.w
   return (
-    <svg style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, overflow: 'visible', cursor: 'grab' }} onMouseDown={onMouseDown}>
-      <line x1={0} y1={el.h / 2} x2={el.w} y2={el.h / 2} stroke={color} strokeWidth={sw} />
-      {renderArrowHead(0, el.h / 2, el.w, el.h / 2, el.props.startShape, color, sw, false)}
-      {renderArrowHead(el.w, el.h / 2, 0, el.h / 2, el.props.endShape, color, sw, true)}
+    <svg style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, overflow: 'visible', cursor: 'grab', opacity: el.opacity }} onMouseDown={onMouseDown}>
+      <line x1={x1} y1={el.h / 2} x2={x2} y2={el.h / 2} stroke={c} strokeWidth={sw} />
+      {ArrowHead(0, el.h / 2, el.w, el.h / 2, el.props.startShape, c, sw)}
+      {ArrowHead(el.w, el.h / 2, 0, el.h / 2, el.props.endShape, c, sw)}
     </svg>
   )
 }
-
-function RectEl({ el }: EProps) {
+function RectEl({ el }: EP) {
   const { onMouseDown } = useDrag(el.id)
   const br = el.props.borderRadius || 0
-  return (
-    <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity,
-      borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`,
-      background: el.props.fill || '#e2e8f0', border: el.props.stroke ? `${el.props.strokeWidth || 1}px solid ${el.props.stroke}` : '1px solid #cbd5e1', cursor: 'grab' }}
-      onMouseDown={onMouseDown} />
-  )
+  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: el.props.stroke ? `${el.props.strokeWidth || 1}px solid ${el.props.stroke}` : '1px solid #cbd5e1', cursor: 'grab' }} onMouseDown={onMouseDown} />
 }
 
-// ---- Main renderer ----
-
-interface Props { element: CanvasElement; isSelected: boolean }
-
-export function CanvasElementView({ element, isSelected }: Props) {
-  const p: EProps = { el: element, isSelected }
+export function CanvasElementView({ element, isSelected }: { element: CanvasElement; isSelected: boolean }) {
+  const p: EP = { el: element, isSelected }
   switch (element.type) {
     case 'image': return <ImageEl {...p} />
     case 'text': return <TextEl {...p} />
