@@ -95,6 +95,23 @@ export function CanvasViewport() {
     }
   }, []) // no deps — uses refs
 
+  // Click outside elements → deselect
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      // only deselect if clicking on canvas area (not on props panel etc.)
+      const cEl = containerRef.current
+      if (!cEl || !cEl.contains(target)) return
+      // don't deselect if clicking on an element with position:absolute (it will handle its own selection)
+      if (target.closest('[style*="position: absolute"]')) return
+      const st = usePptStore.getState()
+      if (st.selectedIds.length > 0) st.setSelectedIds([])
+      if (st.selectedSlideIds.length > 0) usePptStore.setState({ selectedSlideIds: [] })
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
   // Marquee selection
   useEffect(() => {
     const el = containerRef.current
@@ -151,9 +168,6 @@ export function CanvasViewport() {
       const y2 = Math.max(my1, my2) / z + SLIDE_H / 2
 
       if (Math.abs(x2 - x1) < 3 && Math.abs(y2 - y1) < 3) {
-        // tiny drag — single click, clear selection
-        st.setSelectedIds([])
-        usePptStore.setState({ selectedSlideIds: [] })
         return
       }
 
