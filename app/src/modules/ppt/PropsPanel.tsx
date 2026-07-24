@@ -206,7 +206,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
 
   return (
     <div>
-      {label && <label className="text-[10px] text-gray-500">{label}</label>}
+      {label && <label className="text-[12px] text-gray-500">{label}</label>}
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
         <div className="relative shrink-0">
           <button onClick={() => setShowPicker(!showPicker)} className="block">
