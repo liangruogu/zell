@@ -353,16 +353,26 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <ScrubInput label="X" value={el.x} onChange={v => update({ x: v })} />
-        <ScrubInput label="Y" value={el.y} onChange={v => update({ y: v })} />
-        <ScrubInput label="W" value={el.w} onChange={v => update({ w: v })} min={10} />
-        <ScrubInput label="H" value={el.h} onChange={v => update({ h: v })} min={10} />
-      </div>
-      {el.type !== 'rect' && el.type !== 'ellipse' && (
-        <div>
-          <label className="text-[10px] text-gray-500">透明度</label>
-          <input type="range" min={0} max={1} step={0.1} value={el.opacity} onChange={e => update({ opacity: +e.target.value })} className="w-full" />
+      {el.type !== 'group' && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <ScrubInput label="X" value={el.x} onChange={v => update({ x: v })} />
+            <ScrubInput label="Y" value={el.y} onChange={v => update({ y: v })} />
+            <ScrubInput label="W" value={el.w} onChange={v => update({ w: v })} min={1} />
+            <ScrubInput label="H" value={el.h} onChange={v => update({ h: v })} min={1} />
+          </div>
+          {el.type !== 'rect' && el.type !== 'ellipse' && (
+            <div>
+              <label className="text-[10px] text-gray-500">透明度</label>
+              <input type="range" min={0} max={1} step={0.1} value={el.opacity} onChange={e => update({ opacity: +e.target.value })} className="w-full" />
+            </div>
+          )}
+        </>
+      )}
+      {el.type === 'group' && (
+        <div className="grid grid-cols-2 gap-2">
+          <ScrubInput label="W" value={el.w} onChange={v => update({ w: v })} min={1} />
+          <ScrubInput label="H" value={el.h} onChange={v => update({ h: v })} min={1} />
         </div>
       )}
       {el.type === 'text' && (
@@ -400,12 +410,6 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
           <ShadowSection el={el} updateProps={updateProps} />
           {el.type === 'rect' && <CornerSection el={el} updateProps={updateProps} />}
         </>
-      )}
-      {el.type === 'group' && (
-        <div className="grid grid-cols-2 gap-2">
-          <ScrubInput label="W" value={el.w} onChange={v => update({ w: v })} min={1} />
-          <ScrubInput label="H" value={el.h} onChange={v => update({ h: v })} min={1} />
-        </div>
       )}
     </div>
   )

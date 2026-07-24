@@ -74,6 +74,24 @@ export function ElementHandles({ element, zoom }: Props) {
       }
 
       s.updateElement(s.currentSlideId, element.id, { x: Math.round(nx), y: Math.round(ny), w: Math.round(nw), h: Math.round(nh) })
+      // if element is a group, also scale its children
+      if (element.type === 'group' && element.groupChildren) {
+        const ow = ref.current.ow, oh = ref.current.oh
+        if (ow > 0 && oh > 0) {
+          const sx = nw / ow, sy = nh / oh
+          const el2 = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
+          if (el2) {
+            const scaled = element.groupChildren.map(c => ({
+              ...c,
+              x: Math.round(c.x * sx),
+              y: Math.round(c.y * sy),
+              w: Math.round(c.w * sx),
+              h: Math.round(c.h * sy),
+            }))
+            s.updateElement(s.currentSlideId, element.id, { groupChildren: scaled } as any)
+          }
+        }
+      }
     }
     const onUp = () => { setActiveHandle(null); usePptStore.getState().setGuideLines([]) }
     window.addEventListener('mousemove', onMove)
