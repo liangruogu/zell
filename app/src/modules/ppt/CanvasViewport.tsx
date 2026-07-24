@@ -244,7 +244,7 @@ export function CanvasViewport() {
         {slide.elements.map(el => (
           <CanvasElementView key={el.id} element={el} isSelected={selectedIds.includes(el.id)} />
         ))}
-        {selEls.map(el => (
+        {selEls.length === 1 && selEls.map(el => (
           <ElementHandles key={`h-${el.id}`} element={el} zoom={zoom} />
         ))}
         {selEls.length > 1 && (
