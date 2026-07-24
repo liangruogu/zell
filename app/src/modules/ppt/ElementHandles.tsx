@@ -55,9 +55,9 @@ export function ElementHandles({ element, zoom }: Props) {
         const others = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.filter(ee => ee.id !== element.id) || []
         const snapped = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny, activeHandle)
         switch (activeHandle) {
-          case 'n': ny = snapped.y; break
+          case 'n': ny = snapped.y; nh = ref.current.oy + ref.current.oh - ny; break
           case 's': nh = snapped.eby - ny; break
-          case 'w': nx = snapped.x; break
+          case 'w': nx = snapped.x; nw = ref.current.ox + ref.current.ow - nx; break
           case 'e': nw = snapped.erx - nx; break
           default: nx = snapped.x; ny = snapped.y; break
         }
