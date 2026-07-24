@@ -295,7 +295,7 @@ export function PropsPanel() {
 
   useEffect(() => { syncRecentColors(slides) }, [slides])
 
-  const typeLabels: Record<string, string> = { text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }
+  const typeLabels: Record<string, string> = { text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片', group: '组' }
   const elDisplayName = el ? (el.name || typeLabels[el.type] || el.type) : ''
 
   const submitElRename = () => {
@@ -400,6 +400,12 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
           <ShadowSection el={el} updateProps={updateProps} />
           {el.type === 'rect' && <CornerSection el={el} updateProps={updateProps} />}
         </>
+      )}
+      {el.type === 'group' && (
+        <div className="grid grid-cols-2 gap-2">
+          <ScrubInput label="W" value={el.w} onChange={v => update({ w: v })} min={1} />
+          <ScrubInput label="H" value={el.h} onChange={v => update({ h: v })} min={1} />
+        </div>
       )}
     </div>
   )
@@ -826,6 +832,7 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
   }
 
   const isSelected = (el: CanvasElement) => selectedIds.includes(el.id)
+  const typeLabel = (el: CanvasElement) => el.name || ({ text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片', group: '组' } as Record<string,string>)[el.type]
 
   return (
     <div className="space-y-0 select-none">
@@ -850,8 +857,8 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
                 onClick={e => e.stopPropagation()}
               />
             ) : (
-              <span className="truncate flex-1" onDoubleClick={el.type === 'text' || el.name ? () => startRename(el) : undefined}>
-                {el.name || ({ text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' } as Record<string,string>)[el.type]}
+              <span className="truncate flex-1" onDoubleClick={() => startRename(el)}>
+                {typeLabel(el)}
               </span>
             )}
           </div>

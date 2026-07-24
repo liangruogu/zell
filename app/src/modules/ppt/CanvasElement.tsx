@@ -208,8 +208,14 @@ function RectEl({ el, isSelected }: EP) {
   return <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, cursor: dragging ? 'grabbing' : 'default', outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : undefined, outlineOffset: '1px' }} onMouseDown={onMouseDown} />
 }
 
-export function CanvasElementView({ element, isSelected }: { element: CanvasElement; isSelected: boolean }) {
+export function CanvasElementView({ element, isSelected, readOnly }: { element: CanvasElement; isSelected: boolean; readOnly?: boolean }) {
+  if (readOnly) {
+    return <ReadOnlyEl el={element} isSelected={isSelected} />
+  }
   const p: EP = { el: element, isSelected }
+  if (element.type === 'group' && element.groupChildren) {
+    return <GroupEl el={element} isSelected={isSelected} />
+  }
   switch (element.type) {
     case 'image': return <ImageEl {...p} />
     case 'text': return <TextEl {...p} />
@@ -217,4 +223,33 @@ export function CanvasElementView({ element, isSelected }: { element: CanvasElem
     case 'arrow': return <ArrowEl {...p} />
     default: return <RectEl {...p} />
   }
+}
+
+function ReadOnlyEl({ el, isSelected }: EP) {
+  const ss = shadowStyle(el.props)
+  const br = el.props.borderRadius || 0
+  const sw = el.props.strokeWidth ?? 0
+  const hasStroke = sw > 0 && el.props.stroke
+  if (el.type === 'image') return <img src={el.props.src || ''} data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, pointerEvents: 'none' }} draggable={false} />
+  if (el.type === 'text') return <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', boxShadow: ss, pointerEvents: 'none' }}>{el.props.text || ''}</div>
+  if (el.type === 'ellipse') return <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, pointerEvents: 'none' }} />
+  if (el.type === 'arrow') {
+    const sw2 = el.props.strokeWidth || 2; const c = el.props.stroke || '#94a3b8'; const hs = sw2 * 5
+    const x1 = el.props.startShape && el.props.startShape !== 'none' ? hs : 0
+    const x2 = el.props.endShape && el.props.endShape !== 'none' ? el.w - hs : el.w
+    return <svg data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, overflow: 'visible', opacity: el.opacity, pointerEvents: 'none' }}><line x1={x1} y1={el.h / 2} x2={x2} y2={el.h / 2} stroke={c} strokeWidth={sw2} />{ArrowHd(0, el.h / 2, el.w, el.h / 2, el.props.startShape, c, sw2)}{ArrowHd(el.w, el.h / 2, 0, el.h / 2, el.props.endShape, c, sw2)}</svg>
+  }
+  return <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss, pointerEvents: 'none' }} />
+}
+
+function GroupEl({ el, isSelected }: EP) {
+  const { onMouseDown, dragging } = useDrag(el.id)
+  const children = el.groupChildren || []
+  return (
+    <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, cursor: dragging ? 'grabbing' : 'default' }} onMouseDown={onMouseDown}>
+      {children.map(child => (
+        <CanvasElementView key={child.id} element={child} isSelected={isSelected} readOnly />
+      ))}
+    </div>
+  )
 }

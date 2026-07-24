@@ -41,6 +41,8 @@ interface PptState {
   setGuideLines: (lines: GuideLine[]) => void
   undo: () => void
   redo: () => void
+  groupElements: (slideId: string, ids: string[]) => void
+  ungroupElement: (slideId: string, groupId: string) => void
 }
 
 function genId(): string { return crypto.randomUUID() }
@@ -245,5 +247,51 @@ export const usePptStore = create<PptState>((set, get) => ({
       selectedIds: [],
       currentSlideId: restoredSlides[0]?.id || null,
     }))
+  },
+
+  groupElements: (slideId, ids) => {
+    if (ids.length < 2) return
+    const st = get()
+    const slide = st.slides.find(s => s.id === slideId)
+    if (!slide) return
+    const children = slide.elements.filter(e => ids.includes(e.id))
+    if (children.length < 2) return
+    const x1 = Math.min(...children.map(e => e.x))
+    const y1 = Math.min(...children.map(e => e.y))
+    const x2 = Math.max(...children.map(e => e.x + e.w))
+    const y2 = Math.max(...children.map(e => e.y + e.h))
+    const group: CanvasElement = {
+      id: genId(), name: '组', type: 'group',
+      x: x1, y: y1, w: x2 - x1, h: y2 - y1, opacity: 1,
+      props: {},
+      groupChildren: children,
+    }
+    mutate(set, s => {
+      const ns = s.slides.map(sl => {
+        if (sl.id !== slideId) return sl
+        return { ...sl, elements: [...sl.elements.filter(e => !ids.includes(e.id)), group] }
+      })
+      return { slides: ns, selectedIds: [group.id], currentSlideId: slideId }
+    })
+  },
+
+  ungroupElement: (slideId, groupId) => {
+    const st = get()
+    const slide = st.slides.find(s => s.id === slideId)
+    if (!slide) return
+    const group = slide.elements.find(e => e.id === groupId && e.type === 'group')
+    if (!group || !group.groupChildren) return
+    const ungrouped = group.groupChildren
+    mutate(set, s => {
+      const ns = s.slides.map(sl => {
+        if (sl.id !== slideId) return sl
+        // insert ungrouped elements where the group was
+        const idx = sl.elements.findIndex(e => e.id === groupId)
+        const before = sl.elements.slice(0, idx)
+        const after = sl.elements.slice(idx + 1)
+        return { ...sl, elements: [...before, ...ungrouped, ...after] }
+      })
+      return { slides: ns, selectedIds: ungrouped.map(e => e.id), currentSlideId: slideId }
+    })
   },
 }))

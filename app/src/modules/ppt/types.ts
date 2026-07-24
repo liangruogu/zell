@@ -4,7 +4,7 @@ export const SLIDE_W = 1280
 export const SLIDE_H = 720
 export const SLIDE_GAP = 80
 
-export type ElementType = 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'image'
+export type ElementType = 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'image' | 'group'
 
 export interface CanvasElement {
   id: string
@@ -22,6 +22,7 @@ export interface CanvasElement {
     shadowX?: number; shadowY?: number; shadowBlur?: number; shadowColor?: string
     shadows?: { x: number; y: number; blur: number; color: string }[]
   }
+  groupChildren?: CanvasElement[]
 }
 
 export interface Slide {
