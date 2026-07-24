@@ -19,6 +19,7 @@ interface PptState {
   _undo: Slide[][]
   _redo: Slide[][]
   _timer: ReturnType<typeof setTimeout> | null
+  _resizing: boolean
 
   init: (data: PptData) => void
   getData: () => PptData
@@ -99,6 +100,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   _undo: [],
   _redo: [],
   _timer: null,
+  _resizing: false,
 
   init: (data) => set({ slides: clone(data.slides), currentSlideId: data.slides[0]?.id || null, selectedIds: [], _undo: [], _redo: [] }),
 
@@ -220,6 +222,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   setSelectedIds: (ids) => set({ selectedIds: ids }),
   setZoom: (z) => set({ zoom: Math.max(0.25, Math.min(3, z)) }),
   setGuideLines: (lines) => set({ guideLines: lines }),
+  setResizing: (v: boolean) => set({ _resizing: v }),
 
   undo: () => {
     flushHistory()

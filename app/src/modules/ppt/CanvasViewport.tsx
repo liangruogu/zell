@@ -118,6 +118,9 @@ export function CanvasViewport() {
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return
       const target = e.target as HTMLElement
+      // don't start marquee when resizing elements
+      const st = usePptStore.getState()
+      if (st._resizing) return
       // don't start marquee when clicking on elements or resize handles
       if (target.closest('[data-el-id]') || target.closest('[data-handle]')) return
       // marquee on canvas bg or container
@@ -311,6 +314,7 @@ function GroupBoundingBox({ elements, zoom }: { elements: CanvasElement[]; zoom:
   const startResize = useCallback((e: React.MouseEvent, handle: string) => {
     e.stopPropagation(); e.preventDefault()
     setActiveHandle(handle)
+    usePptStore.getState().setResizing(true)
     ref.current = { mx: e.clientX, my: e.clientY, ox: x1, oy: y1, ow: w, oh: h, els: elements.map(el => ({...el})) }
   }, [x1, y1, w, h, elements])
 
@@ -365,7 +369,7 @@ function GroupBoundingBox({ elements, zoom }: { elements: CanvasElement[]; zoom:
         })
       }
     }
-    const onUp = () => setActiveHandle(null)
+    const onUp = () => { setActiveHandle(null); usePptStore.getState().setResizing(false) }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }

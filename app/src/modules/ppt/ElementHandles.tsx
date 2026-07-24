@@ -14,6 +14,7 @@ export function ElementHandles({ element, zoom }: Props) {
   const startResize = useCallback((e: React.MouseEvent, handle: string) => {
     e.stopPropagation(); e.preventDefault()
     setActiveHandle(handle)
+    usePptStore.getState().setResizing(true)
     const s = usePptStore.getState()
     ref.current = { mx: e.clientX, my: e.clientY, ox: element.x, oy: element.y, ow: element.w, oh: element.h }
   }, [element.x, element.y, element.w, element.h])
@@ -93,7 +94,7 @@ export function ElementHandles({ element, zoom }: Props) {
         }
       }
     }
-    const onUp = () => { setActiveHandle(null); usePptStore.getState().setGuideLines([]) }
+    const onUp = () => { setActiveHandle(null); usePptStore.getState().setGuideLines([]); usePptStore.getState().setResizing(false) }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
