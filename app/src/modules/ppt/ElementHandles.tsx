@@ -92,7 +92,6 @@ export function ElementHandles({ element, zoom }: Props) {
       ...(isH ? { top: '50%', marginTop: -(barLen / 2) } : {}),
     }
   }
-  }
 
   const handles = element.type === 'arrow' || element.type === 'line' ? ['w', 'e'] : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
 
