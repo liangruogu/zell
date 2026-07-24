@@ -13,7 +13,120 @@ export function SlideStrip() {
   const [renameVal, setRenameVal] = useState('')
   const lastClickedRef = useRef<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const dragIdxRef = useRef<number | null>(null)
+
+  // manual pointer-based drag reorder (HTML5 DnD unreliable in Tauri WebView2)
+  const dragState = useRef<{
+    active: boolean
+    fromIdx: number
+    startX: number
+    startY: number
+    moved: boolean
+    currentDropIdx: number
+  }>({ active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1 })
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const getSlideIdx = (target: HTMLElement): number => {
+      const slideEl = target.closest('[data-slide-idx]') as HTMLElement | null
+      return slideEl ? parseInt(slideEl.dataset.slideIdx || '', 10) : -1
+    }
+
+    const findDropIdx = (clientX: number, clientY: number, fromIdx: number): number => {
+      const st = usePptStore.getState()
+      const total = st.slides.length
+      if (total === 0) return -1
+
+      for (let i = 0; i < total; i++) {
+        const slideEl = document.querySelector(`[data-slide-idx="${i}"]`)
+        if (!slideEl) continue
+        const rect = slideEl.getBoundingClientRect()
+        if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+          const midX = rect.left + rect.width / 2
+          return clientX < midX ? i : i + 1
+        }
+      }
+      const stripRect = el.getBoundingClientRect()
+      if (clientY >= stripRect.top && clientY <= stripRect.bottom && clientX >= stripRect.left && clientX <= stripRect.right) {
+        for (let i = 0; i < total; i++) {
+          const slideEl = document.querySelector(`[data-slide-idx="${i}"]`)
+          if (slideEl) {
+            const rect = slideEl.getBoundingClientRect()
+            if (clientX < rect.left) return i
+          }
+        }
+        return total
+      }
+      return -1
+    }
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement
+      const idx = getSlideIdx(target)
+      if (idx < 0) return
+      if (target.closest('button') || target.closest('input')) return
+      console.log('[ptr] pointerDown idx=', idx)
+      dragState.current = {
+        active: true,
+        fromIdx: idx,
+        startX: e.clientX,
+        startY: e.clientY,
+        moved: false,
+        currentDropIdx: -1,
+      }
+      setDragIdx(idx)
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragState.current.active) return
+      const dx = e.clientX - dragState.current.startX
+      const dy = e.clientY - dragState.current.startY
+      const dist = Math.abs(dx) + Math.abs(dy)
+      if (dist < 5 && !dragState.current.moved) return
+
+      if (!dragState.current.moved) {
+        dragState.current.moved = true
+        console.log('[ptr] drag started, dist=', dist)
+      }
+
+      const dropIdx = findDropIdx(e.clientX, e.clientY, dragState.current.fromIdx)
+      if (dropIdx >= 0 && dropIdx !== dragState.current.currentDropIdx) {
+        dragState.current.currentDropIdx = dropIdx
+        console.log('[ptr] dropIdx=', dropIdx)
+        setDragOverIdx(dropIdx)
+      }
+    }
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (!dragState.current.active) return
+      console.log('[ptr] pointerUp, moved=', dragState.current.moved)
+      const { fromIdx, moved } = dragState.current
+
+      if (moved) {
+        const dropIdx = findDropIdx(e.clientX, e.clientY, fromIdx)
+        console.log('[ptr] final dropIdx=', dropIdx, 'fromIdx=', fromIdx)
+        if (dropIdx >= 0 && dropIdx !== fromIdx) {
+          const realTo = fromIdx < dropIdx ? dropIdx - 1 : dropIdx
+          console.log('[ptr] moving', fromIdx, '->', realTo)
+          moveSlide(fromIdx, realTo)
+        }
+      }
+      dragState.current = { active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1 }
+      setDragIdx(null)
+      setDragOverIdx(null)
+    }
+
+    el.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+    }
+  }, [moveSlide])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -31,81 +144,6 @@ export function SlideStrip() {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
-
-  // native drag handlers — bypass React synthetic events for dataTransfer reliability
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
-    const handleDragStart = (e: DragEvent) => {
-      const target = e.target as HTMLElement
-      const dragEl = target.closest('[data-slide-idx]') as HTMLElement | null
-      if (!dragEl) return
-      const idx = parseInt(dragEl.dataset.slideIdx || '', 10)
-      if (isNaN(idx)) return
-      console.log('[native] dragStart idx=', idx, 'target.tagName=', target.tagName)
-      e.dataTransfer!.setData('text/plain', 'slide')
-      e.dataTransfer!.effectAllowed = 'move'
-      setDragIdx(idx)
-      dragIdxRef.current = idx
-    }
-
-    const handleDragEnd = () => {
-      console.log('[native] dragEnd')
-      setDragIdx(null); setDragOverIdx(null)
-      dragIdxRef.current = null
-    }
-
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault()
-      const target = e.target as HTMLElement
-      const slideEl = target.closest('[data-slide-idx]') as HTMLElement | null
-      const idx = slideEl ? parseInt(slideEl.dataset.slideIdx || '', 10) : -1
-      if (idx >= 0) {
-        console.log('[native] dragOver idx=', idx)
-        setDragOverIdx(idx)
-      }
-    }
-
-    const handleDragLeave = (e: DragEvent) => {
-      const target = e.target as HTMLElement
-      const slideEl = target.closest('[data-slide-idx]') as HTMLElement | null
-      // only clear if leaving the slide container entirely
-      if (!slideEl) {
-        console.log('[native] dragLeave (left container)')
-        setDragOverIdx(null)
-      }
-    }
-
-    const handleDrop = (e: DragEvent) => {
-      e.preventDefault()
-      const target = e.target as HTMLElement
-      const slideEl = target.closest('[data-slide-idx]') as HTMLElement | null
-      const toIdx = slideEl ? parseInt(slideEl.dataset.slideIdx || '', 10) : -1
-      const fromIdx = dragIdxRef.current
-      console.log('[native] drop toIdx=', toIdx, 'fromIdx=', fromIdx)
-      if (toIdx >= 0 && fromIdx !== null && fromIdx !== toIdx) {
-        console.log('[native] moving', fromIdx, '->', toIdx)
-        moveSlide(fromIdx, toIdx)
-      }
-      setDragIdx(null); setDragOverIdx(null)
-      dragIdxRef.current = null
-    }
-
-    el.addEventListener('dragstart', handleDragStart, { capture: false })
-    el.addEventListener('dragend', handleDragEnd, { capture: false })
-    el.addEventListener('dragover', handleDragOver, { capture: false })
-    el.addEventListener('dragleave', handleDragLeave, { capture: false })
-    el.addEventListener('drop', handleDrop, { capture: false })
-
-    return () => {
-      el.removeEventListener('dragstart', handleDragStart, { capture: false })
-      el.removeEventListener('dragend', handleDragEnd, { capture: false })
-      el.removeEventListener('dragover', handleDragOver, { capture: false })
-      el.removeEventListener('dragleave', handleDragLeave, { capture: false })
-      el.removeEventListener('drop', handleDrop, { capture: false })
-    }
-  }, [moveSlide])
 
   const handleClick = useCallback((e: React.MouseEvent, id: string, idx: number) => {
     if (e.ctrlKey || e.metaKey) {
@@ -144,23 +182,21 @@ export function SlideStrip() {
             {dragOverIdx === i && dragIdx !== null && dragIdx !== i && (
               <div className="w-1 h-[72px] bg-blue-500 rounded shrink-0 mr-0.5" />
             )}
-            <div draggable>
-              <SlideThumb
-                slide={sl}
-                index={i}
-                isActive={sl.id === currentSlideId}
-                isSelected={selectedSlideIds.includes(sl.id)}
-                isDragging={dragIdx === i}
-                renamingId={renamingId}
-                renameVal={renameVal}
-                onChangeRenameVal={setRenameVal}
-                onSubmitRename={submitRename}
-                onStartRename={startRename}
-                onClick={handleClick}
-                onDuplicate={() => duplicateSlide(sl.id)}
-                onDelete={() => deleteSlide(sl.id)}
-              />
-            </div>
+            <SlideThumb
+              slide={sl}
+              index={i}
+              isActive={sl.id === currentSlideId}
+              isSelected={selectedSlideIds.includes(sl.id)}
+              isDragging={dragIdx === i}
+              renamingId={renamingId}
+              renameVal={renameVal}
+              onChangeRenameVal={setRenameVal}
+              onSubmitRename={submitRename}
+              onStartRename={startRename}
+              onClick={handleClick}
+              onDuplicate={() => duplicateSlide(sl.id)}
+              onDelete={() => deleteSlide(sl.id)}
+            />
           </div>
         ))}
         {dragOverIdx === slides.length && dragIdx !== null && (
