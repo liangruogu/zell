@@ -2,7 +2,7 @@ import { useCallback, useRef, useEffect, useState } from 'react'
 import { usePptStore } from './store'
 import { CanvasElementView } from './CanvasElement'
 import { ElementHandles } from './ElementHandles'
-import { SLIDE_W, SLIDE_H } from './types'
+import { SLIDE_W, SLIDE_H, type CanvasElement } from './types'
 
 export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -10,6 +10,8 @@ export function CanvasViewport() {
   const slide = slides.find(s => s.id === currentSlideId)
   const [, forceUpdate] = useState(0)
   const panRef = useRef({ x: 0, y: 0 })
+  const marqueeRef = useRef<{ sx: number; sy: number; ex: number; ey: number } | null>(null)
+  const [, setMarqueeTick] = useState(0)
 
   const setPan = useCallback((x: number, y: number) => {
     panRef.current = { x, y }
@@ -93,6 +95,89 @@ export function CanvasViewport() {
     }
   }, []) // no deps — uses refs
 
+  // Marquee selection
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    let dragging = false
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return
+      // only start marquee on canvas bg, not on elements
+      const target = e.target as HTMLElement
+      if (target.closest('[data-canvas="bg"]') && !target.closest('[style*="position: absolute"]')) {
+        dragging = true
+        const rect = el.getBoundingClientRect()
+        marqueeRef.current = { sx: e.clientX - rect.left, sy: e.clientY - rect.top, ex: e.clientX - rect.left, ey: e.clientY - rect.top }
+        setMarqueeTick(t => t + 1)
+      }
+    }
+    const onMove = (e: MouseEvent) => {
+      if (!dragging || !marqueeRef.current) return
+      const rect = el.getBoundingClientRect()
+      marqueeRef.current.ex = e.clientX - rect.left
+      marqueeRef.current.ey = e.clientY - rect.top
+      setMarqueeTick(t => t + 1)
+    }
+    const onUp = (e: MouseEvent) => {
+      if (!dragging || !marqueeRef.current) { dragging = false; return }
+      dragging = false
+      const m = marqueeRef.current
+      marqueeRef.current = null
+      setMarqueeTick(t => t + 1)
+
+      // compute selection in canvas coordinates
+      const st = usePptStore.getState()
+      const cSlide = st.slides.find(s => s.id === st.currentSlideId)
+      if (!cSlide) return
+
+      const containerRect = el.getBoundingClientRect()
+      const z = st.zoom
+      const px = panRef.current.x + containerRect.width / 2
+      const py = panRef.current.y + containerRect.height / 2
+
+      // marquee rect in screen coords relative to slide center
+      const mx1 = m.sx - containerRect.width / 2 - px
+      const my1 = m.sy - containerRect.height / 2 - py
+      const mx2 = m.ex - containerRect.width / 2 - px
+      const my2 = m.ey - containerRect.height / 2 - py
+
+      // convert to canvas coords
+      const x1 = Math.min(mx1, mx2) / z + SLIDE_W / 2
+      const y1 = Math.min(my1, my2) / z + SLIDE_H / 2
+      const x2 = Math.max(mx1, mx2) / z + SLIDE_W / 2
+      const y2 = Math.max(my1, my2) / z + SLIDE_H / 2
+
+      if (Math.abs(x2 - x1) < 3 && Math.abs(y2 - y1) < 3) {
+        // tiny drag — single click, clear selection
+        st.setSelectedIds([])
+        usePptStore.setState({ selectedSlideIds: [] })
+        return
+      }
+
+      const hitIds: string[] = []
+      for (const el of cSlide.elements) {
+        if (el.x < x2 && el.x + el.w > x1 && el.y < y2 && el.y + el.h > y1) {
+          hitIds.push(el.id)
+        }
+      }
+      if (e.shiftKey) {
+        const prev = new Set(st.selectedIds)
+        hitIds.forEach(id => prev.add(id))
+        st.setSelectedIds([...prev])
+      } else {
+        st.setSelectedIds(hitIds)
+      }
+    }
+    el.addEventListener('mousedown', onDown)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      el.removeEventListener('mousedown', onDown)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
+
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return
     if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.canvas === 'bg') {
@@ -124,13 +209,27 @@ export function CanvasViewport() {
 
   const selEls = selectedIds.map(id => slide.elements.find(e => e.id === id)).filter(Boolean) as any[]
 
+  const m = marqueeRef.current
+  const marqueeStyle = m ? {
+    position: 'absolute' as const,
+    left: Math.min(m.sx, m.ex),
+    top: Math.min(m.sy, m.ey),
+    width: Math.abs(m.ex - m.sx),
+    height: Math.abs(m.ey - m.sy),
+    border: '1px solid #3b82f6',
+    background: 'rgba(59,130,246,0.08)',
+    zIndex: 50,
+    pointerEvents: 'none' as const,
+  } : undefined
+
   return (
     <div ref={containerRef}
-      className="w-full h-full overflow-hidden flex items-center justify-center outline-none"
+      className="w-full h-full overflow-hidden flex items-center justify-center outline-none relative"
       style={{ cursor: 'default' }}
-      onMouseDown={handleCanvasClick} tabIndex={0}
+      tabIndex={0}
       onContextMenu={e => e.preventDefault()}
     >
+      {marqueeStyle && <div style={marqueeStyle} />}
       <div
         data-canvas="bg"
         className="relative shadow-lg flex-shrink-0"
