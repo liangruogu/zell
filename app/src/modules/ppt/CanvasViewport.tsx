@@ -146,7 +146,7 @@ export function CanvasViewport() {
           <CanvasElementView key={el.id} element={el} isSelected={selectedIds.includes(el.id)} />
         ))}
         {selEls.map(el => (
-          <ElementHandles key={`h-${el.id}`} element={el} />
+          <ElementHandles key={`h-${el.id}`} element={el} zoom={zoom} />
         ))}
         {/* Guide lines */}
         {guideLines.length > 0 && (

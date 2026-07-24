@@ -3,11 +3,11 @@ import type { CanvasElement } from './types'
 import { usePptStore } from './store'
 import { snapPos } from './CanvasElement'
 
-interface Props { element: CanvasElement }
+interface Props { element: CanvasElement; zoom: number }
 const HS = 8
 const CS = 10 // corner size
 
-export function ElementHandles({ element }: Props) {
+export function ElementHandles({ element, zoom }: Props) {
   const [activeHandle, setActiveHandle] = useState<string | null>(null)
   const ref = useRef({ mx: 0, my: 0, ox: 0, oy: 0, ow: 0, oh: 0 })
 
@@ -53,7 +53,7 @@ export function ElementHandles({ element }: Props) {
       const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
       if (el) {
         const others = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.filter(ee => ee.id !== element.id) || []
-        const snapped = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny)
+        const snapped = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny, activeHandle)
         switch (activeHandle) {
           case 'n': ny = snapped.y; break
           case 's': nh = snapped.eby - ny; break
@@ -71,35 +71,47 @@ export function ElementHandles({ element }: Props) {
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [activeHandle, element.type])
 
-  const hStyle = (pos: string): React.CSSProperties => {
+  const hStyle = (pos: string, z: number = 1): React.CSSProperties => {
     const isCorner = pos.length === 2
     const isH = pos === 'w' || pos === 'e'
     const isV = pos === 'n' || pos === 's'
-    const cSize = isCorner ? CS : HS
-    const barLen = isV ? 18 : (isH ? 18 : cSize)  // bar handle length (18px for edges)
+    const s = 1 / z
+    const cSize = (isCorner ? CS : HS) * s
+    const barLen = (isV || isH ? 18 : cSize / s) * s
     return {
       position: 'absolute',
-      background: '#3b82f6', border: '2px solid white',
-      borderRadius: isCorner ? '50%' : '3px',
+      background: '#3b82f6', border: `${2 * s}px solid white`,
+      borderRadius: isCorner ? '50%' : `${3 * s}px`,
       cursor: isV ? 'ns-resize' : isH ? 'ew-resize'
         : pos === 'nw' || pos === 'se' ? 'nwse-resize' : 'nesw-resize',
       width: isV ? barLen : cSize,
       height: isH ? barLen : cSize,
-      // perpendicular offset from edge: half the handle size in that direction
       ...(pos.includes('n') ? { top: -(cSize / 2) } : pos.includes('s') ? { bottom: -(cSize / 2) } : {}),
       ...(pos.includes('w') ? { left: -(cSize / 2) } : pos.includes('e') ? { right: -(cSize / 2) } : {}),
-      // parallel centering for edge handles
       ...(isV ? { left: '50%', marginLeft: -(barLen / 2) } : {}),
       ...(isH ? { top: '50%', marginTop: -(barLen / 2) } : {}),
     }
+  }
   }
 
   const handles = element.type === 'arrow' || element.type === 'line' ? ['w', 'e'] : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
 
   return (
-    <div style={{ position: 'absolute', left: element.x, top: element.y, width: element.w, height: element.h, pointerEvents: 'none', outline: '2px solid #3b82f6', outlineOffset: '1px' }}>
+    <div style={{
+      position: 'absolute',
+      left: element.x, top: element.y,
+      width: element.w, height: element.h,
+      pointerEvents: 'none',
+      zIndex: 1,
+    }}>
+      <div style={{
+        position: 'absolute',
+        inset: `${-(2 / zoom)}px`,
+        border: `${2 / zoom}px solid #3b82f6`,
+        pointerEvents: 'none',
+      }} />
       {handles.map(p => (
-        <div key={p} style={{ ...hStyle(p), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
+        <div key={p} style={{ ...hStyle(p, zoom), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
       ))}
     </div>
   )
