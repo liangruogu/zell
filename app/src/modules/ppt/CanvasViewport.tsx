@@ -6,10 +6,11 @@ import { SLIDE_W, SLIDE_H, type CanvasElement } from './types'
 
 export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { slides, currentSlideId, selectedIds, zoom, panX, panY, guideLines, setZoom, setPan, deleteElements } = usePptStore()
+  const { slides, currentSlideId, selectedIds, zoom, guideLines, setZoom, setPan, deleteElements } = usePptStore()
   const slide = slides.find(s => s.id === currentSlideId)
   const [, forceUpdate] = useState(0)
-  const panRef = useRef({ x: panX, y: panY })
+  const panRef = useRef({ x: 0, y: 0 })
+  const storePan = usePptStore(s => ({ x: s.panX, y: s.panY }))
   const marqueeRef = useRef<{ sx: number; sy: number; ex: number; ey: number } | null>(null)
   const [, setMarqueeTick] = useState(0)
 
@@ -83,7 +84,7 @@ export function CanvasViewport() {
     }
     const onMove = (e: MouseEvent) => {
       if (!panning) return
-      setPan(spx + e.clientX - sx, spy + e.clientY - sy)
+      setPanLocal(spx + e.clientX - sx, spy + e.clientY - sy)
     }
     const onUp = () => { panning = false; el.style.cursor = '' }
     el.addEventListener('mousedown', onDown)
@@ -274,7 +275,7 @@ export function CanvasViewport() {
           width: SLIDE_W,
           height: SLIDE_H,
           background: '#ffffff',
-          transform: `translate(${panRef.current.x}px, ${panRef.current.y}px) scale(${zoom})`,
+          transform: `translate(${storePan.x}px, ${storePan.y}px) scale(${zoom})`,
           transformOrigin: 'center center',
         }}
       >

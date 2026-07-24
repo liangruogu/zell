@@ -8,6 +8,13 @@ export function PreviewButton() {
   const { slides, currentSlideId, setCurrentSlide } = usePptStore()
   const slide = slides.find(s => s.id === currentSlideId)
 
+  useEffect(() => {
+    if (fullscreen) {
+      document.body.classList.add('preview-active')
+      return () => document.body.classList.remove('preview-active')
+    }
+  }, [fullscreen])
+
   if (!slides.length) return null
 
   if (!fullscreen) {
