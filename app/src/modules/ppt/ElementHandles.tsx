@@ -68,9 +68,11 @@ export function ElementHandles({ element }: Props) {
     ...(pos === 'w' || pos === 'e' ? { top: '50%', marginTop: -HS / 2 } : {}),
   })
 
+  const handles = element.type === 'arrow' || element.type === 'line' ? ['w', 'e'] : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
+
   return (
     <div style={{ position: 'absolute', left: element.x, top: element.y, width: element.w, height: element.h, pointerEvents: 'none', outline: '2px solid #3b82f6', outlineOffset: '1px' }}>
-      {['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'].map(p => (
+      {handles.map(p => (
         <div key={p} style={{ ...hStyle(p), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
       ))}
     </div>
