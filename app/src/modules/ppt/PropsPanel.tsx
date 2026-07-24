@@ -131,8 +131,20 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
   const [hexText, setHexText] = useState('')
   const [opEdit, setOpEdit] = useState(false)
   const [opText, setOpText] = useState('')
+  const [showPalette, setShowPalette] = useState(false)
   const opRef = useRef({ v0: 0, mx: 0 })
+  const paletteRef = useRef<HTMLDivElement>(null)
   const opDisplay = Math.round((opacity ?? 1) * 100)
+
+  // close palette on outside click
+  useEffect(() => {
+    if (!showPalette) return
+    const onDown = (e: MouseEvent) => {
+      if (paletteRef.current && !paletteRef.current.contains(e.target as Node)) setShowPalette(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showPalette])
 
   const handleColorChange = (c: string) => {
     addRecentColor(c)
@@ -170,10 +182,28 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
       {label && <label className="text-[10px] text-gray-500">{label}</label>}
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
         <div className="relative shrink-0">
+          <button onClick={() => setShowPalette(!showPalette)} className="block">
+            <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
+          </button>
           <input type="color" value={color} onChange={e => handleColorChange(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer" style={{ width: 16, height: 16 }}
+            className="absolute inset-0 opacity-0 cursor-pointer" style={{ width: 16, height: 16, pointerEvents: 'none' }}
           />
-          <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
+          {showPalette && recentColors.length > 0 && (
+            <div ref={paletteRef} className="absolute top-full left-0 mt-1 p-1 bg-white border border-gray-200 rounded shadow-lg z-50 flex gap-0.5 flex-wrap" style={{ width: 96 }}>
+              {recentColors.slice(0, 12).map(c => (
+                <button key={c} onClick={() => { handleColorChange(c); setShowPalette(false) }}
+                  className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                  style={{ background: c }} title={c}
+                />
+              ))}
+              <div className="w-full pt-0.5 border-t border-gray-100 mt-0.5">
+                <label className="flex items-center w-full cursor-pointer text-[9px] text-gray-400 hover:text-gray-600 px-0.5">
+                  <input type="color" value={color} onChange={e => { handleColorChange(e.target.value); setShowPalette(false) }} className="w-4 h-4 cursor-pointer" />
+                  <span className="ml-0.5">取色器</span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
         {hexEdit ? (
           <input autoFocus type="text" value={hexText}
@@ -204,16 +234,6 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
           </div>
         )}
       </div>
-      {recentColors.length > 0 && (
-        <div className="flex gap-0.5 mt-0.5 flex-wrap">
-          {recentColors.slice(0, 8).map(c => (
-            <button key={c} onClick={() => handleColorChange(c)}
-              className="w-4 h-4 rounded-sm border border-gray-300 hover:scale-125 transition-transform"
-              style={{ background: c }} title={c}
-            />
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -317,15 +337,19 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
   const [expanded, setExpanded] = useState(hasShadow)
 
   return (
-    <div className="pt-1 border-t border-gray-100">
+    <div className="pt-2 border-t border-gray-100">
       <div className="flex items-center justify-between">
         <label className="text-[11px] text-gray-500">阴影</label>
         {!hasShadow ? (
           <button onClick={() => { updateProps({ shadowBlur: 4, shadowY: 2, shadowColor: 'rgba(0,0,0,0.15)' }); setExpanded(true) }}
-            className="text-[10px] text-bindle-500 hover:text-bindle-600">+ 添加</button>
+            className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
+            <svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
         ) : (
           <button onClick={() => setExpanded(!expanded)}
-            className="text-[10px] text-gray-400 hover:text-gray-600">{expanded ? '收起' : '展开'}</button>
+            className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
+            <svg width="12" height="12" viewBox="0 0 12 12" style={{ transform: expanded ? 'rotate(180deg)' : '' }}><path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         )}
       </div>
       {(hasShadow || expanded) && hasShadow && (
@@ -337,7 +361,10 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             <ScrubInput label="模糊" value={el.props.shadowBlur ?? 4} onChange={v => updateProps({ shadowBlur: v })} min={0} max={100} />
           </div>
           <button onClick={() => { updateProps({ shadowBlur: undefined, shadowX: undefined, shadowY: undefined, shadowColor: undefined }); setExpanded(false) }}
-            className="text-[10px] text-red-400 hover:text-red-500">移除阴影</button>
+            className="flex items-center gap-0.5 text-[10px] text-gray-400 hover:text-red-500 mt-0.5">
+            <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            移除阴影
+          </button>
         </div>
       )}
     </div>
@@ -349,7 +376,7 @@ function CornerSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
   const [showIndividual, setShowIndividual] = useState(hasIndividual)
 
   return (
-    <div className="pt-1 border-t border-gray-100">
+    <div className="pt-2 border-t border-gray-100">
       <div className="flex items-center justify-between">
         <label className="text-[11px] text-gray-500">圆角</label>
         <button onClick={() => {
@@ -363,8 +390,13 @@ function CornerSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             updateProps({ borderRadius: br, borderRadiusTL: undefined, borderRadiusTR: undefined, borderRadiusBL: undefined, borderRadiusBR: undefined })
           }
           setShowIndividual(!showIndividual)
-        }} className="text-[10px] text-gray-400 hover:text-gray-600">
-          {showIndividual ? '统一' : '独立'}
+        }} className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
+          <svg width="12" height="12" viewBox="0 0 12 12">
+            <rect x="1" y="2" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1"/>
+            <rect x="8" y="2" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1"/>
+            <rect x="1" y="7" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1"/>
+            <rect x="8" y="7" width="3" height="3" rx="0.5" fill="currentColor" stroke="currentColor" strokeWidth="1"/>
+          </svg>
         </button>
       </div>
       <div className="mt-1">
