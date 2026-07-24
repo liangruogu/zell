@@ -293,8 +293,8 @@ export function PropsPanel() {
   return (
     <div className="w-52 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
       <div className="flex border-b border-gray-200">
-        <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[12px] font-medium text-center ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
-        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[12px] font-medium text-center ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
+        <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
+        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
       </div>
       <div className="p-3">
         {activeTab === 'props' ? (
@@ -750,7 +750,7 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
               />
             ) : (
               <span className="truncate flex-1" onDoubleClick={el.type === 'text' || el.name ? () => startRename(el) : undefined}>
-                {el.name || {{ text: el.props.text?.slice(0, 16) || '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}}
+                {el.name || ({ text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' } as Record<string,string>)[el.type]}
               </span>
             )}
           </div>
