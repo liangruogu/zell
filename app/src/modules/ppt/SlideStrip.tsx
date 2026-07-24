@@ -14,6 +14,8 @@ export function SlideStrip() {
   const lastClickedRef = useRef<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null)
+
   // manual pointer-based drag reorder (HTML5 DnD unreliable in Tauri WebView2)
   const dragState = useRef<{
     active: boolean
@@ -22,7 +24,9 @@ export function SlideStrip() {
     startY: number
     moved: boolean
     currentDropIdx: number
-  }>({ active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1 })
+    offsetX: number
+    offsetY: number
+  }>({ active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1, offsetX: 0, offsetY: 0 })
 
   useEffect(() => {
     const el = containerRef.current
@@ -66,7 +70,8 @@ export function SlideStrip() {
       const idx = getSlideIdx(target)
       if (idx < 0) return
       if (target.closest('button') || target.closest('input')) return
-      console.log('[ptr] pointerDown idx=', idx)
+      const slideEl = document.querySelector(`[data-slide-idx="${idx}"]`)
+      const rect = slideEl?.getBoundingClientRect()
       dragState.current = {
         active: true,
         fromIdx: idx,
@@ -74,6 +79,8 @@ export function SlideStrip() {
         startY: e.clientY,
         moved: false,
         currentDropIdx: -1,
+        offsetX: rect ? e.clientX - rect.left : 0,
+        offsetY: rect ? e.clientY - rect.top : 0,
       }
       setDragIdx(idx)
     }
@@ -87,34 +94,32 @@ export function SlideStrip() {
 
       if (!dragState.current.moved) {
         dragState.current.moved = true
-        console.log('[ptr] drag started, dist=', dist)
       }
+
+      setGhostPos({ x: e.clientX - dragState.current.offsetX, y: e.clientY - dragState.current.offsetY })
 
       const dropIdx = findDropIdx(e.clientX, e.clientY, dragState.current.fromIdx)
       if (dropIdx >= 0 && dropIdx !== dragState.current.currentDropIdx) {
         dragState.current.currentDropIdx = dropIdx
-        console.log('[ptr] dropIdx=', dropIdx)
         setDragOverIdx(dropIdx)
       }
     }
 
     const onPointerUp = (e: PointerEvent) => {
       if (!dragState.current.active) return
-      console.log('[ptr] pointerUp, moved=', dragState.current.moved)
       const { fromIdx, moved } = dragState.current
 
       if (moved) {
         const dropIdx = findDropIdx(e.clientX, e.clientY, fromIdx)
-        console.log('[ptr] final dropIdx=', dropIdx, 'fromIdx=', fromIdx)
         if (dropIdx >= 0 && dropIdx !== fromIdx) {
           const realTo = fromIdx < dropIdx ? dropIdx - 1 : dropIdx
-          console.log('[ptr] moving', fromIdx, '->', realTo)
           moveSlide(fromIdx, realTo)
         }
       }
-      dragState.current = { active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1 }
+      dragState.current = { active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1, offsetX: 0, offsetY: 0 }
       setDragIdx(null)
       setDragOverIdx(null)
+      setGhostPos(null)
     }
 
     el.addEventListener('pointerdown', onPointerDown)
@@ -176,6 +181,28 @@ export function SlideStrip() {
 
   return (
     <div className="h-28 border-t border-gray-200 flex items-center px-3 gap-2 shrink-0 bg-gray-100">
+      {ghostPos && dragIdx !== null && slides[dragIdx] && (
+        <div style={{
+          position: 'fixed',
+          left: ghostPos.x,
+          top: ghostPos.y,
+          width: 128,
+          height: 72,
+          zIndex: 9999,
+          pointerEvents: 'none',
+          opacity: 0.85,
+          transform: 'rotate(-3deg) scale(1.05)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          borderRadius: 4,
+        }}>
+          <div className="w-full h-[54px] bg-white rounded-t overflow-hidden border border-gray-400">
+            <MiniSlide slide={slides[dragIdx]} />
+          </div>
+          <div className="h-[18px] flex items-center px-1 bg-gray-200/50 rounded-b border-x border-b border-gray-400">
+            <span className="truncate flex-1 text-[9px] text-gray-800">{slides[dragIdx].name}</span>
+          </div>
+        </div>
+      )}
       <div ref={containerRef} className="flex gap-2 overflow-x-auto py-1 items-center">
         {slides.map((sl, i) => (
           <div key={sl.id} data-slide-idx={i} className="flex shrink-0 items-center">
