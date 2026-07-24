@@ -150,8 +150,6 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
     onChange(c)
   }
 
-  }
-
   const onOpGrip = (e: React.PointerEvent) => {
     e.stopPropagation()
     opRef.current = { v0: opDisplay, mx: e.clientX }
