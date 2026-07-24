@@ -131,24 +131,25 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
   const [hexText, setHexText] = useState('')
   const [opEdit, setOpEdit] = useState(false)
   const [opText, setOpText] = useState('')
-  const [showPalette, setShowPalette] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
   const opRef = useRef({ v0: 0, mx: 0 })
-  const paletteRef = useRef<HTMLDivElement>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
   const opDisplay = Math.round((opacity ?? 1) * 100)
 
-  // close palette on outside click
   useEffect(() => {
-    if (!showPalette) return
+    if (!showPicker) return
     const onDown = (e: MouseEvent) => {
-      if (paletteRef.current && !paletteRef.current.contains(e.target as Node)) setShowPalette(false)
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setShowPicker(false)
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
-  }, [showPalette])
+  }, [showPicker])
 
   const handleColorChange = (c: string) => {
     addRecentColor(c)
     onChange(c)
+  }
+
   }
 
   const onOpGrip = (e: React.PointerEvent) => {
@@ -182,32 +183,28 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
       {label && <label className="text-[10px] text-gray-500">{label}</label>}
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
         <div className="relative shrink-0">
-          <input type="color" value={color} onChange={e => handleColorChange(e.target.value)}
-            className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
-          />
-          <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
-          {showPalette && recentColors.length > 0 && (
-            <div ref={paletteRef} className="absolute top-full left-0 mt-1 p-1 bg-white border border-gray-200 rounded shadow-lg z-[9999] flex gap-0.5 flex-wrap" style={{ width: 96 }}>
-              {recentColors.slice(0, 12).map(c => (
-                <button key={c} onClick={() => { handleColorChange(c); setShowPalette(false) }}
-                  className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
-                  style={{ background: c }} title={c}
-                />
-              ))}
-              <div className="w-full pt-0.5 border-t border-gray-100 mt-0.5">
-                <label className="flex items-center w-full cursor-pointer text-[9px] text-gray-400 hover:text-gray-600 px-0.5">
-                  <input type="color" value={color} onChange={e => { handleColorChange(e.target.value); setShowPalette(false) }} className="w-4 h-4 cursor-pointer" />
-                  <span className="ml-0.5">取色器</span>
-                </label>
-              </div>
+          <button onClick={() => setShowPicker(!showPicker)} className="block">
+            <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
+          </button>
+          {showPicker && (
+            <div ref={pickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1" style={{ width: 108 }}>
+              <label className="flex items-center gap-1 cursor-pointer text-[10px] text-gray-500 hover:text-gray-700">
+                <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-5 h-5 cursor-pointer border-0 p-0 bg-transparent" />
+                <span>取色器</span>
+              </label>
+              {recentColors.length > 0 && (
+                <div className="flex gap-0.5 flex-wrap">
+                  {recentColors.slice(0, 14).map(c => (
+                    <button key={c} onClick={() => { handleColorChange(c); setShowPicker(false) }}
+                      className="w-4 h-4 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                      style={{ background: c }} title={c}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
-        {recentColors.length > 0 && (
-          <button onClick={() => setShowPalette(!showPalette)} className="shrink-0 p-0 text-gray-400 hover:text-gray-600">
-            <svg width="8" height="4" viewBox="0 0 8 4"><path d="M0 0l4 4 4-4" fill="currentColor"/></svg>
-          </button>
-        )}
         {hexEdit ? (
           <input autoFocus type="text" value={hexText}
             onChange={e => setHexText(e.target.value)}
