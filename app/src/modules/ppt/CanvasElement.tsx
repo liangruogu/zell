@@ -55,20 +55,29 @@ function useDrag(elementId: string) {
 
 export { snapPos, SNAP }
 
-function snapPos(el: CanvasElement, others: CanvasElement[], x: number, y: number) {
+function snapPos(el: CanvasElement, others: CanvasElement[], x: number, y: number, axis?: 'x' | 'y') {
   const elx = x, ely = y, erx = x + el.w, eby = y + el.h, ecx = x + el.w / 2, ecy = y + el.h / 2
   let sx = x, sy = y
   const guides: GuideLine[] = []
-  if (Math.abs(ecx - 640) < SNAP) { sx = 640 - el.w / 2; guides.push({ type: 'v', pos: 640, start: 0, end: 720 }) }
-  if (Math.abs(ecy - 360) < SNAP) { sy = 360 - el.h / 2; guides.push({ type: 'h', pos: 360, start: 0, end: 1280 }) }
-  for (const o of others) {
-    const ocx = o.x + o.w / 2, ocy = o.y + o.h / 2
-    if (Math.abs(ecx - ocx) < SNAP) { sx = ocx - el.w / 2; guides.push({ type: 'v', pos: ocx, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
-    if (Math.abs(ecy - ocy) < SNAP) { sy = ocy - el.h / 2; guides.push({ type: 'h', pos: ocy, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
-    if (Math.abs(elx - o.x) < SNAP) { sx = o.x; guides.push({ type: 'v', pos: o.x, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
-    if (Math.abs(erx - (o.x + o.w)) < SNAP) { sx = o.x + o.w - el.w; guides.push({ type: 'v', pos: o.x + o.w, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
-    if (Math.abs(ely - o.y) < SNAP) { sy = o.y; guides.push({ type: 'h', pos: o.y, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
-    if (Math.abs(eby - (o.y + o.h)) < SNAP) { sy = o.y + o.h - el.h; guides.push({ type: 'h', pos: o.y + o.h, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
+  const doX = !axis || axis === 'x'
+  const doY = !axis || axis === 'y'
+  if (doX) {
+    if (Math.abs(ecx - 640) < SNAP) { sx = 640 - el.w / 2; guides.push({ type: 'v', pos: 640, start: 0, end: 720 }) }
+    for (const o of others) {
+      const ocx = o.x + o.w / 2
+      if (Math.abs(ecx - ocx) < SNAP) { sx = ocx - el.w / 2; guides.push({ type: 'v', pos: ocx, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
+      if (Math.abs(elx - o.x) < SNAP) { sx = o.x; guides.push({ type: 'v', pos: o.x, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
+      if (Math.abs(erx - (o.x + o.w)) < SNAP) { sx = o.x + o.w - el.w; guides.push({ type: 'v', pos: o.x + o.w, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
+    }
+  }
+  if (doY) {
+    if (Math.abs(ecy - 360) < SNAP) { sy = 360 - el.h / 2; guides.push({ type: 'h', pos: 360, start: 0, end: 1280 }) }
+    for (const o of others) {
+      const ocy = o.y + o.h / 2
+      if (Math.abs(ecy - ocy) < SNAP) { sy = ocy - el.h / 2; guides.push({ type: 'h', pos: ocy, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
+      if (Math.abs(ely - o.y) < SNAP) { sy = o.y; guides.push({ type: 'h', pos: o.y, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
+      if (Math.abs(eby - (o.y + o.h)) < SNAP) { sy = o.y + o.h - el.h; guides.push({ type: 'h', pos: o.y + o.h, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
+    }
   }
   usePptStore.getState().setGuideLines(guides)
   return { x: Math.round(sx), y: Math.round(sy) }

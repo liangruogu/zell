@@ -49,14 +49,14 @@ export function ElementHandles({ element }: Props) {
         nh = nw / aspect
       }
 
-      // snap edges / centers during resize (only for corner handles)
-      if (activeHandle.length === 2) {
-        const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
-        if (el) {
-          const others = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.filter(ee => ee.id !== element.id) || []
-          const sn = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny)
-          nx = sn.x; ny = sn.y
-        }
+      // snap edges / centers during resize, axis-aware
+      const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
+      if (el) {
+        const others = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.filter(ee => ee.id !== element.id) || []
+        const axis = activeHandle === 'n' || activeHandle === 's' ? 'y' : activeHandle === 'w' || activeHandle === 'e' ? 'x' : undefined
+        const sn = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny, axis)
+        if (axis !== 'y') nx = sn.x
+        if (axis !== 'x') ny = sn.y
       }
 
       s.updateElement(s.currentSlideId, element.id, { x: Math.round(nx), y: Math.round(ny), w: Math.round(nw), h: Math.round(nh) })
