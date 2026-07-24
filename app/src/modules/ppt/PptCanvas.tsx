@@ -14,7 +14,7 @@ interface PptCanvasProps {
 }
 
 export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
-  const { slides, currentSlideId, init, getData, addSlide, zoom, setZoom } = usePptStore()
+  const { slides, currentSlideId, init, getData, addSlide, _previewing } = usePptStore()
 
   useEffect(() => { if (data) init(data) }, [data])
 
@@ -52,12 +52,12 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
         </div>
         <PropsPanel />
       </div>
-      {hasSlides && (
+      {hasSlides && !_previewing && (
         <div className="absolute bottom-[128px] left-1/2 -translate-x-1/2 z-50">
           <PptToolbar />
         </div>
       )}
-      {hasSlides && <SlideStrip />}
+      {hasSlides && !_previewing && <SlideStrip />}
     </div>
   )
 }

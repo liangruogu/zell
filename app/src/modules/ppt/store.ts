@@ -43,6 +43,8 @@ interface PptState {
   setZoom: (z: number) => void
   setPan: (x: number, y: number) => void
   resetView: () => void
+  _previewing: boolean
+  setPreviewing: (v: boolean) => void
   setGuideLines: (lines: GuideLine[]) => void
   undo: () => void
   redo: () => void
@@ -107,6 +109,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   _redo: [],
   _timer: null,
   _resizing: false,
+  _previewing: false,
 
   init: (data) => set({ slides: clone(data.slides), currentSlideId: data.slides[0]?.id || null, selectedIds: [], _undo: [], _redo: [] }),
 
@@ -231,6 +234,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   setResizing: (v: boolean) => set({ _resizing: v }),
   setPan: (x, y) => set({ panX: x, panY: y }),
   resetView: () => set({ zoom: 1, panX: 0, panY: 0 }),
+  setPreviewing: (v) => set({ _previewing: v }),
 
   undo: () => {
     flushHistory()

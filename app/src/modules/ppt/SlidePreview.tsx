@@ -10,8 +10,8 @@ export function PreviewButton() {
 
   useEffect(() => {
     if (fullscreen) {
-      document.body.classList.add('preview-active')
-      return () => document.body.classList.remove('preview-active')
+      usePptStore.getState().setPreviewing(true)
+      return () => usePptStore.getState().setPreviewing(false)
     }
   }, [fullscreen])
 
