@@ -291,7 +291,7 @@ export function PropsPanel() {
   }
 
   return (
-    <div className="w-52 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
+    <div className="w-52 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none relative z-10">
       <div className="flex border-b border-gray-200">
         <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
         <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
