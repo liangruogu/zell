@@ -213,7 +213,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
           </button>
           {showPicker && (
-            <div ref={pickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 108 }}>
+            <div ref={pickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 132 }}>
               <span className="text-[9px] text-gray-400">取色器</span>
               <div className="flex items-center gap-1">
                 <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-5 h-5 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
@@ -277,7 +277,7 @@ export function PropsPanel() {
   useEffect(() => { syncRecentColors(slides) }, [slides])
 
   return (
-    <div className="w-48 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
+    <div className="w-60 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
       <div className="flex border-b border-gray-200">
         <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
         <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
@@ -498,7 +498,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             </button>
           </div>
           {editIdx === i && (
-            <div ref={popRef} className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-2 space-y-1" style={{ width: 160, top: popPos.y, left: popPos.x }}>
+            <div ref={popRef} className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-2 space-y-1" style={{ width: 180, top: popPos.y, left: popPos.x }}>
               <div className="text-[10px] text-gray-500 font-medium">阴影 {i + 1}</div>
               <ColorChip label="" color={s.color} onChange={v => updateShadow(i, { color: v })} />
               <div className="grid grid-cols-3 gap-1">
