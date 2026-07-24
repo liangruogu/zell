@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { X, GripVertical } from 'lucide-react'
 import { usePptStore } from './store'
 import type { CanvasElement } from './types'
@@ -8,10 +8,10 @@ const SCRUB = { threshold: 3, speed: 1 }
 /* ── CSS-only grip indicator (two vertical lines) ── */
 function Grip({ size = 12 }: { size?: number }) {
   return (
-    <div className="flex items-center justify-center shrink-0 cursor-ew-resize" style={{ width: size + 4, height: '100%', touchAction: 'none' }}>
+    <div className="flex items-center justify-center shrink-0" style={{ width: size + 4, height: '100%', touchAction: 'none', cursor: 'ew-resize' }}>
       <div style={{ display: 'flex', gap: 2 }}>
-        <div className="bg-gray-300 group-hover:bg-gray-500 rounded-full" style={{ width: 2, height: size-2 }} />
-        <div className="bg-gray-300 group-hover:bg-gray-500 rounded-full" style={{ width: 2, height: size-2 }} />
+        <div className="bg-gray-300 rounded-full" style={{ width: 2, height: size - 2 }} />
+        <div className="bg-gray-300 rounded-full" style={{ width: 2, height: size - 2 }} />
       </div>
     </div>
   )
@@ -25,11 +25,21 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
   const [text, setText] = useState('')
   const ref = useRef({ v0: 0, mx: 0, scrubbing: false })
 
+  const [scrubbing, setScrubbing] = useState(false)
+
   const commit = useCallback((t: string) => {
     const n = parseFloat(t)
     if (!isNaN(n)) onChange(integer ? Math.round(n) : n)
     setEdit(false)
   }, [onChange, integer])
+
+  // lock cursor during scrub
+  useEffect(() => {
+    if (scrubbing) {
+      document.body.style.cursor = 'ew-resize'
+      return () => { document.body.style.cursor = '' }
+    }
+  }, [scrubbing])
 
   const onGripDown = (e: React.PointerEvent) => {
     e.stopPropagation()
@@ -39,6 +49,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
       const dx = ev.clientX - ref.current.mx
       if (!ref.current.scrubbing && Math.abs(dx) < SCRUB.threshold) return
       ref.current.scrubbing = true
+      setScrubbing(true)
       let v = ref.current.v0 + dx * SCRUB.speed * step
       if (min != null) v = Math.max(min, v)
       if (max != null) v = Math.min(max, v)
@@ -47,6 +58,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
     const onUp = () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      setScrubbing(false)
       if (!ref.current.scrubbing) { setText(String(integer ? Math.round(value) : Number(value.toFixed(1)))); setEdit(true) }
     }
     window.addEventListener('pointermove', onMove)
@@ -66,7 +78,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
           onChange={e => setText(e.target.value)}
           onBlur={() => commit(text)}
           onKeyDown={e => { if (e.key === 'Enter') commit(text); if (e.key === 'Escape') setEdit(false) }}
-          className="flex-1 min-w-0 h-full text-xs bg-transparent outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="flex-1 min-w-0 h-full text-xs bg-transparent outline-none text-center select-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
       ) : (
         <span onClick={() => { setText(String(display)); setEdit(true) }}
@@ -154,7 +166,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             onChange={e => setHexText(e.target.value)}
             onBlur={commitHex}
             onKeyDown={e => { if (e.key === 'Enter') commitHex(); if (e.key === 'Escape') setHexEdit(false) }}
-            className="flex-1 h-full min-w-0 text-[11px] font-mono bg-transparent outline-none"
+            className="flex-1 h-full min-w-0 text-[11px] font-mono bg-transparent outline-none select-text"
           />
         ) : (
           <span onClick={() => { setHexText(color.replace('#', '')); setHexEdit(true) }}
@@ -170,7 +182,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
                 onChange={e => setOpText(e.target.value)}
                 onBlur={commitOp}
                 onKeyDown={e => { if (e.key === 'Enter') commitOp(); if (e.key === 'Escape') setOpEdit(false) }}
-                className="w-8 h-full text-[11px] text-center bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-8 h-full text-[11px] text-center bg-transparent outline-none select-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             ) : (
               <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[11px] text-gray-600 cursor-default min-w-[24px] text-right">{opDisplay}%</span>
@@ -189,7 +201,7 @@ export function PropsPanel() {
   const el = selectedIds.length === 1 ? slide?.elements.find(e => e.id === selectedIds[0]) : null
 
   return (
-    <div className="w-48 border-l border-gray-200 bg-white shrink-0 overflow-auto">
+    <div className="w-48 border-l border-gray-200 bg-white shrink-0 overflow-auto select-none">
       <div className="flex border-b border-gray-200">
         <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
         <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
