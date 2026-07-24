@@ -188,11 +188,11 @@ export function CanvasViewport() {
         st.setSelectedIds(hitIds)
       }
     }
-    el.addEventListener('mousedown', onDown)
+    el.addEventListener('mousedown', onDown, true)
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => {
-      el.removeEventListener('mousedown', onDown)
+      el.removeEventListener('mousedown', onDown, true)
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
