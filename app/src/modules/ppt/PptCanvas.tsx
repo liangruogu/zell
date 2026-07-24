@@ -1,20 +1,72 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Tldraw, createShapeId, type Editor, type TLStore } from 'tldraw'
+import { Tldraw, createShapeId, type Editor, type TLStore, useValue } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { PptToolbar } from './PptToolbar'
 import { SlideStrip } from './SlideStrip'
-import { getSlideMeta, SLIDE_SIZE, SLIDE_GAP } from './types'
-import { Presentation, Plus } from 'lucide-react'
+import { SLIDE_SIZE, SLIDE_GAP } from './types'
+import { Presentation, Plus, X } from 'lucide-react'
 
 interface PptCanvasProps {
   store: TLStore
   whiteboardId: string
 }
 
+function SelectedPropsPanel({ editor }: { editor: Editor | null }) {
+  if (!editor) return null
+  const selectedIds = useValue('selected', () => {
+    const ids = editor.getSelectedShapeIds()
+    return ids.length === 1 ? ids[0] : null
+  }, [editor])
+  if (!selectedIds) return null
+  const shape = editor.getShape(selectedIds)
+  if (!shape) return null
+  return (
+    <div className="w-48 border-l border-gray-200 bg-white shrink-0 p-3 overflow-auto">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-medium text-gray-700">
+          {shape.type === 'text' ? '文本' : shape.type === 'geo' ? '形状' : shape.type === 'image' ? '图片' : shape.type === 'frame' ? '幻灯片' : '元素'}
+        </span>
+        <button onClick={() => editor.selectNone()} className="p-0.5 text-gray-400 hover:text-gray-600"><X size={12} /></button>
+      </div>
+      {shape.type === 'text' || shape.type === 'geo' ? (
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] text-gray-500">颜色</label>
+            <input type="color" value={shape.props.color || '#000000'}
+              onChange={(e) => editor.updateShape({ id: selectedIds, type: shape.type as any, props: { ...shape.props, color: e.target.value } })}
+              className="w-full h-8 rounded border border-gray-200 cursor-pointer" />
+          </div>
+          {shape.props.size && (
+            <div>
+              <label className="text-[10px] text-gray-500">字号</label>
+              <select value={shape.props.size} onChange={(e) => editor.updateShape({ id: selectedIds, type: shape.type as any, props: { ...shape.props, size: e.target.value } })}
+                className="w-full px-2 py-1 text-xs border border-gray-200 rounded">
+                {['s', 'm', 'l', 'xl'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
+          {shape.type === 'geo' && (
+            <div>
+              <label className="text-[10px] text-gray-500">填充</label>
+              <select value={shape.props.fill || 'none'} onChange={(e) => editor.updateShape({ id: selectedIds, type: 'geo', props: { ...shape.props, fill: e.target.value } })}
+                className="w-full px-2 py-1 text-xs border border-gray-200 rounded">
+                {['none', 'semi', 'solid'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-[10px] text-gray-400">{shape.props.w} x {shape.props.h}</p>
+      )}
+    </div>
+  )
+}
+
 export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [slides, setSlides] = useState<any[]>([])
   const [currentSlideId, setCurrentSlideId] = useState<string | null>(null)
+  const [hasSelection, setHasSelection] = useState(false)
 
   const refreshSlides = useCallback(() => {
     if (!editor) return
@@ -24,7 +76,6 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
     setSlides(shapes)
   }, [editor])
 
-  // Listen for store changes
   useEffect(() => {
     if (!editor) return
     const unsub = editor.store.listen(refreshSlides)
@@ -32,23 +83,35 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
     return () => unsub()
   }, [editor, refreshSlides])
 
+  // Track selection changes
+  useEffect(() => {
+    if (!editor) return
+    const handler = () => {
+      setHasSelection(editor.getSelectedShapeIds().length > 0)
+    }
+    editor.on('change', handler)
+    return () => editor.off('change', handler)
+  }, [editor])
+
   const focusSlide = useCallback((slideId: string) => {
     if (!editor) return
     setCurrentSlideId(slideId)
     const shape = editor.getShape(slideId)
     if (!shape) return
+    // Lock camera to exact slide bounds with no padding
     editor.setCameraOptions({
+      isLocked: true,
       constraints: {
         initialZoom: 'fit-max',
         baseZoom: 'fit-max',
-        bounds: { x: shape.x - 60, y: shape.y - 60, w: shape.props.w + 120, h: shape.props.h + 120 },
+        bounds: { x: shape.x, y: shape.y, w: shape.props.w, h: shape.props.h },
         behavior: 'contain',
         origin: { x: 0.5, y: 0.5 },
-        padding: { x: 20, y: 20 },
+        padding: { x: 0, y: 0 },
       },
     })
     editor.zoomToBounds(
-      { x: shape.x - 60, y: shape.y - 60, w: shape.props.w + 120, h: shape.props.h + 120 },
+      { x: shape.x, y: shape.y, w: shape.props.w, h: shape.props.h },
       { animation: { duration: 250 } }
     )
   }, [editor])
@@ -66,7 +129,6 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
       props: { name: `幻灯片 ${idx + 1}`, w: SLIDE_SIZE.w, h: SLIDE_SIZE.h },
       meta: { slideType: 'slide', slideIndex: idx },
     })
-    // Shift subsequent slides
     if (afterIndex !== undefined) {
       setTimeout(() => {
         const all = editor.getCurrentPageShapes()
@@ -75,8 +137,7 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
           const s = all.find((a: any) => a.meta?.slideIndex === j)
           if (s) {
             editor.updateShape({
-              id: s.id,
-              type: 'frame',
+              id: s.id, type: 'frame',
               x: 100 + j * (SLIDE_SIZE.w + SLIDE_GAP),
               meta: { ...s.meta, slideIndex: j },
               props: { ...s.props, name: `幻灯片 ${j + 1}` },
@@ -129,7 +190,6 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
     setTimeout(refreshSlides, 100)
   }, [editor, slides, refreshSlides])
 
-  // Auto-select first slide
   useEffect(() => {
     if (!editor || slides.length === 0) return
     if (!currentSlideId || !slides.find(s => s.id === currentSlideId)) {
@@ -142,7 +202,6 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
       <PptToolbar editor={editor!} />
 
       <div className="flex-1 flex min-h-0">
-        {/* Canvas */}
         <div className="flex-1 relative bg-gray-300">
           <Tldraw key={whiteboardId} store={store} hideUi onMount={(ed) => setEditor(ed)} />
           {slides.length === 0 && (
@@ -158,12 +217,7 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
           )}
         </div>
 
-        {/* Properties panel */}
-        <div className="w-48 border-l border-gray-200 bg-white shrink-0 p-3">
-          <p className="text-xs text-gray-400 text-center pt-4">
-            {currentSlideId ? '选中元素后可编辑属性' : '点击幻灯片开始编辑'}
-          </p>
-        </div>
+        {hasSelection && <SelectedPropsPanel editor={editor} />}
       </div>
 
       <SlideStrip
