@@ -1,8 +1,17 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { Plus, Trash2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
 import type { Slide } from './types'
+
+function captureSlideRects() {
+  const map = new Map<string, DOMRect>()
+  document.querySelectorAll<HTMLElement>('[data-slide-idx]').forEach(el => {
+    const sid = el.dataset.slideId
+    if (sid) map.set(sid, el.getBoundingClientRect())
+  })
+  return map
+}
 
 export function SlideStrip() {
   const s = usePptStore()
@@ -16,6 +25,7 @@ export function SlideStrip() {
   const ghostRef = useRef<HTMLDivElement>(null)
   const [showGhost, setShowGhost] = useState(false)
   const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const flipRectsRef = useRef<Map<string, DOMRect> | null>(null)
 
   useEffect(() => {
     if (showGhost && ghostRef.current) {
@@ -126,6 +136,7 @@ export function SlideStrip() {
         const dropIdx = findDropIdx(e.clientX, e.clientY, fromIdx)
         if (dropIdx >= 0 && dropIdx !== fromIdx) {
           const realTo = fromIdx < dropIdx ? dropIdx - 1 : dropIdx
+          flipRectsRef.current = captureSlideRects()
           moveSlide(fromIdx, realTo)
         }
       }
@@ -162,6 +173,37 @@ export function SlideStrip() {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
+
+  useLayoutEffect(() => {
+    const prev = flipRectsRef.current
+    if (!prev || prev.size === 0) return
+    flipRectsRef.current = null
+    const st = usePptStore.getState()
+    requestAnimationFrame(() => {
+      const els = document.querySelectorAll<HTMLElement>('[data-slide-idx]')
+      els.forEach(el => {
+        const sid = el.dataset.slideId
+        if (!sid) return
+        const prevRect = prev.get(sid)
+        if (!prevRect) return
+        const nextRect = el.getBoundingClientRect()
+        const dx = prevRect.left - nextRect.left
+        if (Math.abs(dx) < 1) return
+        el.style.transition = 'none'
+        el.style.transform = `translateX(${dx}px)`
+        requestAnimationFrame(() => {
+          el.style.transition = 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)'
+          el.style.transform = ''
+          const onEnd = () => {
+            el.style.transition = ''
+            el.style.transform = ''
+            el.removeEventListener('transitionend', onEnd)
+          }
+          el.addEventListener('transitionend', onEnd)
+        })
+      })
+    })
+  }, [slides])
 
   const handleClick = useCallback((e: React.MouseEvent, id: string, idx: number) => {
     if (e.ctrlKey || e.metaKey) {
@@ -216,7 +258,7 @@ export function SlideStrip() {
       )}
       <div ref={containerRef} className="flex gap-2 overflow-x-auto py-1 items-center">
         {slides.map((sl, i) => (
-          <div key={sl.id} data-slide-idx={i} className="flex shrink-0 items-center">
+          <div key={sl.id} data-slide-idx={i} data-slide-id={sl.id} className="flex shrink-0 items-center">
             <div
               className="h-[72px] bg-blue-500 rounded shrink-0 transition-[width,margin] duration-200 ease-out overflow-hidden"
               style={{
