@@ -91,7 +91,7 @@ export function SlideStrip() {
   )
 }
 
-function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId, renameVal, onChangeRenameVal, onSubmitRename, onStartRename, onClick, onDragStart, onDragOver, onDragLeave, onDrop, onDuplicate, onDelete }: {
+function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId, renameVal, onChangeRenameVal, onSubmitRename, onStartRename, onClick, onDragStart, onDragOver, onDragLeave, onDragEnd, onDrop, onDuplicate, onDelete }: {
   slide: Slide; index: number; isActive: boolean; isSelected: boolean; isDragging: boolean
   renamingId: string | null; renameVal: string
   onChangeRenameVal: (v: string) => void; onSubmitRename: () => void
