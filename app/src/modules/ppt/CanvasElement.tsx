@@ -252,4 +252,3 @@ function GroupEl({ el, isSelected }: EP) {
       ))}
     </div>
   )
-}
