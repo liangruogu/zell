@@ -326,6 +326,14 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
         <>
           <ColorChip label="填充" color={el.props.fill || '#e2e8f0'} onChange={v => updateProps({ fill: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
           <StrokeSection el={el} updateProps={updateProps} />
+          <ShadowSection el={el} updateProps={updateProps} />
+          {el.type === 'rect' && <CornerSection el={el} updateProps={updateProps} />}
+        </>
+      )}
+    </div>
+  )
+}
+
 function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
   const hasStroke = (el.props.strokeWidth ?? 0) > 0 && el.props.stroke
   const [editW, setEditW] = useState(false)
