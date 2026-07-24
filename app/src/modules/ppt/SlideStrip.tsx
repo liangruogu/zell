@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
+import { Fragment, useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { Plus, Trash2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
@@ -296,39 +296,64 @@ export function SlideStrip() {
           </div>
         </div>
       )}
-       <div
+      <div
         ref={containerRef}
         onMouseMove={handleContainerMouseMove}
         onMouseLeave={handleContainerMouseLeave}
-        className="flex gap-2 overflow-x-auto overflow-y-visible py-1 items-center relative"
+        className="flex gap-2 overflow-x-auto py-1 items-center"
       >
-        {hoverInsertIdx !== null && <InsertButton index={hoverInsertIdx} containerRef={containerRef} onInsert={() => { addSlide(hoverInsertIdx); setHoverInsertIdx(null) }} />}
         {slides.map((sl, i) => (
-          <div key={sl.id} data-slide-idx={i} data-slide-id={sl.id} className="flex shrink-0 items-center">
-            <div
-              className="h-[72px] bg-blue-500 rounded shrink-0 transition-[width,margin] duration-200 ease-out overflow-hidden"
+          <Fragment key={sl.id}>
+            <button
+              onClick={(e) => { e.stopPropagation(); addSlide(i); setHoverInsertIdx(null) }}
+              className="h-[72px] bg-bindle-500 text-white rounded flex items-center justify-center shrink-0 overflow-hidden"
               style={{
-                width: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 4 : 0,
-                marginRight: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 4 : 0,
+                width: (hoverInsertIdx === i && dragIdx === null) ? 24 : 0,
+                transition: 'width 200ms ease-out',
               }}
-            />
-            <SlideThumb
-              slide={sl}
-              index={i}
-              isActive={sl.id === currentSlideId}
-              isSelected={selectedSlideIds.includes(sl.id)}
-              isDragging={dragIdx === i}
-              renamingId={renamingId}
-              renameVal={renameVal}
-              onChangeRenameVal={setRenameVal}
-              onSubmitRename={submitRename}
-              onStartRename={startRename}
-              onClick={handleClick}
-              onDuplicate={() => duplicateSlide(sl.id)}
-              onDelete={() => deleteSlide(sl.id)}
-            />
-          </div>
+            >
+              <span className="transition-transform duration-200 ease-out" style={{ transform: (hoverInsertIdx === i && dragIdx === null) ? 'scale(1)' : 'scale(0)' }}>
+                <Plus size={14} />
+              </span>
+            </button>
+            <div data-slide-idx={i} data-slide-id={sl.id} className="flex shrink-0 items-center">
+              <div
+                className="h-[72px] bg-blue-500 rounded shrink-0 transition-[width,margin] duration-200 ease-out overflow-hidden"
+                style={{
+                  width: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 4 : 0,
+                  marginRight: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 4 : 0,
+                }}
+              />
+              <SlideThumb
+                slide={sl}
+                index={i}
+                isActive={sl.id === currentSlideId}
+                isSelected={selectedSlideIds.includes(sl.id)}
+                isDragging={dragIdx === i}
+                renamingId={renamingId}
+                renameVal={renameVal}
+                onChangeRenameVal={setRenameVal}
+                onSubmitRename={submitRename}
+                onStartRename={startRename}
+                onClick={handleClick}
+                onDuplicate={() => duplicateSlide(sl.id)}
+                onDelete={() => deleteSlide(sl.id)}
+              />
+            </div>
+          </Fragment>
         ))}
+        <button
+          onClick={() => { addSlide(slides.length); setHoverInsertIdx(null) }}
+          className="h-[72px] bg-bindle-500 text-white rounded flex items-center justify-center shrink-0 overflow-hidden"
+          style={{
+            width: (hoverInsertIdx === slides.length && dragIdx === null) ? 24 : 0,
+            transition: 'width 200ms ease-out',
+          }}
+        >
+          <span className="transition-transform duration-200 ease-out" style={{ transform: (hoverInsertIdx === slides.length && dragIdx === null) ? 'scale(1)' : 'scale(0)' }}>
+            <Plus size={14} />
+          </span>
+        </button>
         <div
           className="h-[72px] bg-blue-500 rounded shrink-0 transition-[width,margin] duration-200 ease-out overflow-hidden"
           style={{
@@ -384,33 +409,6 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
         <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-0.5 bg-white border border-gray-200 rounded-br hover:bg-red-50"><Trash2 size={9} className="text-red-400" /></button>
       </div>
     </div>
-  )
-}
-
-function InsertButton({ index, containerRef, onInsert }: { index: number; containerRef: { current: HTMLDivElement | null }; onInsert: () => void }) {
-  const [x, setX] = useState(0)
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const update = () => {
-      const beforeEl = index > 0 ? document.querySelector(`[data-slide-idx="${index - 1}"]`) : null
-      const afterEl = document.querySelector(`[data-slide-idx="${index}"]`)
-      const left = beforeEl ? beforeEl.getBoundingClientRect().right : el.getBoundingClientRect().left
-      const right = afterEl ? afterEl.getBoundingClientRect().left : el.getBoundingClientRect().right
-      setX((left + right) / 2 - el.getBoundingClientRect().left)
-    }
-    update()
-    const timer = setInterval(update, 100)
-    return () => clearInterval(timer)
-  }, [index, containerRef])
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); onInsert() }}
-      style={{ position: 'absolute', left: x - 10, top: '50%', transform: 'translateY(-50%)' }}
-      className="z-50 w-5 h-5 rounded-full bg-bindle-500 text-white flex items-center justify-center shadow-md hover:bg-bindle-600 transition-all"
-    >
-      <Plus size={12} />
-    </button>
   )
 }
 
