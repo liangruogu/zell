@@ -51,10 +51,24 @@ function pushHistory() {
     const s = usePptStore.getState()
     if (s.slides.length === 0) return
     usePptStore.setState({
-      _undo: [...s._undo.slice(-49), clone(s.slides)],
+      _undo: [...s._undo.slice(-99), clone(s.slides)],
       _redo: [],
     })
   }, 400)
+}
+
+function flushHistory() {
+  if (historyTimer) {
+    clearTimeout(historyTimer)
+    historyTimer = null
+    const s = usePptStore.getState()
+    if (s.slides.length > 0) {
+      usePptStore.setState({
+        _undo: [...s._undo.slice(-99), clone(s.slides)],
+        _redo: [],
+      })
+    }
+  }
 }
 
 function mutate(set: any, fn: (s: PptState) => Partial<PptState>) {
@@ -195,24 +209,30 @@ export const usePptStore = create<PptState>((set, get) => ({
   setGuideLines: (lines) => set({ guideLines: lines }),
 
   undo: () => {
+    flushHistory()
     const { _undo, slides } = get()
     if (_undo.length === 0) return
+    const restoredSlides = _undo[_undo.length - 1]
     set(s => ({
-      slides: _undo[_undo.length - 1],
+      slides: restoredSlides,
       _undo: _undo.slice(0, -1),
       _redo: [...s._redo, clone(slides)],
       selectedIds: [],
+      currentSlideId: restoredSlides[0]?.id || null,
     }))
   },
 
   redo: () => {
+    flushHistory()
     const { _redo, slides } = get()
     if (_redo.length === 0) return
+    const restoredSlides = _redo[_redo.length - 1]
     set(s => ({
-      slides: _redo[_redo.length - 1],
+      slides: restoredSlides,
       _redo: _redo.slice(0, -1),
       _undo: [...s._undo, clone(slides)],
       selectedIds: [],
+      currentSlideId: restoredSlides[0]?.id || null,
     }))
   },
 }))
