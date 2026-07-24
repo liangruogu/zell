@@ -260,6 +260,11 @@ export function CanvasViewport() {
           transformOrigin: 'center center',
         }}
       >
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: slide.background || '#ffffff',
+          opacity: slide.backgroundOpacity ?? 1,
+        }} />
         {slide.elements.map(el => (
           <CanvasElementView key={el.id} element={el} isSelected={selectedIds.includes(el.id)} />
         ))}

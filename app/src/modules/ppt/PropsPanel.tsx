@@ -406,11 +406,38 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
 }
 
 function SlideBackground({ slide }: { slide: import('./types').Slide }) {
+  const [opEdit, setOpEdit] = useState(false)
+  const [opText, setOpText] = useState('')
+  const opRef = useRef({ v0: 0, mx: 0 })
+  const opDisplay = Math.round((slide.backgroundOpacity ?? 1) * 100)
+
   const changeBg = (color: string) => {
     const st = usePptStore.getState()
     const slides = st.slides.map(s => s.id === slide.id ? { ...s, background: color } : s)
     usePptStore.setState({ slides })
   }
+  const changeOpacity = (v: number) => {
+    const st = usePptStore.getState()
+    const slides = st.slides.map(s => s.id === slide.id ? { ...s, backgroundOpacity: v } : s)
+    usePptStore.setState({ slides })
+  }
+  const onOpGrip = (e: React.PointerEvent) => {
+    e.stopPropagation()
+    opRef.current = { v0: opDisplay, mx: e.clientX }
+    const onMove = (ev: PointerEvent) => {
+      const v = Math.max(0, Math.min(100, Math.round(opRef.current.v0 + (ev.clientX - opRef.current.mx))))
+      changeOpacity(v / 100)
+    }
+    const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+  const commitOp = () => {
+    const n = parseInt(opText)
+    if (!isNaN(n)) changeOpacity(Math.max(0, Math.min(100, n)) / 100)
+    setOpEdit(false)
+  }
+
   return (
     <div>
       <label className="text-[12px] text-gray-500">背景色</label>
@@ -422,6 +449,21 @@ function SlideBackground({ slide }: { slide: import('./types').Slide }) {
           <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: slide.background || '#ffffff' }} />
         </div>
         <span className="text-[11px] text-gray-600 font-mono flex-1">{slide.background || '#ffffff'}</span>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <div onPointerDown={onOpGrip} className="h-full shrink-0" style={{ cursor: 'ew-resize' }}>
+            <Grip size={10} />
+          </div>
+          {opEdit ? (
+            <input autoFocus type="text" value={opText} onChange={e => setOpText(e.target.value)}
+              onBlur={commitOp}
+              onKeyDown={e => { if (e.key === 'Enter') commitOp(); if (e.key === 'Escape') setOpEdit(false) }}
+              className="w-8 h-full text-[12px] text-center bg-transparent outline-none select-text"
+            />
+          ) : (
+            <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }}
+              className="text-[12px] text-gray-600 cursor-default min-w-[24px] text-right">{opDisplay}%</span>
+          )}
+        </div>
       </div>
     </div>
   )

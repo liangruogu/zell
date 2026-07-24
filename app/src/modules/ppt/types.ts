@@ -29,6 +29,7 @@ export interface Slide {
   name: string
   elements: CanvasElement[]
   background: string
+  backgroundOpacity?: number
   hidden?: boolean
 }
 
