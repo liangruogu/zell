@@ -246,8 +246,8 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
   useEffect(() => {
     if (!store) return
     const refresh = () => {
-      const snapshot = store.getSnapshot()
-      const shapes = Object.values(snapshot.store)
+      const records = store.allRecords()
+      const shapes = records
         .filter((r: any) => r.typeName === 'shape' && r.type === 'frame')
         .filter((r: any) => r.props?.meta?.slideType === 'slide')
       setSlides(shapes)
