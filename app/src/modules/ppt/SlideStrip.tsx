@@ -338,7 +338,7 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
 }
 
 function MiniSlide({ slide }: { slide: Slide }) {
-  const s = 0.042 // 54/1280
+  const s = 0.1 // 1280*0.1=128, 720*0.1=72
   return (
     <div style={{ width: 1280 * s, height: 720 * s, background: slide.background || '#fff', position: 'relative', overflow: 'hidden' }}>
       {slide.elements.slice(0, 15).map(el => (
