@@ -29,8 +29,9 @@ export function CanvasElementView({ element, isSelected }: Props) {
     const onMove = (e: MouseEvent) => {
       const s = usePptStore.getState()
       if (!s.currentSlideId) return
-      const dx = e.clientX - ref.current.mx
-      const dy = e.clientY - ref.current.my
+      const zoom = s.zoom || 1
+      const dx = (e.clientX - ref.current.mx) / zoom
+      const dy = (e.clientY - ref.current.my) / zoom
       s.updateElement(s.currentSlideId, element.id, {
         x: Math.round(ref.current.ox + dx),
         y: Math.round(ref.current.oy + dy),
