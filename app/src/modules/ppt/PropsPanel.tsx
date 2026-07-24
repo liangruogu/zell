@@ -103,23 +103,23 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
   }
 
   const display = integer ? Math.round(value) : Number(value.toFixed(1))
-  const labelEl = <span className="text-[11px] text-gray-500 shrink-0">{label}</span>
+  const labelEl = <span className="text-[12px] text-gray-500 shrink-0">{label}</span>
 
   const field = (
-    <div className="group h-[24px] bg-gray-100 rounded flex items-center overflow-hidden">
+    <div className="group h-[26px] bg-gray-100 rounded flex items-center overflow-hidden">
       <div onPointerDown={onGripDown} className="h-full shrink-0">
-        <Grip size={10} />
+        <Grip size={12} />
       </div>
       {edit ? (
         <input autoFocus type="text" value={text}
           onChange={e => setText(e.target.value)}
           onBlur={() => commit(text)}
           onKeyDown={e => { if (e.key === 'Enter') commit(text); if (e.key === 'Escape') setEdit(false) }}
-          className="flex-1 min-w-0 h-full text-xs bg-transparent outline-none text-center select-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="flex-1 min-w-0 h-full text-[13px] bg-transparent outline-none text-center select-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
       ) : (
         <span onClick={() => { setText(String(display)); setEdit(true) }}
-          className="flex-1 text-xs text-gray-700 cursor-default text-center select-none">{display}</span>
+          className="flex-1 text-[13px] text-gray-700 cursor-default text-center select-none">{display}</span>
       )}
     </div>
   )
@@ -213,11 +213,11 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
           </button>
           {showPicker && (
-            <div ref={pickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 132 }}>
+            <div ref={pickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 148 }}>
               <span className="text-[9px] text-gray-400">取色器</span>
               <div className="flex items-center gap-1">
                 <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-5 h-5 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
-                <span className="text-[11px] text-gray-600 font-mono">{color}</span>
+                <span className="text-[12px] text-gray-600 font-mono">{color}</span>
               </div>
               {recentColors.length > 0 && (
                 <>
@@ -240,11 +240,11 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             onChange={e => setHexText(e.target.value)}
             onBlur={commitHex}
             onKeyDown={e => { if (e.key === 'Enter') commitHex(); if (e.key === 'Escape') setHexEdit(false) }}
-            className="flex-1 h-full min-w-0 text-[11px] font-mono bg-transparent outline-none select-text"
+            className="flex-1 h-full min-w-0 text-[12px] font-mono bg-transparent outline-none select-text"
           />
         ) : (
           <span onClick={() => { setHexText(color.replace('#', '')); setHexEdit(true) }}
-            className="flex-1 text-[11px] text-gray-600 font-mono cursor-default truncate">{color}</span>
+            className="flex-1 text-[12px] text-gray-600 font-mono cursor-default truncate">{color}</span>
         )}
         {onOpacityChange && opacity != null && (
           <div className="flex items-center gap-0.5 shrink-0">
@@ -256,10 +256,10 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
                 onChange={e => setOpText(e.target.value)}
                 onBlur={commitOp}
                 onKeyDown={e => { if (e.key === 'Enter') commitOp(); if (e.key === 'Escape') setOpEdit(false) }}
-                className="w-8 h-full text-[11px] text-center bg-transparent outline-none select-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-8 h-full text-[12px] text-center bg-transparent outline-none select-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             ) : (
-              <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[11px] text-gray-600 cursor-default min-w-[24px] text-right">{opDisplay}%</span>
+              <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[12px] text-gray-600 cursor-default min-w-[24px] text-right">{opDisplay}%</span>
             )}
           </div>
         )}
@@ -402,7 +402,7 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
         )}
       </div>
       {hasStroke && (
-        <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
+      <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[26px] px-1">
           <div className="relative shrink-0">
             <input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => updateProps({ stroke: e.target.value })}
               className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
@@ -498,7 +498,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             </button>
           </div>
           {editIdx === i && (
-            <div ref={popRef} className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-2 space-y-1" style={{ width: 180, top: popPos.y, left: popPos.x }}>
+            <div ref={popRef} className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-2 space-y-1" style={{ width: 200, top: popPos.y, left: popPos.x }}>
               <div className="text-[10px] text-gray-500 font-medium">阴影 {i + 1}</div>
               <ColorChip label="" color={s.color} onChange={v => updateShadow(i, { color: v })} />
               <div className="grid grid-cols-3 gap-1">
