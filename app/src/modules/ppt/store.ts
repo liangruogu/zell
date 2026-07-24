@@ -264,7 +264,7 @@ export const usePptStore = create<PptState>((set, get) => ({
       id: genId(), name: '组', type: 'group',
       x: x1, y: y1, w: x2 - x1, h: y2 - y1, opacity: 1,
       props: {},
-      groupChildren: children,
+      groupChildren: children.map(e => ({ ...e, x: e.x - x1, y: e.y - y1 })),
     }
     mutate(set, s => {
       const ns = s.slides.map(sl => {
@@ -281,7 +281,7 @@ export const usePptStore = create<PptState>((set, get) => ({
     if (!slide) return
     const group = slide.elements.find(e => e.id === groupId && e.type === 'group')
     if (!group || !group.groupChildren) return
-    const ungrouped = group.groupChildren
+    const ungrouped = group.groupChildren.map(e => ({ ...e, x: e.x + group.x, y: e.y + group.y }))
     mutate(set, s => {
       const ns = s.slides.map(sl => {
         if (sl.id !== slideId) return sl
