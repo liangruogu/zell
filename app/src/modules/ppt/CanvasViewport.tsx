@@ -318,6 +318,12 @@ function GroupBoundingBox({ elements, zoom }: { elements: CanvasElement[]; zoom:
       if (nw < 10) nw = 10
       if (nh < 10) nh = 10
 
+      // lock aspect ratio for corner handles
+      if (activeHandle.length === 2 && ow > 0 && oh > 0 && !e.shiftKey) {
+        const aspect = ow / oh
+        nh = nw / aspect
+      }
+
       const sx = nw / ow
       const sy = nh / oh
       const slide = st.slides.find(s => s.id === st.currentSlideId)
