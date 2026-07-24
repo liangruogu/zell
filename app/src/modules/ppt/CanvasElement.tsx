@@ -23,7 +23,7 @@ function useDrag(elementId: string) {
     ref.current = { mx: e.clientX, my: e.clientY, ox: el?.x ?? 0, oy: el?.y ?? 0, shift: e.shiftKey, alt: e.altKey, clonedId: '' }
 
     if (e.altKey && s.currentSlideId && el) {
-      const clone: CanvasElement = { ...el, id: crypto.randomUUID(), x: el.x + 30, y: el.y + 30 }
+      const clone: CanvasElement = { ...el, id: crypto.randomUUID(), x: el.x + (e.shiftKey ? 0 : 20), y: el.y + (e.shiftKey ? 0 : 20) }
       s.addElement(s.currentSlideId, clone)
       ref.current.clonedId = clone.id; ref.current.ox = clone.x; ref.current.oy = clone.y
     }
@@ -52,6 +52,8 @@ function useDrag(elementId: string) {
 
   return { onMouseDown, dragging }
 }
+
+export { snapPos, SNAP }
 
 function snapPos(el: CanvasElement, others: CanvasElement[], x: number, y: number) {
   const elx = x, ely = y, erx = x + el.w, eby = y + el.h, ecx = x + el.w / 2, ecy = y + el.h / 2
