@@ -40,7 +40,7 @@ export function ElementHandles({ element }: Props) {
       if (nw < 10) nw = 10
       if (nh < 10) nh = 10
 
-      const lockAspect = element.type !== 'line' && element.type !== 'arrow'
+      const lockAspect = element.type !== 'line' && element.type !== 'arrow' && e.shiftKey
       if (lockAspect && activeHandle.length === 2 && ow > 0 && oh > 0) {
         const aspect = ow / oh
         nw = Math.max(10, nw)

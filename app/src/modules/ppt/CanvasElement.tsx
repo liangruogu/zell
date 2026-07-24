@@ -38,12 +38,27 @@ function useDrag(elementId: string) {
 // Arrow SVG
 function renderArrowHead(x1: number, y1: number, x2: number, y2: number, shape: string | undefined, color: string, sw: number, isEnd: boolean) {
   if (!shape || shape === 'none') return null
-  const size = sw * 6; const dx = x2 - x1; const dy = y2 - y1
-  const len = Math.sqrt(dx * dx + dy * dy) || 1; const ux = dx / len; const uy = dy / len
-  const sign = isEnd ? 1 : -1; const tipX = x1 + sign * (len - size) * ux; const tipY = y1 + sign * (len - size) * uy
-  if (shape === 'arrow') { const px = -uy * size * .5; const py = ux * size * .5; return <polygon points={`${tipX},${tipY} ${tipX - sign * size * ux + px},${tipY - sign * size * uy + py} ${tipX - sign * size * ux - px},${tipY - sign * size * uy - py}`} fill={color} /> }
-  if (shape === 'circle') return <circle cx={tipX - sign * size * .3 * ux} cy={tipY - sign * size * .3 * uy} r={size * .35} fill={color} />
-  if (shape === 'square') return <rect x={tipX - sign * size * .3 * ux - size * .3} y={tipY - sign * size * .3 * uy - size * .3} width={size * .6} height={size * .6} fill={color} />
+  const size = sw * 5
+  const dx = x2 - x1; const dy = y2 - y1
+  const len = Math.sqrt(dx * dx + dy * dy) || 1
+  const ux = dx / len; const uy = dy / len
+  // Arrow tip goes beyond the endpoint
+  const tipX = isEnd ? x2 + size * ux : x1 - size * ux
+  const tipY = isEnd ? y2 + size * uy : y1 - size * uy
+  const baseX = isEnd ? x2 : x1
+  const baseY = isEnd ? y2 : y1
+
+  if (shape === 'arrow') {
+    const px = -uy * size * 0.5; const py = ux * size * 0.5
+    return <polygon points={`${tipX},${tipY} ${baseX + px},${baseY + py} ${baseX - px},${baseY - py}`} fill={color} />
+  }
+  if (shape === 'circle') {
+    return <circle cx={baseX} cy={baseY} r={size * 0.4} fill={color} />
+  }
+  if (shape === 'square') {
+    const px = -uy * size * 0.4; const py = ux * size * 0.4
+    return <rect x={baseX + px - size * 0.4} y={baseY + py - size * 0.4} width={size * 0.8} height={size * 0.8} fill={color} />
+  }
   return null
 }
 

@@ -77,12 +77,15 @@ export function CanvasViewport() {
     }
   }, [])
 
+  // Delete + Undo/Redo keys
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const s = usePptStore.getState()
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const s = usePptStore.getState()
         if (s.selectedIds.length > 0 && s.currentSlideId) s.deleteElements(s.currentSlideId, s.selectedIds)
       }
+      if (e.ctrlKey && e.key === 'z' && !e.shiftKey) { e.preventDefault(); s.undo() }
+      if (e.ctrlKey && (e.key === 'Z' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); s.redo() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
