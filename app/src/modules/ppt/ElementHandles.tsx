@@ -41,6 +41,12 @@ export function ElementHandles({ element, zoom }: Props) {
       }
       if (nw < 1) nw = 1
       if (nh < 1) nh = 1
+      // prevent left/top edges from crossing right/bottom
+      if (activeHandle.includes('w')) nx = Math.min(nx, ox + ow - 1)
+      if (activeHandle.includes('n')) ny = Math.min(ny, oy + oh - 1)
+      // prevent right/bottom edges from crossing left/top
+      if (activeHandle.includes('e')) nw = Math.max(1, nw)
+      if (activeHandle.includes('s')) nh = Math.max(1, nh)
 
       const lockAspect = element.type !== 'line' && element.type !== 'arrow' && e.shiftKey
       if (lockAspect && activeHandle.length === 2 && ow > 0 && oh > 0) {
