@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Plus, Trash2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
@@ -46,7 +46,7 @@ export function SlideStrip() {
     <div className="h-28 border-t border-gray-200 flex items-center px-3 gap-2 shrink-0 bg-gray-100">
       <div className="flex gap-2 overflow-x-auto py-1 items-center">
         {slides.map((sl, i) => (
-          <React.Fragment key={sl.id}>
+          <div key={sl.id}>
             {dragOverIdx === i && dragIdx !== null && dragIdx !== i && (
               <div className="w-1 h-[72px] bg-blue-500 rounded shrink-0" />
             )}
@@ -72,7 +72,7 @@ export function SlideStrip() {
               onDuplicate={() => duplicateSlide(sl.id)}
               onDelete={() => deleteSlide(sl.id)}
             />
-          </React.Fragment>
+          </div>
         ))}
         {dragOverIdx === slides.length && dragIdx !== null && (
           <div className="w-1 h-[72px] bg-blue-500 rounded shrink-0" />
