@@ -225,7 +225,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
                   <div className="flex gap-0.5 flex-wrap">
                     {recentColors.slice(0, 16).map(c => (
                       <button key={c} onClick={() => handleColorChange(c)}
-                        className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                        className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform cursor-pointer"
                         style={{ background: c }} title={c}
                       />
                     ))}
@@ -271,16 +271,30 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
 export function PropsPanel() {
   const { slides, currentSlideId, selectedIds, updateElement, setSelectedIds } = usePptStore()
   const [activeTab, setActiveTab] = useState<'props' | 'layers'>('props')
+  const [renameElId, setRenameElId] = useState<string | null>(null)
+  const [renameElVal, setRenameElVal] = useState('')
   const slide = slides.find(s => s.id === currentSlideId)
   const el = selectedIds.length === 1 ? slide?.elements.find(e => e.id === selectedIds[0]) : null
 
   useEffect(() => { syncRecentColors(slides) }, [slides])
 
+  const typeLabels: Record<string, string> = { text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }
+  const elDisplayName = el ? (el.name || typeLabels[el.type] || el.type) : ''
+
+  const submitElRename = () => {
+    if (renameElId && renameElVal.trim() && slide) {
+      const st = usePptStore.getState()
+      const updatedSlide = { ...slide, elements: slide.elements.map(e => e.id === renameElId ? { ...e, name: renameElVal.trim() } : e) }
+      usePptStore.setState({ slides: st.slides.map(s => s.id === st.currentSlideId ? updatedSlide : s) })
+    }
+    setRenameElId(null)
+  }
+
   return (
     <div className="w-52 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
       <div className="flex border-b border-gray-200">
-        <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
-        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
+        <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[12px] font-medium text-center ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
+        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[12px] font-medium text-center ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
       </div>
       <div className="p-3">
         {activeTab === 'props' ? (
@@ -289,9 +303,16 @@ export function PropsPanel() {
           ) : (
             <>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[13px] font-medium text-gray-700">
-                  {{ text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}
-                </span>
+                {renameElId === el.id ? (
+                  <input autoFocus value={renameElVal}
+                    onChange={e => setRenameElVal(e.target.value)}
+                    onBlur={submitElRename}
+                    onKeyDown={e => { if (e.key === 'Enter') submitElRename(); if (e.key === 'Escape') setRenameElId(null) }}
+                    className="flex-1 text-[13px] font-medium text-gray-700 bg-gray-100 rounded px-1 outline-none" />
+                ) : (
+                  <span className="text-[13px] font-medium text-gray-700 cursor-default"
+                    onDoubleClick={() => { setRenameElId(el.id); setRenameElVal(elDisplayName) }}>{elDisplayName}</span>
+                )}
                 <button onClick={() => setSelectedIds([])} className="p-0.5 text-gray-400 hover:text-gray-600"><X size={12} /></button>
               </div>
               <PanelFields el={el} updateElement={updateElement} slideId={slide!.id} />
@@ -432,7 +453,7 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
                     <div className="flex gap-0.5 flex-wrap">
                       {recentColors.slice(0, 16).map(c => (
                         <button key={c} onClick={() => { addRecentColor(c); updateProps({ stroke: c }) }}
-                          className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                        className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform cursor-pointer"
                           style={{ background: c }} title={c}
                         />
                       ))}
@@ -546,7 +567,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
                   <div className="flex gap-0.5 flex-wrap">
                     {recentColors.slice(0, 16).map(c => (
                       <button key={c} onClick={() => updateShadow(i, { color: c })}
-                        className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                        className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform cursor-pointer"
                         style={{ background: c }} title={c}
                       />
                     ))}
@@ -626,7 +647,7 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
 
   const startRename = (el: CanvasElement) => {
     setRenamingId(el.id)
-    setRenameVal(el.props.text || '')
+    setRenameVal(el.name || el.props.text || '')
   }
   const submitRename = () => {
     if (renamingId && renameVal.trim()) {
@@ -634,7 +655,7 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
       if (st.currentSlideId) {
         const updatedSlide = {
           ...slide,
-          elements: slide.elements.map(e => e.id === renamingId ? { ...e, props: { ...e.props, text: renameVal.trim() } } : e)
+          elements: slide.elements.map(e => e.id === renamingId ? { ...e, name: renameVal.trim() } : e)
         }
         const allSlides = st.slides.map(s => s.id === st.currentSlideId ? updatedSlide : s)
         usePptStore.setState({ slides: allSlides })
@@ -728,8 +749,8 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
                 onClick={e => e.stopPropagation()}
               />
             ) : (
-              <span className="truncate flex-1" onDoubleClick={el.type === 'text' ? () => startRename(el) : undefined}>
-                {{ text: el.props.text?.slice(0, 16) || '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}
+              <span className="truncate flex-1" onDoubleClick={el.type === 'text' || el.name ? () => startRename(el) : undefined}>
+                {el.name || {{ text: el.props.text?.slice(0, 16) || '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}}
               </span>
             )}
           </div>

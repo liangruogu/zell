@@ -8,6 +8,7 @@ export type ElementType = 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'imag
 
 export interface CanvasElement {
   id: string
+  name?: string
   type: ElementType
   x: number; y: number; w: number; h: number
   opacity: number
