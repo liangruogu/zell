@@ -1,9 +1,21 @@
 import { useState, useCallback, useRef } from 'react'
-import { X, GripVertical, GripHorizontal } from 'lucide-react'
+import { X, GripVertical } from 'lucide-react'
 import { usePptStore } from './store'
 import type { CanvasElement } from './types'
 
 const SCRUB = { threshold: 3, speed: 1 }
+
+/* ── CSS-only grip indicator (two vertical lines) ── */
+function Grip({ size = 12 }: { size?: number }) {
+  return (
+    <div className="flex items-center justify-center shrink-0 cursor-ew-resize" style={{ width: size + 4, height: '100%', touchAction: 'none' }}>
+      <div style={{ display: 'flex', gap: 2 }}>
+        <div className="bg-gray-300 group-hover:bg-gray-500 rounded-full" style={{ width: 2, height: size-2 }} />
+        <div className="bg-gray-300 group-hover:bg-gray-500 rounded-full" style={{ width: 2, height: size-2 }} />
+      </div>
+    </div>
+  )
+}
 
 function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true, labelLeft }: {
   label: string; value: number; onChange: (v: number) => void
@@ -42,36 +54,24 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
   }
 
   const display = integer ? Math.round(value) : Number(value.toFixed(1))
-  const inputCls = 'h-[24px] px-1.5 text-xs border border-gray-200 rounded outline-none leading-none text-center'
-  const divCls = 'h-[24px] text-xs select-none flex items-center border border-gray-200 rounded'
   const labelEl = <span className="text-[10px] text-gray-500 shrink-0">{label}</span>
 
-  const gripEl = (
-    <div
-      onPointerDown={onGripDown}
-      className="shrink-0 flex items-center justify-center h-full px-0.5 text-gray-400 hover:text-gray-600 cursor-ew-resize rounded-l border-r border-gray-200"
-      style={{ touchAction: 'none' }}
-    >
-      <GripHorizontal size={10} />
-    </div>
-  )
-
-  const renderInput = (extra: string) => (
-    <input autoFocus type="text" value={text}
-      onChange={e => setText(e.target.value)}
-      onBlur={() => commit(text)}
-      onKeyDown={e => { if (e.key === 'Enter') commit(text); if (e.key === 'Escape') setEdit(false) }}
-      className={`${extra} ${inputCls} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-    />
-  )
-
-  const renderValue = (extra: string) => (
-    <div className={`${extra} ${divCls}`}>
-      {gripEl}
-      <span
-        onClick={() => { setText(String(display)); setEdit(true) }}
-        className="flex-1 text-center cursor-default"
-      >{display}</span>
+  const field = (
+    <div className="group h-[24px] bg-gray-100 rounded flex items-center overflow-hidden">
+      <div onPointerDown={onGripDown} className="h-full shrink-0">
+        <Grip size={10} />
+      </div>
+      {edit ? (
+        <input autoFocus type="text" value={text}
+          onChange={e => setText(e.target.value)}
+          onBlur={() => commit(text)}
+          onKeyDown={e => { if (e.key === 'Enter') commit(text); if (e.key === 'Escape') setEdit(false) }}
+          className="flex-1 min-w-0 h-full text-xs bg-transparent outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+      ) : (
+        <span onClick={() => { setText(String(display)); setEdit(true) }}
+          className="flex-1 text-xs text-gray-700 cursor-default text-center select-none">{display}</span>
+      )}
     </div>
   )
 
@@ -79,7 +79,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
     return (
       <div className="flex items-center gap-1">
         {labelEl}
-        {edit ? renderInput('flex-1 min-w-0') : renderValue('flex-1 min-w-0')}
+        <div className="flex-1 min-w-0">{field}</div>
       </div>
     )
   }
@@ -87,7 +87,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
   return (
     <div>
       {labelEl}
-      {edit ? renderInput('w-full') : renderValue('w-full')}
+      {field}
     </div>
   )
 }
@@ -142,19 +142,19 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
   return (
     <div>
       <label className="text-[10px] text-gray-500">{label}</label>
-      <div className="flex items-center gap-1 mt-0.5">
+      <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
         <div className="relative shrink-0">
           <input type="color" value={color} onChange={e => onChange(e.target.value)}
-            className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
+            className="absolute inset-0 opacity-0 cursor-pointer" style={{ width: 16, height: 16 }}
           />
-          <div className="w-6 h-5 rounded border border-gray-300" style={{ background: color }} />
+          <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
         </div>
         {hexEdit ? (
           <input autoFocus type="text" value={hexText}
             onChange={e => setHexText(e.target.value)}
             onBlur={commitHex}
             onKeyDown={e => { if (e.key === 'Enter') commitHex(); if (e.key === 'Escape') setHexEdit(false) }}
-            className="flex-1 h-[20px] min-w-0 text-[11px] font-mono border border-gray-200 rounded px-1 outline-none"
+            className="flex-1 h-full min-w-0 text-[11px] font-mono bg-transparent outline-none"
           />
         ) : (
           <span onClick={() => { setHexText(color.replace('#', '')); setHexEdit(true) }}
@@ -162,19 +162,15 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
         )}
         {onOpacityChange && opacity != null && (
           <div className="flex items-center gap-0.5 shrink-0">
-            <div
-              onPointerDown={onOpGrip}
-              className="cursor-ew-resize text-gray-400 hover:text-gray-600 flex items-center"
-              title="拖拽调节透明度"
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0" y="0" width="3" height="10" fill="currentColor" opacity="0.5" rx="1"/><rect x="7" y="0" width="3" height="10" fill="currentColor" rx="1"/></svg>
+            <div onPointerDown={onOpGrip} className="h-full shrink-0">
+              <Grip size={10} />
             </div>
             {opEdit ? (
               <input autoFocus type="text" value={opText}
                 onChange={e => setOpText(e.target.value)}
                 onBlur={commitOp}
                 onKeyDown={e => { if (e.key === 'Enter') commitOp(); if (e.key === 'Escape') setOpEdit(false) }}
-                className="w-8 h-[20px] text-[11px] text-center border border-gray-200 rounded outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-8 h-full text-[11px] text-center bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             ) : (
               <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[11px] text-gray-600 cursor-default min-w-[24px] text-right">{opDisplay}%</span>
@@ -248,7 +244,7 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       {el.type === 'arrow' && (
         <>
           <ColorChip label="颜色" color={el.props.stroke || '#94a3b8'} onChange={v => updateProps({ stroke: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
-          <ScrubInput icon="↔" label="粗细" value={el.props.strokeWidth ?? 2} onChange={v => updateProps({ strokeWidth: v })} min={1} max={20} />
+          <ScrubInput label="粗细" value={el.props.strokeWidth ?? 2} onChange={v => updateProps({ strokeWidth: v })} min={1} max={20} />
           <div>
             <label className="text-[10px] text-gray-500">起点</label>
             <div className="flex gap-1 mt-0.5">
