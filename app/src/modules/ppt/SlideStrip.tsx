@@ -65,6 +65,7 @@ export function SlideStrip() {
               onDragStart={() => setDragIdx(i)}
               onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i) }}
               onDragLeave={() => setDragOverIdx(null)}
+              onDragEnd={() => { setDragIdx(null); setDragOverIdx(null) }}
               onDrop={() => {
                 if (dragIdx !== null && dragIdx !== i) moveSlide(dragIdx, i)
                 setDragIdx(null); setDragOverIdx(null)
@@ -96,13 +97,13 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
   onChangeRenameVal: (v: string) => void; onSubmitRename: () => void
   onStartRename: (e: React.MouseEvent, id: string, name: string) => void
   onClick: (e: React.MouseEvent, id: string, idx: number) => void
-  onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDragLeave: () => void; onDrop: () => void
+  onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDragLeave: () => void; onDragEnd: () => void; onDrop: () => void
   onDuplicate: () => void; onDelete: () => void
 }) {
   return (
     <div
       draggable
-      onDragStart={onDragStart} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+      onDragStart={onDragStart} onDragOver={onDragOver} onDragLeave={onDragLeave} onDragEnd={onDragEnd} onDrop={onDrop}
       onClick={e => onClick(e, slide.id, index)}
       className={cn('group relative w-32 h-[72px] border rounded cursor-pointer shrink-0 transition-all select-none',
         isActive ? 'border-bindle-400 ring-2 ring-bindle-200' : isSelected ? 'border-blue-300' : 'border-gray-300 hover:border-gray-400',

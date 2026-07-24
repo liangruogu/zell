@@ -15,7 +15,7 @@ interface PptCanvasProps {
 export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
   const { slides, currentSlideId, init, getData, addSlide } = usePptStore()
 
-  useEffect(() => { if (data) init(data) }, [])
+  useEffect(() => { if (data) init(data) }, [data])
 
   useEffect(() => {
     if (slides.length === 0) return
