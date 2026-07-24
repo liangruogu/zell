@@ -49,14 +49,18 @@ export function ElementHandles({ element }: Props) {
         nh = nw / aspect
       }
 
-      // snap edges / centers during resize, axis-aware
+      // snap guides during resize — only apply position changes for handles that move the element
       const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
       if (el) {
         const others = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.filter(ee => ee.id !== element.id) || []
-        const axis = activeHandle === 'n' || activeHandle === 's' ? 'y' : activeHandle === 'w' || activeHandle === 'e' ? 'x' : undefined
+        const axis = activeHandle === 'n' ? 'y' : activeHandle === 'w' ? 'x' : undefined
+        // for 's'/'e' handles, position doesn't change — just show guides, don't affect nx/ny
+        const applyPos = activeHandle !== 's' && activeHandle !== 'e'
         const sn = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny, axis)
-        if (axis !== 'y') nx = sn.x
-        if (axis !== 'x') ny = sn.y
+        if (applyPos) {
+          if (axis !== 'y') nx = sn.x
+          if (axis !== 'x') ny = sn.y
+        }
       }
 
       s.updateElement(s.currentSlideId, element.id, { x: Math.round(nx), y: Math.round(ny), w: Math.round(nw), h: Math.round(nh) })
