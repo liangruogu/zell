@@ -357,22 +357,30 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
   }
 
   return (
-    <div className="flex items-center justify-between">
-      <label className="text-[11px] text-gray-500">边框</label>
-      {!hasStroke ? (
-        <button onClick={() => updateProps({ stroke: '#cbd5e1', strokeWidth: 1 })}
-          className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
-          <svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-        </button>
-      ) : (
-        <div className="flex items-center gap-1">
+    <div>
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] text-gray-500">边框</label>
+        {!hasStroke ? (
+          <button onClick={() => updateProps({ stroke: '#cbd5e1', strokeWidth: 1 })}
+            className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
+            <svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        ) : (
+          <button onClick={() => updateProps({ stroke: undefined, strokeWidth: undefined })}
+            className="p-0.5 text-gray-400 hover:text-red-500 rounded">
+            <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        )}
+      </div>
+      {hasStroke && (
+        <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
           <div className="relative shrink-0">
             <input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => updateProps({ stroke: e.target.value })}
               className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
             />
             <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: el.props.stroke || '#cbd5e1' }} />
           </div>
-          <div className="flex items-center h-[24px] bg-gray-100 rounded overflow-hidden">
+          <div className="flex items-center h-full overflow-hidden">
             <div onPointerDown={onWGrip} className="h-full shrink-0" style={{ cursor: 'ew-resize', touchAction: 'none' }}>
               <Grip size={10} />
             </div>
@@ -387,10 +395,6 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
               <span onClick={() => { setWText(String(w)); setEditW(true) }} className="w-8 text-xs text-gray-700 text-center cursor-default select-none">{w}px</span>
             )}
           </div>
-          <button onClick={() => updateProps({ stroke: undefined, strokeWidth: undefined })}
-            className="p-0.5 text-gray-400 hover:text-red-500 rounded shrink-0">
-            <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
         </div>
       )}
     </div>
