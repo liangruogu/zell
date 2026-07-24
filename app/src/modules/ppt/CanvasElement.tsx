@@ -15,7 +15,12 @@ function useDrag(elementId: string) {
     const s = usePptStore.getState()
     if (e.shiftKey && !e.altKey) {
       s.setSelectedIds(s.selectedIds.includes(elementId) ? s.selectedIds : [...s.selectedIds, elementId])
-    } else if (!e.shiftKey) {
+    } else if (!e.shiftKey && !e.altKey) {
+      // clicking an already-selected element in multi-select: keep selection
+      if (s.selectedIds.length <= 1 || !s.selectedIds.includes(elementId)) {
+        s.setSelectedIds([elementId])
+      }
+    } else if (e.altKey) {
       s.setSelectedIds([elementId])
     }
     setDragging(true)
