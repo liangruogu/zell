@@ -13,8 +13,16 @@ export function SlideStrip() {
   const [renameVal, setRenameVal] = useState('')
   const lastClickedRef = useRef<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const ghostRef = useRef<HTMLDivElement>(null)
+  const [showGhost, setShowGhost] = useState(false)
+  const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
-  const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null)
+  useEffect(() => {
+    if (showGhost && ghostRef.current) {
+      ghostRef.current.style.left = `${lastPointerRef.current.x - dragState.current.offsetX}px`
+      ghostRef.current.style.top = `${lastPointerRef.current.y - dragState.current.offsetY}px`
+    }
+  }, [showGhost])
 
   // manual pointer-based drag reorder (HTML5 DnD unreliable in Tauri WebView2)
   const dragState = useRef<{
@@ -86,6 +94,7 @@ export function SlideStrip() {
     }
 
     const onPointerMove = (e: PointerEvent) => {
+      lastPointerRef.current = { x: e.clientX, y: e.clientY }
       if (!dragState.current.active) return
       const dx = e.clientX - dragState.current.startX
       const dy = e.clientY - dragState.current.startY
@@ -94,9 +103,13 @@ export function SlideStrip() {
 
       if (!dragState.current.moved) {
         dragState.current.moved = true
+        setShowGhost(true)
       }
 
-      setGhostPos({ x: e.clientX - dragState.current.offsetX, y: e.clientY - dragState.current.offsetY })
+      if (ghostRef.current) {
+        ghostRef.current.style.left = `${e.clientX - dragState.current.offsetX}px`
+        ghostRef.current.style.top = `${e.clientY - dragState.current.offsetY}px`
+      }
 
       const dropIdx = findDropIdx(e.clientX, e.clientY, dragState.current.fromIdx)
       if (dropIdx >= 0 && dropIdx !== dragState.current.currentDropIdx) {
@@ -119,7 +132,7 @@ export function SlideStrip() {
       dragState.current = { active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1, offsetX: 0, offsetY: 0 }
       setDragIdx(null)
       setDragOverIdx(null)
-      setGhostPos(null)
+      setShowGhost(false)
     }
 
     el.addEventListener('pointerdown', onPointerDown)
@@ -181,11 +194,9 @@ export function SlideStrip() {
 
   return (
     <div className="h-28 border-t border-gray-200 flex items-center px-3 gap-2 shrink-0 bg-gray-100">
-      {ghostPos && dragIdx !== null && slides[dragIdx] && (
-        <div style={{
+      {showGhost && dragIdx !== null && slides[dragIdx] && (
+        <div ref={ghostRef} style={{
           position: 'fixed',
-          left: ghostPos.x,
-          top: ghostPos.y,
           width: 128,
           height: 72,
           zIndex: 9999,
