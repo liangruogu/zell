@@ -68,7 +68,7 @@ function snapPos(el: CanvasElement, others: CanvasElement[], x: number, y: numbe
     if (Math.abs(ely - o.y) < SNAP) { sy = o.y; guides.push({ type: 'h', pos: o.y, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
     if (Math.abs(eby - (o.y + o.h)) < SNAP) { sy = o.y + o.h - el.h; guides.push({ type: 'h', pos: o.y + o.h, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
   }
-  if (guides.length > 0) usePptStore.getState().setGuideLines(guides)
+  usePptStore.getState().setGuideLines(guides)
   return { x: Math.round(sx), y: Math.round(sy) }
 }
 

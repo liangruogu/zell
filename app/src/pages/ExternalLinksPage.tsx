@@ -29,6 +29,17 @@ export default function WhiteboardPage() {
     if (projectId) { fetchProject(projectId); fetchWhiteboards(projectId) }
   }, [projectId])
 
+  // Ctrl+Shift+L toggle sidebar
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
+        e.preventDefault(); panel.toggle()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [panel.toggle])
+
   // Load PPT data from whiteboard snapshot
   useEffect(() => {
     if (currentWhiteboard?.wb_type === 'ppt' && currentWhiteboard.snapshot) {
