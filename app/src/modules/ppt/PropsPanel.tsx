@@ -75,7 +75,7 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
   }
 
   const display = integer ? Math.round(value) : Number(value.toFixed(1))
-  const labelEl = <span className="text-[10px] text-gray-500 shrink-0">{label}</span>
+  const labelEl = <span className="text-[11px] text-gray-500 shrink-0">{label}</span>
 
   const field = (
     <div className="group h-[24px] bg-gray-100 rounded flex items-center overflow-hidden">
@@ -304,28 +304,81 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
           <ColorChip label="填充" color={el.props.fill || '#e2e8f0'} onChange={v => updateProps({ fill: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
           <ColorChip label="边框色" color={el.props.stroke || '#cbd5e1'} onChange={v => updateProps({ stroke: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
           <ScrubInput label="边框粗细" value={el.props.strokeWidth ?? 0} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
-          <div className="pt-1 border-t border-gray-100">
-            <label className="text-[10px] text-gray-500">阴影</label>
-            <ColorChip label="" color={el.props.shadowColor || 'rgba(0,0,0,0.15)'} onChange={v => updateProps({ shadowColor: v })} />
-            <div className="grid grid-cols-3 gap-1 mt-1">
-              <ScrubInput label="X" value={el.props.shadowX ?? 0} onChange={v => updateProps({ shadowX: v })} min={-50} max={50} />
-              <ScrubInput label="Y" value={el.props.shadowY ?? 2} onChange={v => updateProps({ shadowY: v })} min={-50} max={50} />
-              <ScrubInput label="模糊" value={el.props.shadowBlur ?? 0} onChange={v => updateProps({ shadowBlur: v })} min={0} max={100} />
-            </div>
-          </div>
-          {el.type === 'rect' && (
-            <>
-              <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v, borderRadiusTL: undefined, borderRadiusTR: undefined, borderRadiusBL: undefined, borderRadiusBR: undefined })} min={0} max={200} />
-              <div className="grid grid-cols-2 gap-2">
-                <ScrubInput label="TL" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v, borderRadius: undefined })} min={0} max={200} />
-                <ScrubInput label="TR" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v, borderRadius: undefined })} min={0} max={200} />
-                <ScrubInput label="BL" labelLeft value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v, borderRadius: undefined })} min={0} max={200} />
-                <ScrubInput label="BR" labelLeft value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v, borderRadius: undefined })} min={0} max={200} />
-              </div>
-            </>
-          )}
+          <ShadowSection el={el} updateProps={updateProps} />
+          {el.type === 'rect' && <CornerSection el={el} updateProps={updateProps} />}
         </>
       )}
+    </div>
+  )
+}
+
+function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
+  const hasShadow = (el.props.shadowBlur ?? 0) > 0
+  const [expanded, setExpanded] = useState(hasShadow)
+
+  return (
+    <div className="pt-1 border-t border-gray-100">
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] text-gray-500">阴影</label>
+        {!hasShadow ? (
+          <button onClick={() => { updateProps({ shadowBlur: 4, shadowY: 2, shadowColor: 'rgba(0,0,0,0.15)' }); setExpanded(true) }}
+            className="text-[10px] text-bindle-500 hover:text-bindle-600">+ 添加</button>
+        ) : (
+          <button onClick={() => setExpanded(!expanded)}
+            className="text-[10px] text-gray-400 hover:text-gray-600">{expanded ? '收起' : '展开'}</button>
+        )}
+      </div>
+      {(hasShadow || expanded) && hasShadow && (
+        <div className={expanded ? 'mt-1 space-y-1' : 'hidden'}>
+          <ColorChip label="" color={el.props.shadowColor || 'rgba(0,0,0,0.15)'} onChange={v => updateProps({ shadowColor: v })} />
+          <div className="grid grid-cols-3 gap-1">
+            <ScrubInput label="X" value={el.props.shadowX ?? 0} onChange={v => updateProps({ shadowX: v })} min={-50} max={50} />
+            <ScrubInput label="Y" value={el.props.shadowY ?? 2} onChange={v => updateProps({ shadowY: v })} min={-50} max={50} />
+            <ScrubInput label="模糊" value={el.props.shadowBlur ?? 4} onChange={v => updateProps({ shadowBlur: v })} min={0} max={100} />
+          </div>
+          <button onClick={() => { updateProps({ shadowBlur: undefined, shadowX: undefined, shadowY: undefined, shadowColor: undefined }); setExpanded(false) }}
+            className="text-[10px] text-red-400 hover:text-red-500">移除阴影</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CornerSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
+  const hasIndividual = el.props.borderRadiusTL != null || el.props.borderRadiusTR != null || el.props.borderRadiusBL != null || el.props.borderRadiusBR != null
+  const [showIndividual, setShowIndividual] = useState(hasIndividual)
+
+  return (
+    <div className="pt-1 border-t border-gray-100">
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] text-gray-500">圆角</label>
+        <button onClick={() => {
+          if (!showIndividual) {
+            // expand: copy current uniform value to all corners
+            const br = el.props.borderRadius ?? 0
+            updateProps({ borderRadiusTL: br, borderRadiusTR: br, borderRadiusBL: br, borderRadiusBR: br, borderRadius: undefined })
+          } else {
+            // collapse: use the first individual value uniformly
+            const br = el.props.borderRadiusTL ?? el.props.borderRadiusTR ?? el.props.borderRadiusBL ?? el.props.borderRadiusBR ?? 0
+            updateProps({ borderRadius: br, borderRadiusTL: undefined, borderRadiusTR: undefined, borderRadiusBL: undefined, borderRadiusBR: undefined })
+          }
+          setShowIndividual(!showIndividual)
+        }} className="text-[10px] text-gray-400 hover:text-gray-600">
+          {showIndividual ? '统一' : '独立'}
+        </button>
+      </div>
+      <div className="mt-1">
+        {showIndividual ? (
+          <div className="grid grid-cols-2 gap-2">
+            <ScrubInput label="TL" labelLeft value={el.props.borderRadiusTL ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
+            <ScrubInput label="TR" labelLeft value={el.props.borderRadiusTR ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
+            <ScrubInput label="BL" labelLeft value={el.props.borderRadiusBL ?? 0} onChange={v => updateProps({ borderRadiusBL: v })} min={0} max={200} />
+            <ScrubInput label="BR" labelLeft value={el.props.borderRadiusBR ?? 0} onChange={v => updateProps({ borderRadiusBR: v })} min={0} max={200} />
+          </div>
+        ) : (
+          <ScrubInput label="" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v, borderRadiusTL: undefined, borderRadiusTR: undefined, borderRadiusBL: undefined, borderRadiusBR: undefined })} min={0} max={200} />
+        )}
+      </div>
     </div>
   )
 }
