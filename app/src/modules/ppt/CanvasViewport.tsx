@@ -118,12 +118,21 @@ export function CanvasViewport() {
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return
       const target = e.target as HTMLElement
-      // don't start marquee when resizing elements
       const st = usePptStore.getState()
+      // only start from canvas background, never from elements or handles
       if (st._resizing) return
-      // don't start marquee when clicking on elements or resize handles
-      if (target.closest('[data-el-id]') || target.closest('[data-handle]')) return
-      // marquee on canvas bg or container
+      // check if the click is on the background (not on any positioned element)
+      const onBg = target.closest('[data-canvas="bg"]')
+      const onEl = target.closest('[data-el-id]') || target.closest('[data-handle]')
+      // also check for any absolutely-positioned element between target and bg
+      let insideEl = false
+      let node: HTMLElement | null = target
+      while (node && node !== el) {
+        if (node.style.position === 'absolute' && node !== target) { insideEl = true; break }
+        node = node.parentElement
+      }
+      if (!onBg) return
+      if (onEl || insideEl) return
       if (target.closest('[data-canvas="bg"]') || target === el || el.contains(target)) {
         dragging = true
         const rect = el.getBoundingClientRect()
