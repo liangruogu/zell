@@ -76,16 +76,16 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   const [hoverSide, setHoverSide] = useState<'left' | 'right' | null>(null)
   const cursorTimer = useRef<ReturnType<typeof setTimeout>>()
 
-  // auto-hide cursor
+  // auto-hide cursor using CSS class
   useEffect(() => {
     const show = () => {
-      document.body.style.cursor = 'default'
+      document.body.classList.remove('cursor-none')
       clearTimeout(cursorTimer.current)
-      cursorTimer.current = setTimeout(() => { document.body.style.cursor = 'none' }, 2000)
+      cursorTimer.current = setTimeout(() => { document.body.classList.add('cursor-none') }, 2000)
     }
     show()
     window.addEventListener('mousemove', show)
-    return () => { window.removeEventListener('mousemove', show); clearTimeout(cursorTimer.current); document.body.style.cursor = 'default' }
+    return () => { window.removeEventListener('mousemove', show); clearTimeout(cursorTimer.current); document.body.classList.remove('cursor-none') }
   }, [])
 
   const ended = idx >= visible.length
@@ -107,15 +107,9 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       onMouseLeave={() => setHoverSide(null)}
     >
       {/* Left click zone */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-1/2 z-10"
-        style={{ cursor: 'w-resize' }}
-        onClick={goPrev}
-      />
+      <div className="absolute left-0 top-0 bottom-0 w-1/2 z-10" onClick={goPrev} />
       {/* Right click zone */}
-      <div
-        className="absolute right-0 top-0 bottom-0 w-1/2 z-10"
-        style={{ cursor: 'e-resize' }}
+      <div className="absolute right-0 top-0 bottom-0 w-1/2 z-10" onClick={goNext} />
         onClick={goNext}
       />
       {/* Slide content — fills viewport height, 16:9 aspect */}
