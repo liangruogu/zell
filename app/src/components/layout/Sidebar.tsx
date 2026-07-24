@@ -10,6 +10,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   LayoutDashboard,
+  Presentation,
 } from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSidebarStore } from '@/stores/sidebarStore'
@@ -36,6 +37,7 @@ export function Sidebar() {
         { to: `/project/${projectId}`, icon: LayoutDashboard, label: '概览', end: true },
         { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '知识库' },
         { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '创意白板' },
+        { to: `/project/${projectId}/slides`, icon: Presentation, label: 'PPT 演示' },
         { to: `/project/${projectId}/links`, icon: Link2, label: '外部资源' },
       ]
     : []
