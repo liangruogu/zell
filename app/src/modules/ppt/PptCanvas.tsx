@@ -6,7 +6,7 @@ import { PropsPanel } from './PropsPanel'
 import { PreviewButton } from './SlidePreview'
 import { usePptStore } from './store'
 import type { PptData } from './types'
-import { Presentation, Plus } from 'lucide-react'
+import { Presentation, Plus, Crosshair } from 'lucide-react'
 
 interface PptCanvasProps {
   data: PptData | null
