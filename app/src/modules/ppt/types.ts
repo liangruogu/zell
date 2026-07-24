@@ -1,17 +1,30 @@
-// PPT module types
-// Slides are stored as tldraw Frame shapes with meta:
-//   shape.meta = { slideType: 'slide', slideIndex: number }
+// PPT element types
 
-export const SLIDE_SIZE = { w: 1280, h: 720 }
+export const SLIDE_W = 1280
+export const SLIDE_H = 720
 export const SLIDE_GAP = 80
 
-export interface SlideMeta {
-  slideType: 'slide'
-  slideIndex: number
+export type ElementType = 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'image'
+
+export interface CanvasElement {
+  id: string
+  type: ElementType
+  x: number; y: number; w: number; h: number
+  opacity: number
+  props: {
+    text?: string; fontSize?: number; fontColor?: string; fontWeight?: string
+    fill?: string; stroke?: string; strokeWidth?: number; borderRadius?: number
+    src?: string
+  }
 }
 
-export function getSlideMeta(shape: any): SlideMeta | null {
-  const m = shape?.meta
-  if (m?.slideType === 'slide') return m as SlideMeta
-  return null
+export interface Slide {
+  id: string
+  name: string
+  elements: CanvasElement[]
+  background: string
+}
+
+export interface PptData {
+  slides: Slide[]
 }

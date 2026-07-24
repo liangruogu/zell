@@ -1,5 +1,4 @@
-﻿import { useEffect, useState, useCallback, useMemo } from 'react'
-import { throttle } from 'lodash'
+﻿import { useEffect, useState, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
@@ -9,166 +8,77 @@ import { useWhiteboardStore } from '@/stores/whiteboardStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { Whiteboard } from '@/types/whiteboard'
-import { Plus, PenTool, Trash2, AlertCircle } from 'lucide-react'
+import { Plus, PenTool, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Tldraw, createTLStore, getSnapshot, loadSnapshot, DefaultSpinner, defaultShapeUtils, defaultBindingUtils } from 'tldraw'
-import type { TLStore } from 'tldraw'
-import 'tldraw/tldraw.css'
 import { PptCanvas } from '@/modules/ppt/PptCanvas'
-
-/* ------------------------------------------------------------------ */
-/*  page                                                               */
-/* ------------------------------------------------------------------ */
+import type { PptData } from '@/modules/ppt/types'
 
 export default function WhiteboardPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const { fetchProject } = useProjectStore()
-  const {
-    whiteboards, currentWhiteboard, loading,
-    fetchWhiteboards, createWhiteboard, deleteWhiteboard, renameWhiteboard,
-    setCurrentWhiteboard, saveSnapshot,
-  } = useWhiteboardStore()
+  const { whiteboards, currentWhiteboard, loading, fetchWhiteboards, createWhiteboard, deleteWhiteboard, renameWhiteboard, setCurrentWhiteboard } = useWhiteboardStore()
   const panel = useResizablePanel()
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [newType, setNewType] = useState('free')
   const [deleteTarget, setDeleteTarget] = useState<Whiteboard | null>(null)
+  const [pptData, setPptData] = useState<PptData | null>(null)
 
-  const [loadState, setLoadState] = useState<
-    { status: 'loading' } | { status: 'ready' } | { status: 'error'; error: string }
-  >({ status: 'loading' })
-
-  const [store, setStore] = useState<TLStore | null>(null)
-
-  const emptyStoreOpts = useMemo(
-    () => ({ shapeUtils: defaultShapeUtils, bindingUtils: defaultBindingUtils }),
-    []
-  )
-
-  /* ---------- project & whiteboard list ---------- */
   useEffect(() => {
-    if (projectId) {
-      fetchProject(projectId)
-      fetchWhiteboards(projectId)
-    }
-  }, [projectId, fetchProject, fetchWhiteboards])
+    if (projectId) { fetchProject(projectId); fetchWhiteboards(projectId) }
+  }, [projectId])
 
-  /* ---------- persistence ---------- */
+  // Load PPT data from whiteboard snapshot
   useEffect(() => {
-    if (!currentWhiteboard) {
-      setStore(null)
-      return
-    }
-
-    setLoadState({ status: 'loading' })
-
-    const newStore = createTLStore(emptyStoreOpts)
-
-    ;(async () => {
-      try {
-        const wb = await invoke<Whiteboard>('get_whiteboard', { id: currentWhiteboard.id })
-        if (wb.snapshot) {
-          const snapshot = JSON.parse(wb.snapshot)
-          loadSnapshot(newStore, snapshot)
-        }
-        setStore(newStore)
-        setLoadState({ status: 'ready' })
-      } catch (error: any) {
-        setLoadState({ status: 'error', error: error.message })
-        console.error('load failed:', error)
-      }
-    })()
-
-    const throttledSave = throttle(() => {
-      const json = JSON.stringify(getSnapshot(newStore))
-      saveSnapshot(currentWhiteboard.id, json).catch((e) => console.error('save failed:', e))
-    }, 1000)
-
-    const cleanupFn = newStore.listen(throttledSave)
-
-    return () => {
-      cleanupFn()
-      throttledSave.cancel()
+    if (currentWhiteboard?.wb_type === 'ppt' && currentWhiteboard.snapshot) {
+      try { setPptData(JSON.parse(currentWhiteboard.snapshot)) } catch { setPptData({ slides: [] }) }
+    } else if (currentWhiteboard?.wb_type === 'ppt') {
+      setPptData({ slides: [] })
+    } else {
+      setPptData(null)
     }
   }, [currentWhiteboard?.id])
 
-  const handleSelectWhiteboard = useCallback((wb: Whiteboard) => {
-    setCurrentWhiteboard(wb)
-  }, [setCurrentWhiteboard])
+  const handlePptChange = useCallback((data: PptData) => {
+    if (!currentWhiteboard) return
+    const json = JSON.stringify(data)
+    invoke('save_whiteboard_snapshot', { id: currentWhiteboard.id, snapshot: json }).catch(console.error)
+    setCurrentWhiteboard({ ...currentWhiteboard, snapshot: json })
+  }, [currentWhiteboard])
 
-  /* ---------- keyboard ---------- */
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
-        e.preventDefault(); panel.toggle()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [panel.toggle])
-
-  /* ---------- CRUD ---------- */
   const handleCreate = useCallback(async () => {
     if (!projectId || !newName.trim()) return
     const wb = await createWhiteboard(projectId, newName.trim(), newType)
     setNewName(''); setShowCreate(false); setNewType('free'); setCurrentWhiteboard(wb)
   }, [projectId, newName, newType, createWhiteboard, setCurrentWhiteboard])
 
-  const confirmDelete = useCallback((wb: Whiteboard) => setDeleteTarget(wb), [])
-  const handleRename = useCallback((wb: Whiteboard, newName: string) => {
-    renameWhiteboard(wb.id, newName)
-  }, [renameWhiteboard])
   const handleDelete = useCallback(async () => {
-    if (!deleteTarget) return
-    await deleteWhiteboard(deleteTarget.id)
-    setDeleteTarget(null)
+    if (!deleteTarget) return; await deleteWhiteboard(deleteTarget.id); setDeleteTarget(null)
   }, [deleteTarget, deleteWhiteboard])
 
   return (
     <AppShell>
       <div className="flex-1 flex min-h-0">
-        {/* Sidebar */}
         <div {...panel.panelProps}>
           <div className="flex-1 overflow-auto py-1">
-            {loading ? (
-              <p className="px-3 py-4 text-sm text-gray-400 text-center">loading...</p>
-            ) : whiteboards.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-gray-400 text-center">no whiteboards</p>
-            ) : (
-              whiteboards.map((wb) => (
-                <WhiteboardItem
-                  key={wb.id}
-                  whiteboard={wb}
-                  isActive={currentWhiteboard?.id === wb.id}
-                  onSelect={handleSelectWhiteboard}
-                  onDelete={confirmDelete}
-                  onRename={handleRename}
-                />
-              ))
-            )}
+            {loading ? <p className="px-3 py-4 text-sm text-gray-400 text-center">loading...</p>
+              : whiteboards.length === 0 ? <p className="px-3 py-4 text-sm text-gray-400 text-center">no whiteboards</p>
+                : whiteboards.map(wb => (
+                  <WhiteboardItem key={wb.id} whiteboard={wb} isActive={currentWhiteboard?.id === wb.id}
+                    onSelect={setCurrentWhiteboard} onDelete={setDeleteTarget} onRename={renameWhiteboard} />
+                ))}
           </div>
           <div className="p-2 border-t border-gray-100 space-y-1 shrink-0">
             {showCreate ? (
               <div className="space-y-2">
-                <input autoFocus type="text" placeholder="Whiteboard name" value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleCreate()
-                    if (e.key === 'Escape') { setShowCreate(false); setNewName(''); setNewType('free') }
-                  }}
-                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
-                />
+                <input autoFocus placeholder="Name" value={newName} onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreate(false); setNewName(''); setNewType('free') } }}
+                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400" />
                 <div className="flex gap-1">
                   {(['free', 'ppt', 'aigc', 'figma'] as const).map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setNewType(t)}
-                      className={cn(
-                        'flex-1 px-2 py-1 text-xs rounded border transition-colors',
-                        newType === t ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                      )}
-                    >
+                    <button key={t} onClick={() => setNewType(t)} className={cn('flex-1 px-2 py-1 text-xs rounded border transition-colors',
+                      newType === t ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100')}>
                       {{ free: 'Free', ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[t]}
                     </button>
                   ))}
@@ -176,8 +86,7 @@ export default function WhiteboardPage() {
                 <Button size="sm" onClick={handleCreate} disabled={!newName.trim()} className="w-full">Create</Button>
               </div>
             ) : (
-              <button onClick={() => setShowCreate(true)}
-                className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded transition-colors">
+              <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded">
                 <Plus size={14} /> New Whiteboard
               </button>
             )}
@@ -187,24 +96,18 @@ export default function WhiteboardPage() {
 
         {panel.handleProps && <div {...panel.handleProps} />}
 
-        {/* Canvas */}
         <div className="flex-1 flex flex-col min-w-0">
           {currentWhiteboard ? (
-            <div className="flex-1 relative">
-              {loadState.status === 'loading' ? (
-                <div className="flex items-center justify-center h-full"><DefaultSpinner /></div>
-              ) : loadState.status === 'error' ? (
-                <div className="flex flex-col items-center justify-center h-full text-red-500 gap-2">
-                  <AlertCircle size={32} /><p>{loadState.error}</p>
+            currentWhiteboard.wb_type === 'ppt' ? <PptCanvas data={pptData} onDataChange={handlePptChange} />
+              : (
+                <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-100">
+                  <div className="text-center">
+                    <PenTool size={48} strokeWidth={1} className="mx-auto mb-3" />
+                    <p className="text-lg">{currentWhiteboard.name}</p>
+                    <p className="text-sm mt-1">{currentWhiteboard.wb_type} canvas — coming soon</p>
+                  </div>
                 </div>
-              ) : store ? (
-                currentWhiteboard.wb_type === 'ppt' ? (
-                  <PptCanvas store={store} whiteboardId={currentWhiteboard.id} />
-                ) : (
-                  <Tldraw key={currentWhiteboard.id} store={store} />
-                )
-              ) : null}
-            </div>
+              )
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-400">
               <div className="text-center">
@@ -216,9 +119,7 @@ export default function WhiteboardPage() {
         </div>
       </div>
 
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}
-        title="Delete Whiteboard"
-        description={`Delete "${deleteTarget?.name}"? This cannot be undone.`}>
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)} title="Delete" description={`Delete "${deleteTarget?.name}"?`}>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
           <Button variant="destructive" onClick={handleDelete}>Delete</Button>
@@ -228,67 +129,21 @@ export default function WhiteboardPage() {
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  WhiteboardItem                                                     */
-/* ------------------------------------------------------------------ */
-
 function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete, onRename }: {
-  whiteboard: Whiteboard; isActive: boolean
-  onSelect: (w: Whiteboard) => void
-  onDelete: (w: Whiteboard) => void
-  onRename: (w: Whiteboard, newName: string) => void
+  whiteboard: Whiteboard; isActive: boolean; onSelect: (w: Whiteboard) => void; onDelete: (w: Whiteboard) => void; onRename: (id: string, name: string) => void
 }) {
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(whiteboard.name)
-
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setRenaming(true)
-    setRenameValue(whiteboard.name)
-  }
-
-  const handleRenameSubmit = () => {
-    if (renameValue.trim() && renameValue !== whiteboard.name) {
-      onRename(whiteboard, renameValue.trim())
-    }
-    setRenaming(false)
-  }
-
+  const submit = () => { if (renameValue.trim() && renameValue !== whiteboard.name) onRename(whiteboard.id, renameValue.trim()); setRenaming(false) }
   return (
-    <div
-      className={cn(
-        'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
-        isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50'
-      )}
-      onClick={() => onSelect(whiteboard)}
-      onDoubleClick={handleDoubleClick}
-    >
+    <div className={cn('group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
+      isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50')}
+      onClick={() => onSelect(whiteboard)} onDoubleClick={() => { setRenaming(true); setRenameValue(whiteboard.name) }}>
       <PenTool size={14} className="shrink-0 text-gray-400" />
-      {whiteboard.wb_type && whiteboard.wb_type !== 'free' && (
-        <span className="text-[10px] text-gray-400 shrink-0">{{ ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[whiteboard.wb_type] || whiteboard.wb_type}</span>
-      )}
-      {renaming ? (
-        <input
-          autoFocus
-          value={renameValue}
-          onChange={(e) => setRenameValue(e.target.value)}
-          onBlur={handleRenameSubmit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleRenameSubmit()
-            if (e.key === 'Escape') { setRenaming(false); setRenameValue(whiteboard.name) }
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="flex-1 px-1 py-0.5 text-sm border border-bindle-300 rounded outline-none focus:ring-1 focus:ring-bindle-400"
-        />
-      ) : (
-        <span className="truncate flex-1">{whiteboard.name}</span>
-      )}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button onClick={(e) => { e.stopPropagation(); onDelete(whiteboard) }}
-          className="p-0.5 rounded hover:bg-red-100" title="Delete">
-          <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
-        </button>
-      </div>
+      {whiteboard.wb_type && whiteboard.wb_type !== 'free' && <span className="text-[10px] text-gray-400 shrink-0">{{ ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[whiteboard.wb_type]}</span>}
+      {renaming ? <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={submit} onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setRenaming(false); setRenameValue(whiteboard.name) } }} onClick={e => e.stopPropagation()} className="flex-1 px-1 py-0.5 text-sm border border-bindle-300 rounded" />
+        : <span className="truncate flex-1">{whiteboard.name}</span>}
+      <button onClick={e => { e.stopPropagation(); onDelete(whiteboard) }} className="p-0.5 rounded hover:bg-red-100 opacity-0 group-hover:opacity-100"><Trash2 size={13} className="text-gray-400 hover:text-red-500" /></button>
     </div>
   )
 }

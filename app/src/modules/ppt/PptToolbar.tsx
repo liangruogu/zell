@@ -1,41 +1,54 @@
-import { Type, Square, PenTool, ImageIcon } from 'lucide-react'
-import { createShapeId, type Editor } from 'tldraw'
+import { Type, Square, Circle, Minus, ArrowRight, ImageIcon } from 'lucide-react'
+import { usePptStore } from './store'
+import type { CanvasElement } from './types'
 
-interface PptToolbarProps {
-  editor: Editor
-}
+function genId() { return crypto.randomUUID() }
 
-export function PptToolbar({ editor }: PptToolbarProps) {
+export function PptToolbar() {
+  const { currentSlideId, addElement } = usePptStore()
+
+  const add = (type: CanvasElement['type']) => {
+    if (!currentSlideId) return
+    const defaults: Record<string, Partial<CanvasElement>> = {
+      text: { type: 'text', x: 100, y: 100, w: 300, h: 60, opacity: 1, props: { text: '新文本', fontSize: 20, fontColor: '#333', fontWeight: 'normal' } },
+      rect: { type: 'rect', x: 200, y: 150, w: 200, h: 120, opacity: 1, props: { fill: '#e2e8f0', stroke: '#cbd5e1', strokeWidth: 1, borderRadius: 4 } },
+      ellipse: { type: 'ellipse', x: 200, y: 150, w: 120, h: 120, opacity: 1, props: { fill: '#e2e8f0', stroke: '#cbd5e1', strokeWidth: 1 } },
+      line: { type: 'line', x: 100, y: 300, w: 200, h: 2, opacity: 1, props: { stroke: '#94a3b8', strokeWidth: 2 } },
+      arrow: { type: 'arrow', x: 100, y: 300, w: 200, h: 2, opacity: 1, props: { stroke: '#94a3b8', strokeWidth: 2 } },
+      image: { type: 'image', x: 200, y: 100, w: 400, h: 300, opacity: 1, props: { src: '' } },
+    }
+    const el = { id: genId(), ...defaults[type] } as CanvasElement
+    addElement(currentSlideId, el)
+  }
+
+  const addImage = () => {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const src = ev.target?.result as string
+        if (currentSlideId) {
+          addElement(currentSlideId, {
+            id: genId(), type: 'image', x: 200, y: 100, w: 400, h: 300, opacity: 1,
+            props: { src },
+          })
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+    input.click()
+  }
+
   return (
     <div className="h-9 border-b border-gray-200 bg-white flex items-center px-3 gap-1 shrink-0">
-      <button onClick={() => editor.setCurrentTool('select')} className="px-2 py-1 text-xs rounded hover:bg-gray-100">选择</button>
-      <span className="text-gray-200">|</span>
-      <button onClick={() => editor.setCurrentTool('text')} className="p-1 rounded hover:bg-gray-100" title="文本"><Type size={14} /></button>
-      <button onClick={() => editor.setCurrentTool('geo')} className="p-1 rounded hover:bg-gray-100" title="形状"><Square size={14} /></button>
-      <button onClick={() => editor.setCurrentTool('draw')} className="p-1 rounded hover:bg-gray-100" title="画笔"><PenTool size={14} /></button>
-      <button onClick={() => editor.setCurrentTool('arrow')} className="p-1 rounded hover:bg-gray-100" title="箭头">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="12 5 19 5 19 12"/></svg>
-      </button>
-      <span className="text-gray-200">|</span>
-      <button
-        onClick={() => {
-          const input = document.createElement('input')
-          input.type = 'file'
-          input.accept = 'image/*'
-          input.onchange = async (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0]
-            if (!file) return
-            const reader = new FileReader()
-            reader.onload = (ev) => {
-              const dataUrl = ev.target?.result as string
-              editor.createShape({ id: createShapeId(), type: 'image', x: 300, y: 200, props: { src: dataUrl, w: 400, h: 300 } })
-            }
-            reader.readAsDataURL(file)
-          }
-          input.click()
-        }}
-        className="p-1 rounded hover:bg-gray-100" title="插入图片"><ImageIcon size={14} />
-      </button>
+      <button onClick={() => add('text')} className="p-1.5 rounded hover:bg-gray-100" title="文本"><Type size={14} /></button>
+      <button onClick={() => add('rect')} className="p-1.5 rounded hover:bg-gray-100" title="矩形"><Square size={14} /></button>
+      <button onClick={() => add('ellipse')} className="p-1.5 rounded hover:bg-gray-100" title="圆形"><Circle size={14} /></button>
+      <button onClick={() => add('line')} className="p-1.5 rounded hover:bg-gray-100" title="线条"><Minus size={14} /></button>
+      <button onClick={() => add('arrow')} className="p-1.5 rounded hover:bg-gray-100" title="箭头"><ArrowRight size={14} /></button>
+      <button onClick={addImage} className="p-1.5 rounded hover:bg-gray-100" title="插入图片"><ImageIcon size={14} /></button>
     </div>
   )
 }
