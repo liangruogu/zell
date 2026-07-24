@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Plus, Trash2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
@@ -12,6 +12,23 @@ export function SlideStrip() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
   const lastClickedRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const st = usePptStore.getState()
+        if (st.selectedSlideIds.length > 0) {
+          st.deleteSlides(st.selectedSlideIds)
+        } else if (st.currentSlideId) {
+          st.deleteSlide(st.currentSlideId)
+        }
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
 
   const handleClick = useCallback((e: React.MouseEvent, id: string, idx: number) => {
     if (e.ctrlKey || e.metaKey) {
@@ -62,9 +79,9 @@ export function SlideStrip() {
               onSubmitRename={submitRename}
               onStartRename={startRename}
               onClick={handleClick}
-              onDragStart={() => { console.log('dragStart', i); setDragIdx(i) }}
-              onDragOver={(e) => { e.preventDefault(); console.log('dragOver', i); setDragOverIdx(i) }}
-              onDragLeave={() => { console.log('dragLeave', i); setDragOverIdx(null) }}
+              onDragStart={(e) => { console.log('dragStart', i, 'dataTransfer:', e.dataTransfer); e.dataTransfer.setData('text/plain', 'slide'); e.dataTransfer.effectAllowed = 'move'; setDragIdx(i) }}
+              onDragOver={(e) => { e.preventDefault(); console.log('dragOver', i, 'effect:', e.dataTransfer?.effectAllowed); setDragOverIdx(i) }}
+              onDragLeave={(e) => { console.log('dragLeave', i, 'relatedTarget:', e.relatedTarget); setDragOverIdx(null) }}
               onDragEnd={() => { console.log('dragEnd'); setDragIdx(null); setDragOverIdx(null) }}
               onDrop={() => {
                 console.log('drop at', i, 'from idx', dragIdx)
@@ -98,7 +115,7 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
   onChangeRenameVal: (v: string) => void; onSubmitRename: () => void
   onStartRename: (e: React.MouseEvent, id: string, name: string) => void
   onClick: (e: React.MouseEvent, id: string, idx: number) => void
-  onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDragLeave: () => void; onDragEnd: () => void; onDrop: () => void
+  onDragStart: (e: React.DragEvent) => void; onDragOver: (e: React.DragEvent) => void; onDragLeave: (e: React.DragEvent) => void; onDragEnd: () => void; onDrop: () => void
   onDuplicate: () => void; onDelete: () => void
 }) {
   return (
