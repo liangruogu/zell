@@ -49,17 +49,17 @@ export function ElementHandles({ element }: Props) {
         nh = nw / aspect
       }
 
-      // snap guides during resize — only apply position changes for handles that move the element
+      // snap — adjust position or size depending on which handle is active
       const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
       if (el) {
         const others = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.filter(ee => ee.id !== element.id) || []
-        const axis = activeHandle === 'n' ? 'y' : activeHandle === 'w' ? 'x' : undefined
-        // for 's'/'e' handles, position doesn't change — just show guides, don't affect nx/ny
-        const applyPos = activeHandle !== 's' && activeHandle !== 'e'
-        const sn = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny, axis)
-        if (applyPos) {
-          if (axis !== 'y') nx = sn.x
-          if (axis !== 'x') ny = sn.y
+        const snapped = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny)
+        switch (activeHandle) {
+          case 'n': ny = snapped.y; break
+          case 's': nh = snapped.eby - ny; break
+          case 'w': nx = snapped.x; break
+          case 'e': nw = snapped.erx - nx; break
+          default: nx = snapped.x; ny = snapped.y; break
         }
       }
 
