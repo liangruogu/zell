@@ -5,9 +5,9 @@ import type { CanvasElement } from './types'
 
 const SCRUB = { threshold: 3, speed: 1 }
 
-function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true, labelLeft, icon }: {
+function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true, labelLeft }: {
   label: string; value: number; onChange: (v: number) => void
-  min?: number; max?: number; step?: number; integer?: boolean; labelLeft?: boolean; icon?: string
+  min?: number; max?: number; step?: number; integer?: boolean; labelLeft?: boolean
 }) {
   const [edit, setEdit] = useState(false)
   const [text, setText] = useState('')
@@ -84,17 +84,73 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
     )
   }
 
-  const topLabel = (
-    <div className="flex items-center gap-1 mb-0.5">
-      {icon && <span className="text-[10px] text-gray-400">{icon}</span>}
+  return (
+    <div>
       {labelEl}
+      {edit ? renderInput('w-full') : renderValue('w-full')}
     </div>
   )
+}
+
+function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
+  label: string; color: string; onChange: (c: string) => void
+  opacity?: number; onOpacityChange?: (o: number) => void
+}) {
+  const [opEdit, setOpEdit] = useState(false)
+  const [opText, setOpText] = useState('')
+  const opRef = useRef({ v0: 0, mx: 0 })
+  const opDisplay = Math.round((opacity ?? 1) * 100)
+
+  const onOpGrip = (e: React.PointerEvent) => {
+    e.stopPropagation()
+    opRef.current = { v0: opDisplay, mx: e.clientX }
+    const onMove = (ev: PointerEvent) => {
+      const v = Math.max(0, Math.min(100, Math.round(opRef.current.v0 + (ev.clientX - opRef.current.mx))))
+      onOpacityChange?.(v / 100)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  const commitOp = () => {
+    const n = parseInt(opText)
+    if (!isNaN(n)) onOpacityChange?.(Math.max(0, Math.min(100, n)) / 100)
+    setOpEdit(false)
+  }
 
   return (
     <div>
-      {topLabel}
-      {edit ? renderInput('w-full') : renderValue('w-full')}
+      <label className="text-[10px] text-gray-500">{label}</label>
+      <div className="flex items-center gap-1 mt-0.5">
+        <div className="relative shrink-0">
+          <input type="color" value={color} onChange={e => onChange(e.target.value)}
+            className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
+          />
+          <div className="w-6 h-5 rounded border border-gray-300" style={{ background: color }} />
+        </div>
+        <span className="text-[10px] text-gray-600 flex-1 font-mono">{color}</span>
+        {onOpacityChange && opacity != null && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            <div onPointerDown={onOpGrip} className="cursor-ew-resize text-gray-400 hover:text-gray-600">
+              <GripHorizontal size={10} />
+            </div>
+            {opEdit ? (
+              <input autoFocus type="text" value={opText}
+                onChange={e => setOpText(e.target.value)}
+                onBlur={commitOp}
+                onKeyDown={e => { if (e.key === 'Enter') commitOp(); if (e.key === 'Escape') setOpEdit(false) }}
+                className="w-8 h-[20px] text-[10px] text-center border border-gray-200 rounded outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            ) : (
+              <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[10px] text-gray-600 cursor-default min-w-[20px] text-right">{opDisplay}%</span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -146,19 +202,21 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
         <ScrubInput label="W" value={el.w} onChange={v => update({ w: v })} min={10} />
         <ScrubInput label="H" value={el.h} onChange={v => update({ h: v })} min={10} />
       </div>
-      <div>
-        <label className="text-[10px] text-gray-500">透明度</label>
-        <input type="range" min={0} max={1} step={0.1} value={el.opacity} onChange={e => update({ opacity: +e.target.value })} className="w-full" />
-      </div>
+      {el.type !== 'rect' && el.type !== 'ellipse' && (
+        <div>
+          <label className="text-[10px] text-gray-500">透明度</label>
+          <input type="range" min={0} max={1} step={0.1} value={el.opacity} onChange={e => update({ opacity: +e.target.value })} className="w-full" />
+        </div>
+      )}
       {el.type === 'text' && (
         <>
           <ScrubInput label="字号" value={el.props.fontSize || 16} onChange={v => updateProps({ fontSize: v })} min={1} max={999} />
-          <div><label className="text-[10px] text-gray-500">颜色</label><input type="color" value={el.props.fontColor || '#333'} onChange={e => updateProps({ fontColor: e.target.value })} className="w-full h-7 border border-gray-200 rounded cursor-pointer" /></div>
+          <ColorChip label="颜色" color={el.props.fontColor || '#333'} onChange={v => updateProps({ fontColor: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
         </>
       )}
       {el.type === 'arrow' && (
         <>
-          <div><label className="text-[10px] text-gray-500">颜色</label><input type="color" value={el.props.stroke || '#94a3b8'} onChange={e => updateProps({ stroke: e.target.value })} className="w-full h-7 border border-gray-200 rounded cursor-pointer" /></div>
+          <ColorChip label="颜色" color={el.props.stroke || '#94a3b8'} onChange={v => updateProps({ stroke: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
           <ScrubInput icon="↔" label="粗细" value={el.props.strokeWidth ?? 2} onChange={v => updateProps({ strokeWidth: v })} min={1} max={20} />
           <div>
             <label className="text-[10px] text-gray-500">起点</label>
@@ -180,12 +238,12 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       )}
       {(el.type === 'rect' || el.type === 'ellipse') && (
         <>
-          <div><label className="text-[10px] text-gray-500">填充</label><input type="color" value={el.props.fill || '#e2e8f0'} onChange={e => updateProps({ fill: e.target.value })} className="w-full h-7 border border-gray-200 rounded cursor-pointer" /></div>
-          <div><label className="text-[10px] text-gray-500">边框色</label><input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => updateProps({ stroke: e.target.value })} className="w-full h-7 border border-gray-200 rounded cursor-pointer" /></div>
-          <ScrubInput icon="↔" label="边框粗细" value={el.props.strokeWidth ?? 0} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
+          <ColorChip label="填充" color={el.props.fill || '#e2e8f0'} onChange={v => updateProps({ fill: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
+          <ColorChip label="边框色" color={el.props.stroke || '#cbd5e1'} onChange={v => updateProps({ stroke: v })} />
+          <ScrubInput label="边框粗细" value={el.props.strokeWidth ?? 0} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
           {el.type === 'rect' && (
             <>
-              <ScrubInput icon="⤡" label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v })} min={0} max={200} />
+              <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v })} min={0} max={200} />
               <div className="grid grid-cols-2 gap-2">
                 <ScrubInput label="┌" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
                 <ScrubInput label="┐" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
