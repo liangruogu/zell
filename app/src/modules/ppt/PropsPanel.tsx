@@ -388,7 +388,7 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
   return (
     <div>
       <div className="flex items-center justify-between">
-        <label className="text-[11px] text-gray-500">边框</label>
+        <label className="text-[13px] text-gray-500 font-medium">边框</label>
         {!hasStroke ? (
           <button onClick={() => updateProps({ stroke: '#cbd5e1', strokeWidth: 1 })}
             className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
@@ -478,7 +478,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
   return (
     <div className="pt-2 border-t border-gray-100">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] text-gray-500">阴影</label>
+        <label className="text-[13px] text-gray-500 font-medium">阴影</label>
         <button onClick={addShadow} className="p-0.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
           <svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
@@ -521,7 +521,7 @@ function CornerSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
   return (
     <div className="pt-2 border-t border-gray-100">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] text-gray-500">圆角</label>
+        <label className="text-[13px] text-gray-500 font-medium">圆角</label>
         <button onClick={() => {
           if (!showIndividual) {
             // expand: copy current uniform value to all corners
