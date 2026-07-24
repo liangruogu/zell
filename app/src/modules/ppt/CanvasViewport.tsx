@@ -1,5 +1,4 @@
 import { useCallback, useRef, useEffect, useState } from 'react'
-import { Crosshair } from 'lucide-react'
 import { usePptStore } from './store'
 import { CanvasElementView } from './CanvasElement'
 import { ElementHandles } from './ElementHandles'
@@ -306,15 +305,6 @@ export function CanvasViewport() {
           </svg>
         )}
       </div>
-      {(panRef.current.x !== 0 || panRef.current.y !== 0 || zoom !== 1) && (
-        <button
-          onClick={() => { setPan(0, 0); setZoom(1) }}
-          className="absolute bottom-3 left-3 z-50 p-2 bg-white/80 backdrop-blur rounded-lg shadow hover:bg-white transition"
-          title="重置视图"
-        >
-          <Crosshair size={16} className="text-gray-600" />
-        </button>
-      )}
     </div>
   )
 }

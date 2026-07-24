@@ -14,7 +14,7 @@ interface PptCanvasProps {
 }
 
 export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
-  const { slides, currentSlideId, init, getData, addSlide } = usePptStore()
+  const { slides, currentSlideId, init, getData, addSlide, zoom, setZoom } = usePptStore()
 
   useEffect(() => { if (data) init(data) }, [data])
 
@@ -33,7 +33,14 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
           {hasSlides ? (
             <>
               <CanvasViewport />
-              <PreviewButton />
+              <div className="absolute bottom-3 right-3 z-50 flex gap-2">
+                <PreviewButton />
+                {(zoom !== 1) && (
+                  <button onClick={() => setZoom(1)} className="p-2 bg-white/80 backdrop-blur rounded-lg shadow hover:bg-white transition" title="重置视图">
+                    <Crosshair size={16} className="text-gray-600" />
+                  </button>
+                )}
+              </div>
             </>
           ) : (
             <div className="text-center text-gray-500">
