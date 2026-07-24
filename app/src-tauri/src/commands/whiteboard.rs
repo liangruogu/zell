@@ -9,14 +9,15 @@ pub fn create_whiteboard(
     db: State<'_, Database>,
     project_id: String,
     name: String,
+    wb_type: String,
 ) -> Result<Whiteboard, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let id = Uuid::now_v7().to_string();
     let now = Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT INTO whiteboards (id, project_id, name, snapshot, created_at, updated_at) VALUES (?1, ?2, ?3, NULL, ?4, ?5)",
-        rusqlite::params![id, project_id, name, now, now],
+        "INSERT INTO whiteboards (id, project_id, name, snapshot, wb_type, created_at, updated_at) VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?6)",
+        rusqlite::params![id, project_id, name, wb_type, now, now],
     )
     .map_err(|e| e.to_string())?;
 
@@ -30,6 +31,7 @@ pub fn create_whiteboard(
         name,
         snapshot: None,
         update_log: None,
+        wb_type,
         created_at: now.clone(),
         updated_at: now,
         deleted_at: None,
@@ -43,7 +45,7 @@ pub fn get_whiteboards(
 ) -> Result<Vec<Whiteboard>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT id, project_id, name, snapshot, update_log, created_at, updated_at, deleted_at FROM whiteboards WHERE project_id = ?1 AND deleted_at IS NULL ORDER BY created_at ASC")
+        .prepare("SELECT id, project_id, name, snapshot, update_log, wb_type, created_at, updated_at, deleted_at FROM whiteboards WHERE project_id = ?1 AND deleted_at IS NULL ORDER BY created_at ASC")
         .map_err(|e| e.to_string())?;
 
     let boards = stmt
@@ -54,9 +56,10 @@ pub fn get_whiteboards(
                 name: row.get(2)?,
                 snapshot: row.get(3)?,
                 update_log: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-                deleted_at: row.get(7)?,
+                wb_type: row.get::<_, Option<String>>(5)?.unwrap_or_else(|| "free".to_string()),
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                deleted_at: row.get(8)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -73,7 +76,7 @@ pub fn get_whiteboard(
 ) -> Result<Whiteboard, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.query_row(
-        "SELECT id, project_id, name, snapshot, update_log, created_at, updated_at, deleted_at FROM whiteboards WHERE id = ?1 AND deleted_at IS NULL",
+        "SELECT id, project_id, name, snapshot, update_log, wb_type, created_at, updated_at, deleted_at FROM whiteboards WHERE id = ?1 AND deleted_at IS NULL",
         rusqlite::params![id],
         |row| {
             Ok(Whiteboard {
@@ -82,9 +85,10 @@ pub fn get_whiteboard(
                 name: row.get(2)?,
                 snapshot: row.get(3)?,
                 update_log: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-                deleted_at: row.get(7)?,
+                wb_type: row.get::<_, Option<String>>(5)?.unwrap_or_else(|| "free".to_string()),
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                deleted_at: row.get(8)?,
             })
         },
     )

@@ -4,7 +4,6 @@ import ProjectPage from '@/pages/ProjectPage'
 import KnowledgeBasePage from '@/pages/KnowledgeBasePage'
 import WhiteboardPage from '@/pages/WhiteboardPage'
 import ExternalLinksPage from '@/pages/ExternalLinksPage'
-import SlidesPage from '@/modules/slides/SlidesPage'
 
 export const router = createBrowserRouter([
   {
@@ -26,9 +25,5 @@ export const router = createBrowserRouter([
   {
     path: '/project/:id/links',
     element: <WhiteboardPage />,
-  },
-  {
-    path: '/project/:id/slides',
-    element: <SlidesPage />,
   },
 ])

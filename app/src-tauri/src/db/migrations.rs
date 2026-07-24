@@ -184,5 +184,11 @@ pub fn run_migrations(conn: &Connection) -> Result<(), Box<dyn std::error::Error
         Ok::<_, rusqlite::Error>(())
     })?;
 
+    // Migration: add wb_type to whiteboards
+    conn.execute_batch(
+        "ALTER TABLE whiteboards ADD COLUMN wb_type TEXT DEFAULT 'free';",
+    )
+    .or_else(|_| Ok::<_, rusqlite::Error>(()))?;
+
     Ok(())
 }

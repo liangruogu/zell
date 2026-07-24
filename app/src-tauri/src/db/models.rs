@@ -53,6 +53,7 @@ pub struct Whiteboard {
     pub name: String,
     pub snapshot: Option<String>,
     pub update_log: Option<Vec<u8>>,
+    pub wb_type: String,
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,

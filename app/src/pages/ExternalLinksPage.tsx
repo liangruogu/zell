@@ -32,6 +32,7 @@ export default function WhiteboardPage() {
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newType, setNewType] = useState('free')
   const [deleteTarget, setDeleteTarget] = useState<Whiteboard | null>(null)
 
   const [loadState, setLoadState] = useState<
@@ -112,9 +113,9 @@ export default function WhiteboardPage() {
   /* ---------- CRUD ---------- */
   const handleCreate = useCallback(async () => {
     if (!projectId || !newName.trim()) return
-    const wb = await createWhiteboard(projectId, newName.trim())
-    setNewName(''); setShowCreate(false); setCurrentWhiteboard(wb)
-  }, [projectId, newName, createWhiteboard, setCurrentWhiteboard])
+    const wb = await createWhiteboard(projectId, newName.trim(), newType)
+    setNewName(''); setShowCreate(false); setNewType('free'); setCurrentWhiteboard(wb)
+  }, [projectId, newName, newType, createWhiteboard, setCurrentWhiteboard])
 
   const confirmDelete = useCallback((wb: Whiteboard) => setDeleteTarget(wb), [])
   const handleRename = useCallback((wb: Whiteboard, newName: string) => {
@@ -151,16 +152,30 @@ export default function WhiteboardPage() {
           </div>
           <div className="p-2 border-t border-gray-100 space-y-1 shrink-0">
             {showCreate ? (
-              <div className="flex gap-1">
+              <div className="space-y-2">
                 <input autoFocus type="text" placeholder="白板名称" value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleCreate()
-                    if (e.key === 'Escape') { setShowCreate(false); setNewName('') }
+                    if (e.key === 'Escape') { setShowCreate(false); setNewName(''); setNewType('free') }
                   }}
-                  className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
                 />
-                <Button size="sm" onClick={handleCreate} disabled={!newName.trim()}>确定</Button>
+                <div className="flex gap-1">
+                  {(['free', 'ppt', 'aigc', 'figma'] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setNewType(t)}
+                      className={cn(
+                        'flex-1 px-2 py-1 text-xs rounded border transition-colors',
+                        newType === t ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      )}
+                    >
+                      {{ free: '自由', ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[t]}
+                    </button>
+                  ))}
+                </div>
+                <Button size="sm" onClick={handleCreate} disabled={!newName.trim()} className="w-full">确定</Button>
               </div>
             ) : (
               <button onClick={() => setShowCreate(true)}
@@ -250,6 +265,9 @@ function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete, onRename }: 
       onDoubleClick={handleDoubleClick}
     >
       <PenTool size={14} className="shrink-0 text-gray-400" />
+      {whiteboard.wb_type && whiteboard.wb_type !== 'free' && (
+        <span className="text-[10px] text-gray-400 shrink-0">{{ ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[whiteboard.wb_type] || whiteboard.wb_type}</span>
+      )}
       {renaming ? (
         <input
           autoFocus

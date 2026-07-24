@@ -8,7 +8,7 @@ interface WhiteboardState {
   loading: boolean
 
   fetchWhiteboards: (projectId: string) => Promise<void>
-  createWhiteboard: (projectId: string, name: string) => Promise<Whiteboard>
+  createWhiteboard: (projectId: string, name: string, wbType?: string) => Promise<Whiteboard>
   deleteWhiteboard: (id: string) => Promise<void>
   setCurrentWhiteboard: (wb: Whiteboard | null) => void
   saveSnapshot: (id: string, snapshotJson: string) => Promise<void>
@@ -33,8 +33,8 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
     }
   },
 
-  createWhiteboard: async (projectId: string, name: string) => {
-    const wb = await invoke<Whiteboard>('create_whiteboard', { projectId, name })
+  createWhiteboard: async (projectId: string, name: string, wbType = 'free') => {
+    const wb = await invoke<Whiteboard>('create_whiteboard', { projectId, name, wbType })
     set((s) => ({ whiteboards: [...s.whiteboards, wb] }))
     return wb
   },
