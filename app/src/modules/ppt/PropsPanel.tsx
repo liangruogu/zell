@@ -213,19 +213,19 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
           </button>
           {showPicker && (
-            <div ref={pickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 148 }}>
-              <span className="text-[9px] text-gray-400">取色器</span>
+            <div ref={pickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 160 }}>
+              <span className="text-[10px] text-gray-400">取色器</span>
               <div className="flex items-center gap-1">
-                <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-5 h-5 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
+                <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
                 <span className="text-[12px] text-gray-600 font-mono">{color}</span>
               </div>
               {recentColors.length > 0 && (
                 <>
-                  <span className="text-[9px] text-gray-400">最近使用</span>
+                  <span className="text-[10px] text-gray-400">最近使用</span>
                   <div className="flex gap-0.5 flex-wrap">
                     {recentColors.slice(0, 16).map(c => (
                       <button key={c} onClick={() => { handleColorChange(c); setShowPicker(false) }}
-                        className="w-4 h-4 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                        className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
                         style={{ background: c }} title={c}
                       />
                     ))}
@@ -277,7 +277,7 @@ export function PropsPanel() {
   useEffect(() => { syncRecentColors(slides) }, [slides])
 
   return (
-    <div className="w-60 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
+    <div className="w-52 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
       <div className="flex border-b border-gray-200">
         <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
         <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
