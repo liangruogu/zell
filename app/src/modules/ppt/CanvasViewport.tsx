@@ -6,17 +6,15 @@ import { SLIDE_W, SLIDE_H, type CanvasElement } from './types'
 
 export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { slides, currentSlideId, selectedIds, zoom, guideLines, setZoom, setPan, deleteElements } = usePptStore()
+  const { slides, currentSlideId, selectedIds, zoom, guideLines, setZoom, deleteElements } = usePptStore()
   const slide = slides.find(s => s.id === currentSlideId)
   const [, forceUpdate] = useState(0)
   const panRef = useRef({ x: 0, y: 0 })
-  const storePan = usePptStore(s => ({ x: s.panX, y: s.panY }))
   const marqueeRef = useRef<{ sx: number; sy: number; ex: number; ey: number } | null>(null)
   const [, setMarqueeTick] = useState(0)
 
-  const setPanLocal = useCallback((x: number, y: number) => {
+  const setPan = useCallback((x: number, y: number) => {
     panRef.current = { x, y }
-    setPan(x, y)
     forceUpdate(n => n + 1)
   }, [])
 
@@ -51,7 +49,7 @@ export function CanvasViewport() {
         const newZoom = Math.max(0.25, Math.min(3, oldZoom + (e.deltaY > 0 ? -0.1 : 0.1)))
         usePptStore.getState().setZoom(newZoom)
       const scale = newZoom / oldZoom
-      setPanLocal(mx - scale * mx + panRef.current.x, my - scale * my + panRef.current.y)
+      setPan(mx - scale * mx + panRef.current.x, my - scale * my + panRef.current.y)
       }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -64,7 +62,7 @@ export function CanvasViewport() {
       if (!e.ctrlKey) return
       if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom(zoom + 0.1) }
       if (e.key === '-') { e.preventDefault(); setZoom(zoom - 0.1) }
-      if (e.key === '0') { e.preventDefault(); setZoom(1); setPanLocal(0, 0) }
+      if (e.key === '0') { e.preventDefault(); setZoom(1); setPan(0, 0) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -84,7 +82,7 @@ export function CanvasViewport() {
     }
     const onMove = (e: MouseEvent) => {
       if (!panning) return
-      setPanLocal(spx + e.clientX - sx, spy + e.clientY - sy)
+      setPan(spx + e.clientX - sx, spy + e.clientY - sy)
     }
     const onUp = () => { panning = false; el.style.cursor = '' }
     el.addEventListener('mousedown', onDown)
@@ -275,7 +273,7 @@ export function CanvasViewport() {
           width: SLIDE_W,
           height: SLIDE_H,
           background: '#ffffff',
-          transform: `translate(${storePan.x}px, ${storePan.y}px) scale(${zoom})`,
+          transform: `translate(${panRef.current.x}px, ${panRef.current.y}px) scale(${zoom})`,
           transformOrigin: 'center center',
         }}
       >
