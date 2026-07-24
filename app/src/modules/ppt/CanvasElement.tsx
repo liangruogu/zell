@@ -60,34 +60,48 @@ function snapPos(el: CanvasElement, others: CanvasElement[], x: number, y: numbe
   let sx = x, sy = y, sex = erx, sey = eby
   const guides: GuideLine[] = []
   let bestXD = SNAP + 1, bestYD = SNAP + 1
-  const snX = (dist: number, fn: () => void, isMoving: boolean) => {
-    // slightly prefer the actively moving edge (use 0.5x weighting for non-moving)
-    const w = isMoving ? dist : dist * 1.5
-    if (w < SNAP && w < bestXD) { bestXD = w; fn() }
-  }
-  const snY = (dist: number, fn: () => void, isMoving: boolean) => {
-    const w = isMoving ? dist : dist * 1.5
-    if (w < SNAP && w < bestYD) { bestYD = w; fn() }
-  }
-  const movingTop = movingEdge === 'n' || movingEdge === 'nw' || movingEdge === 'ne'
-  const movingBottom = movingEdge === 's' || movingEdge === 'sw' || movingEdge === 'se'
+  const snX = (dist: number, fn: () => void) => { if (dist < bestXD) { bestXD = dist; fn() } }
+  const snY = (dist: number, fn: () => void) => { if (dist < bestYD) { bestYD = dist; fn() } }
+  const isEdgeX = movingEdge === 'w' || movingEdge === 'e'
+  const isEdgeY = movingEdge === 'n' || movingEdge === 's'
+  const isCorner = movingEdge && movingEdge.length === 2
+  const doCenter = !isEdgeX && !isEdgeY // center snap only during drag or corner resize
   const movingLeft = movingEdge === 'w' || movingEdge === 'nw' || movingEdge === 'sw'
   const movingRight = movingEdge === 'e' || movingEdge === 'ne' || movingEdge === 'se'
-  // X-axis
-  snX(Math.abs(ecx - 640), () => { sx = 640 - el.w / 2; sex = 640 + el.w / 2; guides.push({ type: 'v', pos: 640, start: 0, end: 720 }) }, movingLeft || movingRight)
+  const movingTop = movingEdge === 'n' || movingEdge === 'nw' || movingEdge === 'ne'
+  const movingBottom = movingEdge === 's' || movingEdge === 'sw' || movingEdge === 'se'
+
+  if (doCenter) {
+    snX(Math.abs(ecx - 640), () => { sx = 640 - el.w / 2; sex = 640 + el.w / 2; guides.push({ type: 'v', pos: 640, start: 0, end: 720 }) })
+    snY(Math.abs(ecy - 360), () => { sy = 360 - el.h / 2; sey = 360 + el.h / 2; guides.push({ type: 'h', pos: 360, start: 0, end: 1280 }) })
+  }
   for (const o of others) {
     const ocx = o.x + o.w / 2, ocy = o.y + o.h / 2
-    snX(Math.abs(elx - o.x), () => { sx = o.x; sex = o.x + el.w; guides.push({ type: 'v', pos: o.x, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }, movingLeft)
-    snX(Math.abs(erx - (o.x + o.w)), () => { sx = o.x + o.w - el.w; sex = o.x + o.w; guides.push({ type: 'v', pos: o.x + o.w, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }, movingRight)
-    snX(Math.abs(ecx - ocx), () => { sx = ocx - el.w / 2; sex = ocx + el.w / 2; guides.push({ type: 'v', pos: ocx, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }, true)
-  }
-  // Y-axis
-  snY(Math.abs(ecy - 360), () => { sy = 360 - el.h / 2; sey = 360 + el.h / 2; guides.push({ type: 'h', pos: 360, start: 0, end: 1280 }) }, movingTop || movingBottom)
-  for (const o of others) {
-    const ocy = o.y + o.h / 2
-    snY(Math.abs(ely - o.y), () => { sy = o.y; sey = o.y + el.h; guides.push({ type: 'h', pos: o.y, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }, movingTop)
-    snY(Math.abs(eby - (o.y + o.h)), () => { sy = o.y + o.h - el.h; sey = o.y + o.h; guides.push({ type: 'h', pos: o.y + o.h, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }, movingBottom)
-    snY(Math.abs(ecy - ocy), () => { sy = ocy - el.h / 2; sey = ocy + el.h / 2; guides.push({ type: 'h', pos: ocy, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }, true)
+    const oxr = o.x + o.w, oyb = o.y + o.h
+    // left edge to left edge: only if left edge is moving or we're not in edge-only mode
+    if (!isEdgeY || movingLeft) {
+      snX(Math.abs(elx - o.x), () => { sx = o.x; sex = o.x + el.w; guides.push({ type: 'v', pos: o.x, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) })
+    }
+    // right edge to right edge
+    if (!isEdgeY || movingRight) {
+      snX(Math.abs(erx - oxr), () => { sx = oxr - el.w; sex = oxr; guides.push({ type: 'v', pos: oxr, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) })
+    }
+    // center to center
+    if (doCenter) {
+      snX(Math.abs(ecx - ocx), () => { sx = ocx - el.w / 2; sex = ocx + el.w / 2; guides.push({ type: 'v', pos: ocx, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) })
+    }
+    // top to top
+    if (!isEdgeX || movingTop) {
+      snY(Math.abs(ely - o.y), () => { sy = o.y; sey = o.y + el.h; guides.push({ type: 'h', pos: o.y, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) })
+    }
+    // bottom to bottom
+    if (!isEdgeX || movingBottom) {
+      snY(Math.abs(eby - oyb), () => { sy = oyb - el.h; sey = oyb; guides.push({ type: 'h', pos: oyb, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) })
+    }
+    // center to center
+    if (doCenter) {
+      snY(Math.abs(ecy - ocy), () => { sy = ocy - el.h / 2; sey = ocy + el.h / 2; guides.push({ type: 'h', pos: ocy, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) })
+    }
   }
   usePptStore.getState().setGuideLines(guides)
   return { x: Math.round(sx), y: Math.round(sy), erx: Math.round(sex), eby: Math.round(sey) }
