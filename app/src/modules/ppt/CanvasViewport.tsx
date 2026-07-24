@@ -255,7 +255,7 @@ export function CanvasViewport() {
         style={{
           width: SLIDE_W,
           height: SLIDE_H,
-          background: slide.background || '#ffffff',
+          background: '#ffffff',
           transform: `translate(${panRef.current.x}px, ${panRef.current.y}px) scale(${zoom})`,
           transformOrigin: 'center center',
         }}
