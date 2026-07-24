@@ -187,7 +187,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
           />
           <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
           {showPalette && recentColors.length > 0 && (
-            <div ref={paletteRef} className="absolute top-full left-0 mt-1 p-1 bg-white border border-gray-200 rounded shadow-lg z-50 flex gap-0.5 flex-wrap" style={{ width: 96 }}>
+            <div ref={paletteRef} className="absolute top-full left-0 mt-1 p-1 bg-white border border-gray-200 rounded shadow-lg z-[9999] flex gap-0.5 flex-wrap" style={{ width: 96 }}>
               {recentColors.slice(0, 12).map(c => (
                 <button key={c} onClick={() => { handleColorChange(c); setShowPalette(false) }}
                   className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
@@ -248,7 +248,7 @@ export function PropsPanel() {
   const el = selectedIds.length === 1 ? slide?.elements.find(e => e.id === selectedIds[0]) : null
 
   return (
-    <div className="w-48 border-l border-gray-200 bg-white shrink-0 overflow-auto select-none">
+    <div className="w-48 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
       <div className="flex border-b border-gray-200">
         <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
         <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[11px] font-medium text-center ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
@@ -404,10 +404,17 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
 function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
   const shadows: { x: number; y: number; blur: number; color: string }[] = el.props.shadows || (el.props.shadowBlur ? [{ x: el.props.shadowX ?? 0, y: el.props.shadowY ?? 2, blur: el.props.shadowBlur ?? 4, color: el.props.shadowColor ?? 'rgba(0,0,0,0.15)' }] : [])
   const [editIdx, setEditIdx] = useState<number | null>(null)
+  const [popPos, setPopPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const popRef = useRef<HTMLDivElement>(null)
+  const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   useEffect(() => {
     if (editIdx === null) return
+    const rowEl = rowRefs.current.get(editIdx)
+    if (rowEl) {
+      const rect = rowEl.getBoundingClientRect()
+      setPopPos({ x: rect.left - 168, y: rect.top })
+    }
     const onDown = (e: MouseEvent) => {
       if (popRef.current && !popRef.current.contains(e.target as Node)) setEditIdx(null)
     }
@@ -439,7 +446,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
         </button>
       </div>
       {shadows.map((s, i) => (
-        <div key={i} className="mt-1 relative">
+        <div key={i} ref={el => { if (el) rowRefs.current.set(i, el); else rowRefs.current.delete(i) }} className="mt-1 relative">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setEditIdx(editIdx === i ? null : i)}
@@ -453,7 +460,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             </button>
           </div>
           {editIdx === i && (
-            <div ref={popRef} className="absolute right-full top-0 mr-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 space-y-1">
+            <div ref={popRef} className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-2 space-y-1" style={{ width: 160, top: popPos.y, left: popPos.x }}>
               <div className="text-[10px] text-gray-500 font-medium">阴影 {i + 1}</div>
               <ColorChip label="" color={s.color} onChange={v => updateShadow(i, { color: v })} />
               <div className="grid grid-cols-3 gap-1">
