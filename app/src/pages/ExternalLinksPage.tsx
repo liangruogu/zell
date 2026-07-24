@@ -243,21 +243,22 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
   const [currentSlideId, setCurrentSlideId] = useState<string | null>(null)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
 
-  // Track slide frames in the store
+  const refreshSlides = useCallback(() => {
+    if (!editor) return
+    const shapes = editor.getCurrentPageShapes()
+      .filter((s: any) => s.type === 'frame')
+      .filter((s: any) => s.props?.meta?.slideType === 'slide')
+      .sort((a: any, b: any) => (a.props?.meta?.slideIndex ?? 0) - (b.props?.meta?.slideIndex ?? 0))
+    setSlides(shapes)
+  }, [editor])
+
+  // Track slide frames via editor changes
   useEffect(() => {
-    if (!store) return
-    const refresh = () => {
-      const records = store.allRecords()
-      const shapes = records
-        .filter((r: any) => r.typeName === 'shape' && r.type === 'frame')
-        .filter((r: any) => r.props?.meta?.slideType === 'slide')
-        .sort((a: any, b: any) => (a.props?.meta?.slideIndex ?? 0) - (b.props?.meta?.slideIndex ?? 0))
-      setSlides(shapes)
-    }
-    const unsub = store.listen(refresh)
-    refresh()
+    if (!editor) return
+    const unsub = editor.store.listen(refreshSlides)
+    refreshSlides()
     return () => unsub()
-  }, [store])
+  }, [editor, refreshSlides])
 
   const focusSlide = useCallback((slideId: string) => {
     if (!editor) return
@@ -312,7 +313,8 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
       }
     })
     focusSlide(id)
-  }, [editor, slides, focusSlide])
+    setTimeout(refreshSlides, 100)
+  }, [editor, slides, focusSlide, refreshSlides])
 
   const duplicateSlide = useCallback((e: React.MouseEvent, slideId: string) => {
     e.stopPropagation()
@@ -320,7 +322,8 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
     const idx = slides.findIndex(s => s.id === slideId)
     if (idx < 0) return
     addSlide(idx)
-  }, [editor, slides, addSlide])
+    setTimeout(refreshSlides, 100)
+  }, [editor, slides, addSlide, refreshSlides])
 
   const deleteSlide = useCallback((e: React.MouseEvent, slideId: string) => {
     e.stopPropagation()
@@ -343,7 +346,8 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
     if (currentSlideId === slideId && remaining.length > 0) {
       focusSlide(remaining[0].id)
     }
-  }, [editor, slides, currentSlideId, focusSlide])
+    setTimeout(refreshSlides, 100)
+  }, [editor, slides, currentSlideId, focusSlide, refreshSlides])
 
   // Reorder: swap x positions and indices
   const moveSlide = useCallback((fromIdx: number, toIdx: number) => {
@@ -355,6 +359,7 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
       editor.updateShape({ id: a.id, type: 'frame', x: 100 + toIdx * 1400, props: { ...a.props, name: `幻灯片 ${toIdx + 1}`, meta: { ...a.props.meta, slideIndex: toIdx } } })
       editor.updateShape({ id: b.id, type: 'frame', x: 100 + fromIdx * 1400, props: { ...b.props, name: `幻灯片 ${fromIdx + 1}`, meta: { ...b.props.meta, slideIndex: fromIdx } } })
     })
+    setTimeout(refreshSlides, 100)
   }, [editor, slides])
 
   const handleDragStart = useCallback((e: React.DragEvent, idx: number) => {
@@ -388,22 +393,21 @@ function PptCanvas({ store, whiteboardId }: { store: TLStore; whiteboardId: stri
       {/* Center: canvas + right panel */}
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 relative bg-gray-300">
-          {slides.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-gray-500">
+          <Tldraw
+            key={whiteboardId}
+            store={store}
+            onMount={(ed) => setEditor(ed)}
+          />
+          {slides.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+              <div className="text-center text-gray-500 bg-white/80 rounded-xl p-8 shadow-sm">
                 <Presentation size={48} strokeWidth={1} className="mx-auto mb-3" />
                 <p className="text-lg mb-2">创建你的第一张幻灯片</p>
-                <button onClick={() => addSlide()} className="px-4 py-2 bg-bindle-500 text-white rounded-lg text-sm hover:bg-bindle-600">
+                <button onClick={() => addSlide()} className="pointer-events-auto px-4 py-2 bg-bindle-500 text-white rounded-lg text-sm hover:bg-bindle-600">
                   <Plus size={14} className="inline mr-1" />新建幻灯片
                 </button>
               </div>
             </div>
-          ) : (
-            <Tldraw
-              key={whiteboardId}
-              store={store}
-              onMount={(ed) => setEditor(ed)}
-            />
           )}
         </div>
 
