@@ -26,6 +26,7 @@ export interface Slide {
   name: string
   elements: CanvasElement[]
   background: string
+  hidden?: boolean
 }
 
 export interface PptData {

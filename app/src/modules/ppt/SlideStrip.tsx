@@ -1,12 +1,12 @@
 import { Fragment, useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
-import { Plus, Trash2, Copy } from 'lucide-react'
+import { Plus, Trash2, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
 import type { Slide } from './types'
 
 export function SlideStrip() {
   const s = usePptStore()
-  const { slides, currentSlideId, selectedSlideIds, setCurrentSlide, addSlide, deleteSlide, deleteSlides, duplicateSlide, moveSlide, renameSlide } = s
+  const { slides, currentSlideId, selectedSlideIds, setCurrentSlide, addSlide, deleteSlide, deleteSlides, duplicateSlide, moveSlide, renameSlide, toggleSlideHidden } = s
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -38,7 +38,8 @@ export function SlideStrip() {
     currentDropIdx: number
     offsetX: number
     offsetY: number
-  }>({ active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1, offsetX: 0, offsetY: 0 })
+    selectedIds: string[]
+  }>({ active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1, offsetX: 0, offsetY: 0, selectedIds: [] })
 
   useEffect(() => {
     const el = containerRef.current
@@ -84,6 +85,10 @@ export function SlideStrip() {
       if (target.closest('button') || target.closest('input')) return
       const slideEl = document.querySelector(`[data-slide-idx="${idx}"]`)
       const rect = slideEl?.getBoundingClientRect()
+      const st = usePptStore.getState()
+      const sid = st.slides[idx]?.id
+      const selIds = sid && st.selectedSlideIds.includes(sid) ? st.selectedSlideIds : []
+      const fromIdx = selIds.length > 0 ? Math.min(...selIds.map(id => st.slides.findIndex(s => s.id === id))) : idx
       dragState.current = {
         active: true,
         fromIdx: idx,
@@ -93,8 +98,9 @@ export function SlideStrip() {
         currentDropIdx: -1,
         offsetX: rect ? e.clientX - rect.left : 0,
         offsetY: rect ? e.clientY - rect.top : 0,
+        selectedIds: selIds,
       }
-      setDragIdx(idx)
+      setDragIdx(fromIdx)
     }
 
     const onPointerMove = (e: PointerEvent) => {
@@ -124,17 +130,34 @@ export function SlideStrip() {
 
     const onPointerUp = (e: PointerEvent) => {
       if (!dragState.current.active) return
-      const { fromIdx, moved } = dragState.current
+      const { fromIdx, moved, selectedIds } = dragState.current
 
       if (moved) {
         const dropIdx = findDropIdx(e.clientX, e.clientY, fromIdx)
         if (dropIdx >= 0 && dropIdx !== fromIdx) {
-          const realTo = fromIdx < dropIdx ? dropIdx - 1 : dropIdx
-          flipRef.current = { prevSlides: [...usePptStore.getState().slides] }
-          moveSlide(fromIdx, realTo)
+          const st = usePptStore.getState()
+          flipRef.current = { prevSlides: [...st.slides] }
+          if (selectedIds.length > 1) {
+            // multi-select: move all selected slides
+            const ids = new Set(selectedIds)
+            const moving = st.slides.filter(s => ids.has(s.id))
+            const rest = st.slides.filter(s => !ids.has(s.id))
+            const beforeCount = moving.filter(s => {
+              const oi = st.slides.findIndex(orig => orig.id === s.id)
+              return oi < dropIdx
+            }).length
+            const realTo = dropIdx - beforeCount
+            const ns = [...rest]
+            ns.splice(Math.max(0, realTo), 0, ...moving)
+            ns.forEach((s, i) => { s.name = `幻灯片 ${i + 1}` })
+            usePptStore.setState({ slides: ns })
+          } else {
+            const realTo = fromIdx < dropIdx ? dropIdx - 1 : dropIdx
+            moveSlide(fromIdx, realTo)
+          }
         }
       }
-      dragState.current = { active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1, offsetX: 0, offsetY: 0 }
+      dragState.current = { active: false, fromIdx: -1, startX: 0, startY: 0, moved: false, currentDropIdx: -1, offsetX: 0, offsetY: 0, selectedIds: [] }
       setDragIdx(null)
       setDragOverIdx(null)
       setShowGhost(false)
@@ -293,6 +316,11 @@ export function SlideStrip() {
             <span className="absolute bottom-0.5 left-1 text-[10px] text-gray-900 font-medium select-none">
               {/^幻灯片\s*\d+$/.test(slides[dragIdx].name) ? dragIdx! + 1 : slides[dragIdx].name}
             </span>
+            {selectedSlideIds.length > 1 && (
+              <div className="absolute top-0.5 right-0.5 bg-bindle-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {selectedSlideIds.length}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -306,15 +334,18 @@ export function SlideStrip() {
           <Fragment key={sl.id}>
             <button
               onClick={(e) => { e.stopPropagation(); addSlide(i); setHoverInsertIdx(null) }}
-              className="h-[72px] bg-bindle-500 text-white rounded flex items-center justify-center shrink-0 overflow-hidden"
+              className="h-[72px] shrink-0 overflow-hidden flex items-center justify-center"
               style={{
                 width: (hoverInsertIdx === i && dragIdx === null) ? 24 : 0,
                 transition: 'width 200ms ease-out',
               }}
             >
-              <span className="transition-transform duration-200 ease-out" style={{ transform: (hoverInsertIdx === i && dragIdx === null) ? 'scale(1)' : 'scale(0)' }}>
-                <Plus size={14} />
-              </span>
+              <div className={cn(
+                'rounded-full bg-bindle-500 text-white flex items-center justify-center transition-all duration-200 ease-out',
+                (hoverInsertIdx === i && dragIdx === null) ? 'w-5 h-5 scale-100' : 'w-5 h-5 scale-0',
+              )}>
+                <Plus size={12} className="transition-transform duration-200 ease-out" />
+              </div>
             </button>
             <div data-slide-idx={i} data-slide-id={sl.id} className="flex shrink-0 items-center">
               <div
@@ -329,14 +360,14 @@ export function SlideStrip() {
                 index={i}
                 isActive={sl.id === currentSlideId}
                 isSelected={selectedSlideIds.includes(sl.id)}
-                isDragging={dragIdx === i}
+                isDragging={dragIdx !== null && (i === dragIdx || selectedSlideIds.includes(sl.id))}
                 renamingId={renamingId}
                 renameVal={renameVal}
                 onChangeRenameVal={setRenameVal}
                 onSubmitRename={submitRename}
                 onStartRename={startRename}
                 onClick={handleClick}
-                onDuplicate={() => duplicateSlide(sl.id)}
+                onToggleHidden={() => toggleSlideHidden(sl.id)}
                 onDelete={() => deleteSlide(sl.id)}
               />
             </div>
@@ -344,15 +375,18 @@ export function SlideStrip() {
         ))}
         <button
           onClick={() => { addSlide(slides.length); setHoverInsertIdx(null) }}
-          className="h-[72px] bg-bindle-500 text-white rounded flex items-center justify-center shrink-0 overflow-hidden"
+          className="h-[72px] shrink-0 overflow-hidden flex items-center justify-center"
           style={{
             width: (hoverInsertIdx === slides.length && dragIdx === null) ? 24 : 0,
             transition: 'width 200ms ease-out',
           }}
         >
-          <span className="transition-transform duration-200 ease-out" style={{ transform: (hoverInsertIdx === slides.length && dragIdx === null) ? 'scale(1)' : 'scale(0)' }}>
-            <Plus size={14} />
-          </span>
+          <div className={cn(
+            'rounded-full bg-bindle-500 text-white flex items-center justify-center transition-all duration-200 ease-out',
+            (hoverInsertIdx === slides.length && dragIdx === null) ? 'w-5 h-5 scale-100' : 'w-5 h-5 scale-0',
+          )}>
+            <Plus size={12} className="transition-transform duration-200 ease-out" />
+          </div>
         </button>
         <div
           className="h-[72px] bg-blue-500 rounded shrink-0 transition-[width,margin] duration-200 ease-out overflow-hidden"
@@ -374,13 +408,13 @@ export function SlideStrip() {
   )
 }
 
-function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId, renameVal, onChangeRenameVal, onSubmitRename, onStartRename, onClick, onDuplicate, onDelete }: {
+function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId, renameVal, onChangeRenameVal, onSubmitRename, onStartRename, onClick, onToggleHidden, onDelete }: {
   slide: Slide; index: number; isActive: boolean; isSelected: boolean; isDragging: boolean
   renamingId: string | null; renameVal: string
   onChangeRenameVal: (v: string) => void; onSubmitRename: () => void
   onStartRename: (e: React.MouseEvent, id: string, name: string) => void
   onClick: (e: React.MouseEvent, id: string, idx: number) => void
-  onDuplicate: () => void; onDelete: () => void
+  onToggleHidden: () => void; onDelete: () => void
 }) {
   const isDefaultName = /^幻灯片\s*\d+$/.test(slide.name)
   return (
@@ -394,6 +428,11 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
       <div className="w-full h-full bg-white rounded overflow-hidden">
         <MiniSlide slide={slide} />
       </div>
+      {slide.hidden && (
+        <div className="absolute inset-0 bg-white/60 rounded flex items-center justify-center pointer-events-none">
+          <EyeOff size={16} className="text-gray-400" />
+        </div>
+      )}
       {renamingId === slide.id ? (
         <input autoFocus value={renameVal} onChange={e => onChangeRenameVal(e.target.value)}
           onBlur={onSubmitRename} onKeyDown={e => { if (e.key === 'Enter') onSubmitRename(); if (e.key === 'Escape') { onChangeRenameVal(slide.name); onSubmitRename() } }}
@@ -405,8 +444,10 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
         </span>
       )}
       <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 flex">
-        <button onClick={e => { e.stopPropagation(); onDuplicate() }} className="p-0.5 bg-white border border-gray-200 rounded-bl hover:bg-bindle-50"><Copy size={9} /></button>
-        <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-0.5 bg-white border border-gray-200 rounded-br hover:bg-red-50"><Trash2 size={9} className="text-red-400" /></button>
+        <button onClick={e => { e.stopPropagation(); onToggleHidden() }} className="p-1 bg-white border border-gray-200 rounded-bl hover:bg-gray-100" title={slide.hidden ? '显示' : '隐藏'}>
+          {slide.hidden ? <Eye size={12} className="text-gray-400" /> : <EyeOff size={12} className="text-gray-500" />}
+        </button>
+        <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-1 bg-white border border-gray-200 rounded-br hover:bg-red-50"><Trash2 size={12} className="text-red-400" /></button>
       </div>
     </div>
   )

@@ -31,6 +31,7 @@ interface PptState {
   pasteSlide: () => void
   moveSlide: (fromIdx: number, toIdx: number) => void
   renameSlide: (id: string, name: string) => void
+  toggleSlideHidden: (id: string) => void
 
   addElement: (slideId: string, element: CanvasElement) => void
   updateElement: (slideId: string, elementId: string, changes: Partial<CanvasElement>) => void
@@ -156,6 +157,13 @@ export const usePptStore = create<PptState>((set, get) => ({
     })
   },
 
+  toggleSlideHidden: (id) => {
+    set(s => {
+      pushHistory()
+      return { slides: s.slides.map(sl => sl.id === id ? { ...sl, hidden: !sl.hidden } : sl) }
+    })
+  },
+
   deleteSlides: (ids) => {
     if (ids.length === 0) return
     mutate(set, ({ slides, currentSlideId }) => {
@@ -189,7 +197,7 @@ export const usePptStore = create<PptState>((set, get) => ({
       const ns = [...sls]
       ns.splice(after, 0, ...copies)
       ns.forEach((s, i) => { s.name = `幻灯片 ${i + 1}` })
-      return { slides: ns, currentSlideId: copies[0].id, selectedIds: [] }
+      return { slides: ns, currentSlideId: copies[0].id, selectedIds: [], selectedSlideIds: [] }
     })
   },
 
