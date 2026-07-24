@@ -203,8 +203,17 @@ export function SlideStrip() {
 
   const handleClick = useCallback((e: React.MouseEvent, id: string, idx: number) => {
     if (e.ctrlKey || e.metaKey) {
-      const sel = usePptStore.getState().selectedSlideIds
-      usePptStore.setState({ selectedSlideIds: sel.includes(id) ? sel.filter(sid => sid !== id) : [...sel, id] })
+      const st = usePptStore.getState()
+      const sel = st.selectedSlideIds
+      let next: string[]
+      if (sel.includes(id)) {
+        next = sel.filter(sid => sid !== id)
+      } else {
+        next = sel.length === 0 && st.currentSlideId && st.currentSlideId !== id
+          ? [st.currentSlideId, id]
+          : [...sel, id]
+      }
+      usePptStore.setState({ selectedSlideIds: next })
       lastClickedRef.current = idx
     } else if (e.shiftKey && lastClickedRef.current !== null) {
       const from = Math.min(lastClickedRef.current, idx)
