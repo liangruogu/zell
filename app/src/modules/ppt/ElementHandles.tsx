@@ -39,8 +39,8 @@ export function ElementHandles({ element, zoom }: Props) {
         case 'w': nx = ox + dx; nw = ow - dx; break
         case 'e': nw = ow + dx; break
       }
-      if (nw < 10) nw = 10
-      if (nh < 10) nh = 10
+      if (nw < 1) nw = 1
+      if (nh < 1) nh = 1
 
       const lockAspect = element.type !== 'line' && element.type !== 'arrow' && e.shiftKey
       if (lockAspect && activeHandle.length === 2 && ow > 0 && oh > 0) {

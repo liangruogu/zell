@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, GripVertical } from 'lucide-react'
 import { usePptStore } from './store'
 import type { CanvasElement } from './types'
@@ -160,17 +161,32 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
   const [opEdit, setOpEdit] = useState(false)
   const [opText, setOpText] = useState('')
   const [showPicker, setShowPicker] = useState(false)
-  const opRef = useRef({ v0: 0, mx: 0 })
+  const [pickerPos, setPickerPos] = useState({ x: 0, y: 0 })
+  const swatchRef = useRef<HTMLButtonElement>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
+  const opRef = useRef({ v0: 0, mx: 0 })
   const opDisplay = Math.round((opacity ?? 1) * 100)
 
   useEffect(() => {
     if (!showPicker) return
+    const updatePos = () => {
+      if (swatchRef.current) {
+        const rect = swatchRef.current.getBoundingClientRect()
+        setPickerPos({ x: rect.right - 160, y: rect.bottom + 4 })
+      }
+    }
+    updatePos()
     const onDown = (e: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setShowPicker(false)
     }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    window.addEventListener('resize', updatePos)
+    window.addEventListener('scroll', updatePos, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('resize', updatePos)
+      window.removeEventListener('scroll', updatePos, true)
+    }
   }, [showPicker])
 
   const handleColorChange = (c: string) => {
@@ -209,11 +225,11 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
       {label && <label className="text-[12px] text-gray-500">{label}</label>}
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
         <div className="relative shrink-0">
-          <button onClick={() => setShowPicker(!showPicker)} className="block">
+          <button ref={swatchRef} onClick={() => setShowPicker(!showPicker)} className="block">
             <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
           </button>
-          {showPicker && (
-            <div ref={pickerRef} className="absolute top-full right-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 160 }}>
+          {showPicker && createPortal(
+            <div ref={pickerRef} className="fixed p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[99999] space-y-1.5" style={{ width: 160, top: pickerPos.y, left: pickerPos.x }}>
               <span className="text-[10px] text-gray-400">取色器</span>
               <div className="flex items-center gap-1">
                 <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
@@ -261,9 +277,10 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             ) : (
               <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[12px] text-gray-600 cursor-default min-w-[24px] text-right">{opDisplay}%</span>
             )}
-          </div>
-        )}
-      </div>
+            </div>,
+            document.body
+          )}
+        </div>
     </div>
   )
 }
