@@ -456,7 +456,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
               onClick={() => setEditIdx(editIdx === i ? null : i)}
               className="flex items-center gap-1 flex-1 h-[24px] bg-gray-100 rounded px-1 hover:bg-gray-200 transition"
             >
-              <div className="rounded-sm border border-gray-300" style={{ width: 14, height: 14, background: s.color, boxShadow: `${s.x}px ${s.y}px ${s.blur}px ${s.color}` }} />
+              <div className="rounded-sm border border-gray-300" style={{ width: 14, height: 14, background: s.color }} />
               <span className="text-[10px] text-gray-500 truncate">{s.color} · {s.blur}px</span>
             </button>
             <button onClick={() => removeShadow(i)} className="p-0.5 text-gray-400 hover:text-red-500 rounded">
