@@ -404,15 +404,30 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
 function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
   const hasStroke = (el.props.strokeWidth ?? 0) > 0 && el.props.stroke
   const [showStrokePicker, setShowStrokePicker] = useState(false)
+  const [strokePickerPos, setStrokePickerPos] = useState({ x: 0, y: 0 })
+  const strokeSwatchRef = useRef<HTMLButtonElement>(null)
   const strokePickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!showStrokePicker) return
+    const updatePos = () => {
+      if (strokeSwatchRef.current) {
+        const rect = strokeSwatchRef.current.getBoundingClientRect()
+        setStrokePickerPos({ x: rect.right - 160, y: rect.bottom + 4 })
+      }
+    }
+    updatePos()
     const onDown = (e: MouseEvent) => {
       if (strokePickerRef.current && !strokePickerRef.current.contains(e.target as Node)) setShowStrokePicker(false)
     }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    window.addEventListener('resize', updatePos)
+    window.addEventListener('scroll', updatePos, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('resize', updatePos)
+      window.removeEventListener('scroll', updatePos, true)
+    }
   }, [showStrokePicker])
 
   const [editW, setEditW] = useState(false)
@@ -454,11 +469,11 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
       {hasStroke && (
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[26px] px-1">
           <div className="relative shrink-0">
-            <button onClick={() => setShowStrokePicker(!showStrokePicker)} className="block">
+            <button ref={strokeSwatchRef} onClick={() => setShowStrokePicker(!showStrokePicker)} className="block">
               <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: el.props.stroke || '#cbd5e1' }} />
             </button>
-            {showStrokePicker && (
-              <div ref={strokePickerRef} className="absolute top-full right-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 160 }}>
+            {showStrokePicker && createPortal(
+               <div ref={strokePickerRef} className="fixed p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[99999] space-y-1.5" style={{ width: 160, top: strokePickerPos.y, left: strokePickerPos.x }}>
                 <span className="text-[10px] text-gray-400">取色器</span>
                 <div className="flex items-center gap-1">
                   <input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => { addRecentColor(e.target.value); updateProps({ stroke: e.target.value }) }} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
@@ -477,7 +492,8 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
                     </div>
                   </>
                 )}
-              </div>
+              </div>,
+              document.body
             )}
           </div>
           <div className="flex items-center h-full overflow-hidden">
@@ -514,7 +530,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
       const rowEl = rowRefs.current.get(editIdx)
       if (rowEl) {
       const rect = rowEl.getBoundingClientRect()
-      setPopPos({ x: rect.left, y: rect.bottom + 4 })
+      setPopPos({ x: rect.right - 200, y: rect.bottom + 4 })
       }
     }
     updatePos()
