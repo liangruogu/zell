@@ -5,14 +5,13 @@ import type { CanvasElement } from './types'
 
 const SCRUB = { threshold: 3, speed: 1, cursor: 'ew-resize' }
 
-function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true }: {
+function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true, labelLeft }: {
   label: string; value: number; onChange: (v: number) => void
-  min?: number; max?: number; step?: number; integer?: boolean
+  min?: number; max?: number; step?: number; integer?: boolean; labelLeft?: boolean
 }) {
   const [edit, setEdit] = useState(false)
   const [text, setText] = useState('')
   const ref = useRef({ v0: 0, mx: 0, scrubbing: false })
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const commit = useCallback((t: string) => {
     const n = parseFloat(t)
@@ -41,23 +40,47 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
   }
 
   const display = integer ? Math.round(value) : Number(value.toFixed(1))
+  const inputCls = 'h-[24px] px-1.5 text-xs border border-gray-200 rounded outline-none leading-none'
+  const labelEl = <span className="text-[10px] text-gray-500 shrink-0">{label}</span>
+
+  if (labelLeft) {
+    return (
+      <div className="flex items-center gap-1">
+        {labelEl}
+        {edit ? (
+          <input autoFocus type="text" value={text}
+            onChange={e => setText(e.target.value)}
+            onBlur={() => commit(text)}
+            onKeyDown={e => { if (e.key === 'Enter') commit(text); if (e.key === 'Escape') setEdit(false) }}
+            className={`flex-1 min-w-0 ${inputCls} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+          />
+        ) : (
+          <div
+            onPointerDown={onPointerDown}
+            onClick={() => { setText(String(display)); setEdit(true) }}
+            className={`flex-1 min-w-0 ${inputCls} select-none hover:border-bindle-300`}
+            style={{ cursor: SCRUB.cursor }}
+          >{display}</div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div>
-      <label className="text-[10px] text-gray-500">{label}</label>
+      {labelEl}
       {edit ? (
-        <input ref={inputRef} autoFocus type="text" value={text}
+        <input autoFocus type="text" value={text}
           onChange={e => setText(e.target.value)}
           onBlur={() => commit(text)}
           onKeyDown={e => { if (e.key === 'Enter') commit(text); if (e.key === 'Escape') setEdit(false) }}
-          className="w-full px-1.5 py-0.5 text-xs border border-gray-200 rounded outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          style={{ cursor: 'text' }}
+          className={`w-full ${inputCls} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
         />
       ) : (
         <div
           onPointerDown={onPointerDown}
           onClick={() => { setText(String(display)); setEdit(true) }}
-          className="w-full px-1.5 py-0.5 text-xs border border-gray-200 rounded cursor-ew-resize select-none hover:border-bindle-300"
+          className={`w-full ${inputCls} select-none hover:border-bindle-300`}
           style={{ cursor: SCRUB.cursor }}
         >{display}</div>
       )}
@@ -153,10 +176,10 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
             <>
               <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v })} min={0} max={200} />
               <div className="grid grid-cols-2 gap-2">
-                <ScrubInput label="↖" value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
-                <ScrubInput label="↗" value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
-                <ScrubInput label="↙" value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v })} min={0} max={200} />
-                <ScrubInput label="↘" value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v })} min={0} max={200} />
+                <ScrubInput label="↖" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
+                <ScrubInput label="↗" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
+                <ScrubInput label="↙" labelLeft value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v })} min={0} max={200} />
+                <ScrubInput label="↘" labelLeft value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v })} min={0} max={200} />
               </div>
             </>
           )}
@@ -169,6 +192,8 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
 function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
   const { updateElement } = usePptStore()
   const [dragLayerIdx, setDragLayerIdx] = useState<number | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameVal, setRenameVal] = useState('')
   const dragRef = useRef<number | null>(null)
 
   if (!slide || slide.elements.length === 0) {
@@ -176,6 +201,26 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
   }
 
   const elements = [...slide.elements].reverse()
+
+  const startRename = (el: CanvasElement) => {
+    setRenamingId(el.id)
+    setRenameVal(el.props.text || '')
+  }
+  const submitRename = () => {
+    if (renamingId && renameVal.trim()) {
+      const st = usePptStore.getState()
+      const elIdx = slide.elements.findIndex(e => e.id === renamingId)
+      if (elIdx >= 0 && st.currentSlideId) {
+        const updatedSlide = {
+          ...slide,
+          elements: slide.elements.map(e => e.id === renamingId ? { ...e, props: { ...e.props, text: renameVal.trim() } } : e)
+        }
+        const allSlides = st.slides.map(s => s.id === st.currentSlideId ? updatedSlide : s)
+        usePptStore.setState({ slides: allSlides })
+      }
+    }
+    setRenamingId(null)
+  }
 
   const onPointerDown = (e: React.PointerEvent, idx: number) => {
     if ((e.target as HTMLElement).closest('button')) return
@@ -227,20 +272,29 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
   }
 
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-0.5 select-none">
       {elements.map((el, i) => (
         <div
           key={el.id}
           data-layer-idx={i}
           onPointerDown={e => onPointerDown(e, i)}
-          className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-xs cursor-pointer transition-colors ${dragLayerIdx === i ? 'bg-bindle-50 ring-1 ring-bindle-300' : 'hover:bg-gray-50'} ${i === dragLayerIdx && dragLayerIdx !== null ? 'opacity-50' : ''}`}
+          className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-xs transition-colors ${dragLayerIdx === i ? 'bg-bindle-50 ring-1 ring-bindle-300' : 'hover:bg-gray-50'}`}
           style={{ cursor: 'grab' }}
         >
           <GripVertical size={10} className="text-gray-300 shrink-0" />
           <div className="w-3 h-3 rounded border border-gray-300 shrink-0" style={{ background: el.props.fill || '#e2e8f0' }} />
-          <span className="truncate flex-1">
-            {{ text: el.props.text?.slice(0, 12) || '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}
-          </span>
+          {renamingId === el.id ? (
+            <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
+              onBlur={submitRename}
+              onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenamingId(null) }}
+              className="flex-1 min-w-0 h-[22px] text-xs border border-gray-200 rounded px-1 outline-none select-text"
+              onClick={e => e.stopPropagation()}
+            />
+          ) : (
+            <span className="truncate flex-1" onDoubleClick={el.type === 'text' ? () => startRename(el) : undefined}>
+              {{ text: el.props.text?.slice(0, 16) || '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}
+            </span>
+          )}
         </div>
       ))}
     </div>
