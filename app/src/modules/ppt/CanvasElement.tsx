@@ -8,7 +8,7 @@ interface GuideLine { type: 'h' | 'v'; pos: number; start: number; end: number }
 
 function useDrag(elementId: string) {
   const [dragging, setDragging] = useState(false)
-  const ref = useRef({ mx: 0, my: 0, ox: 0, oy: 0, shift: false, alt: false, clonedId: '' })
+  const ref = useRef({ mx: 0, my: 0, ox: 0, oy: 0, shift: false, alt: false, clonedId: '', groupIds: [] as string[], groupOrigins: [] as {id:string, x:number, y:number}[] })
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -16,7 +16,6 @@ function useDrag(elementId: string) {
     if (e.shiftKey && !e.altKey) {
       s.setSelectedIds(s.selectedIds.includes(elementId) ? s.selectedIds : [...s.selectedIds, elementId])
     } else if (!e.shiftKey && !e.altKey) {
-      // clicking an already-selected element in multi-select: keep selection
       if (s.selectedIds.length <= 1 || !s.selectedIds.includes(elementId)) {
         s.setSelectedIds([elementId])
       }
@@ -25,12 +24,46 @@ function useDrag(elementId: string) {
     }
     setDragging(true)
     const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === elementId)
-    ref.current = { mx: e.clientX, my: e.clientY, ox: el?.x ?? 0, oy: el?.y ?? 0, shift: e.shiftKey, alt: e.altKey, clonedId: '' }
+    ref.current = { mx: e.clientX, my: e.clientY, ox: el?.x ?? 0, oy: el?.y ?? 0, shift: e.shiftKey, alt: e.altKey, clonedId: '', groupIds: [], groupOrigins: [] }
 
+    // group drag: if multi-selected, save all selected elements' origins
+    const gIds = s.selectedIds.length > 1 ? s.selectedIds : []
+    if (gIds.length > 0 && s.selectedIds.includes(elementId) && !e.altKey) {
+      const slide = s.slides.find(sl => sl.id === s.currentSlideId)
+      const origins = slide ? slide.elements.filter(ee => gIds.includes(ee.id)).map(ee => ({ id: ee.id, x: ee.x, y: ee.y })) : []
+      ref.current.groupIds = gIds
+      ref.current.groupOrigins = origins
+    }
+
+    // alt cloning: for group, clone all; for single, clone one
     if (e.altKey && s.currentSlideId && el) {
-      const clone: CanvasElement = { ...el, id: crypto.randomUUID(), x: el.x + (e.shiftKey ? 0 : 20), y: el.y + (e.shiftKey ? 0 : 20) }
-      s.addElement(s.currentSlideId, clone)
-      ref.current.clonedId = clone.id; ref.current.ox = clone.x; ref.current.oy = clone.y
+      const slide = s.slides.find(sl => sl.id === s.currentSlideId)
+      if (!slide) return
+      if (gIds.length > 0) {
+        const clones: CanvasElement[] = []
+        const idMap = new Map<string, string>()
+        for (const id of gIds) {
+          const orig = slide.elements.find(ee => ee.id === id)
+          if (orig) {
+            const cid = crypto.randomUUID()
+            clones.push({ ...orig, id: cid, x: orig.x + (e.shiftKey ? 0 : 20), y: orig.y + (e.shiftKey ? 0 : 20) })
+            idMap.set(id, cid)
+          }
+        }
+        clones.forEach(c => s.addElement(s.currentSlideId!, c))
+        // select all clones
+        const cloneIds = clones.map(c => c.id)
+        s.setSelectedIds(cloneIds)
+        // update ref for group drag
+        const origins = clones.map(c => ({ id: c.id, x: c.x, y: c.y }))
+        ref.current.groupIds = cloneIds
+        ref.current.groupOrigins = origins
+        ref.current.ox = clones[0].x; ref.current.oy = clones[0].y
+      } else {
+        const clone: CanvasElement = { ...el, id: crypto.randomUUID(), x: el.x + (e.shiftKey ? 0 : 20), y: el.y + (e.shiftKey ? 0 : 20) }
+        s.addElement(s.currentSlideId, clone)
+        ref.current.clonedId = clone.id; ref.current.ox = clone.x; ref.current.oy = clone.y
+      }
     }
   }, [elementId])
 
@@ -39,9 +72,23 @@ function useDrag(elementId: string) {
     const onMove = (e: MouseEvent) => {
       const s = usePptStore.getState()
       if (!s.currentSlideId) return
-      const z = s.zoom || 1; const tid = ref.current.clonedId || elementId
-      let dx = (e.clientX - ref.current.mx) / z; let dy = (e.clientY - ref.current.my) / z
+      const z = s.zoom || 1
+      let dx = (e.clientX - ref.current.mx) / z
+      let dy = (e.clientY - ref.current.my) / z
       if (ref.current.shift) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0 }
+
+      // group drag
+      if (ref.current.groupIds.length > 0) {
+        for (const { id, x, y } of ref.current.groupOrigins) {
+          const nx = Math.round(x + dx), ny = Math.round(y + dy)
+          s.updateElement(s.currentSlideId, id, { x: nx, y: ny })
+        }
+        usePptStore.getState().setGuideLines([]) // no snap for group
+        return
+      }
+
+      // single drag
+      const tid = ref.current.clonedId || elementId
       let nx = Math.round(ref.current.ox + dx); let ny = Math.round(ref.current.oy + dy)
       const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === tid)
       if (el) {
