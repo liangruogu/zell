@@ -316,7 +316,10 @@ export function PropsPanel() {
       <div className="p-3">
         {activeTab === 'props' ? (
           !el ? (
-            <p className="text-xs text-gray-400 text-center pt-4">选择元素后可编辑属性</p>
+            <div className="text-xs text-gray-400 text-center pt-4 space-y-2">
+              <p>选择元素后可编辑属性</p>
+              {slide && <SlideBackground slide={slide} />}
+            </div>
           ) : (
             <>
               <div className="flex items-center justify-between mb-3">
@@ -397,6 +400,28 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
           {el.type === 'rect' && <CornerSection el={el} updateProps={updateProps} />}
         </>
       )}
+    </div>
+  )
+}
+
+function SlideBackground({ slide }: { slide: import('./types').Slide }) {
+  const changeBg = (color: string) => {
+    const st = usePptStore.getState()
+    const slides = st.slides.map(s => s.id === slide.id ? { ...s, background: color } : s)
+    usePptStore.setState({ slides })
+  }
+  return (
+    <div>
+      <label className="text-[11px] text-gray-500">画布背景</label>
+      <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[26px] px-1">
+        <div className="relative shrink-0">
+          <input type="color" value={slide.background || '#ffffff'} onChange={e => changeBg(e.target.value)}
+            className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
+          />
+          <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: slide.background || '#ffffff' }} />
+        </div>
+        <span className="text-[11px] text-gray-600 font-mono flex-1">{slide.background || '#ffffff'}</span>
+      </div>
     </div>
   )
 }
