@@ -186,12 +186,6 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
           />
           <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
-        </div>
-        {recentColors.length > 0 && (
-          <button onClick={() => setShowPalette(!showPalette)} className="shrink-0 p-0 text-gray-400 hover:text-gray-600">
-            <svg width="8" height="4" viewBox="0 0 8 4"><path d="M0 0l4 4 4-4" fill="currentColor"/></svg>
-          </button>
-        )}
           {showPalette && recentColors.length > 0 && (
             <div ref={paletteRef} className="absolute top-full left-0 mt-1 p-1 bg-white border border-gray-200 rounded shadow-lg z-50 flex gap-0.5 flex-wrap" style={{ width: 96 }}>
               {recentColors.slice(0, 12).map(c => (
@@ -209,6 +203,11 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             </div>
           )}
         </div>
+        {recentColors.length > 0 && (
+          <button onClick={() => setShowPalette(!showPalette)} className="shrink-0 p-0 text-gray-400 hover:text-gray-600">
+            <svg width="8" height="4" viewBox="0 0 8 4"><path d="M0 0l4 4 4-4" fill="currentColor"/></svg>
+          </button>
+        )}
         {hexEdit ? (
           <input autoFocus type="text" value={hexText}
             onChange={e => setHexText(e.target.value)}
