@@ -206,11 +206,9 @@ export function SlideStrip() {
           boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
           borderRadius: 4,
         }}>
-          <div className="w-full h-[54px] bg-white rounded-t overflow-hidden border border-gray-400">
+          <div className="w-full h-full bg-white rounded overflow-hidden relative">
             <MiniSlide slide={slides[dragIdx]} />
-          </div>
-          <div className="h-[18px] flex items-center px-1 bg-gray-200/50 rounded-b border-x border-b border-gray-400">
-            <span className="text-[9px] text-gray-500">{dragIdx! + 1}</span>
+            <span className="absolute bottom-0.5 left-1 text-[10px] text-white/80 font-medium select-none">{dragIdx! + 1}</span>
           </div>
         </div>
       )}
@@ -276,18 +274,18 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
         isActive ? 'border-bindle-400 ring-2 ring-bindle-200' : isSelected ? 'border-blue-300' : 'border-gray-300 hover:border-gray-400',
         isDragging && 'opacity-30')}
     >
-      <div className="w-full h-[54px] bg-white rounded-t overflow-hidden">
+      <div className="w-full h-full bg-white rounded overflow-hidden">
         <MiniSlide slide={slide} />
       </div>
-      <div className="h-[17px] flex items-center px-1 bg-gray-200/50 rounded-b">
-        {renamingId === slide.id ? (
-          <input autoFocus value={renameVal} onChange={e => onChangeRenameVal(e.target.value)}
-            onBlur={onSubmitRename} onKeyDown={e => { if (e.key === 'Enter') onSubmitRename(); if (e.key === 'Escape') { onChangeRenameVal(slide.name); onSubmitRename() } }}
-            onClick={e => e.stopPropagation()} className="flex-1 bg-transparent outline-none text-[9px] text-gray-900 min-w-0" />
-        ) : (
-          <span className="text-[9px] text-gray-500 mr-auto" onDoubleClick={e => onStartRename(e, slide.id, slide.name)}>{index + 1}</span>
-        )}
-      </div>
+      {renamingId === slide.id ? (
+        <input autoFocus value={renameVal} onChange={e => onChangeRenameVal(e.target.value)}
+          onBlur={onSubmitRename} onKeyDown={e => { if (e.key === 'Enter') onSubmitRename(); if (e.key === 'Escape') { onChangeRenameVal(slide.name); onSubmitRename() } }}
+          onClick={e => e.stopPropagation()}
+          className="absolute bottom-0.5 left-1 right-1 bg-black/60 text-white text-[9px] outline-none rounded px-0.5" />
+      ) : (
+        <span className="absolute bottom-0.5 left-1 text-[10px] text-white/80 font-medium pointer-events-none select-none"
+          onDoubleClick={e => onStartRename(e, slide.id, slide.name)}>{index + 1}</span>
+      )}
       <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 flex">
         <button onClick={e => { e.stopPropagation(); onDuplicate() }} className="p-0.5 bg-white border border-gray-200 rounded-bl hover:bg-bindle-50"><Copy size={9} /></button>
         <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-0.5 bg-white border border-gray-200 rounded-br hover:bg-red-50"><Trash2 size={9} className="text-red-400" /></button>
