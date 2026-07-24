@@ -191,11 +191,12 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
 }
 
 function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
-  const { updateElement } = usePptStore()
-  const [dragLayerIdx, setDragLayerIdx] = useState<number | null>(null)
+  const { setSelectedIds, selectedIds } = usePptStore()
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dropIdx, setDropIdx] = useState<number | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
-  const dragRef = useRef<number | null>(null)
+  const dragState = useRef({ fromIdx: -1, startY: 0, moved: false, currentDrop: -1 })
 
   if (!slide || slide.elements.length === 0) {
     return <p className="text-xs text-gray-400 text-center pt-4">暂无元素</p>
@@ -210,8 +211,7 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
   const submitRename = () => {
     if (renamingId && renameVal.trim()) {
       const st = usePptStore.getState()
-      const elIdx = slide.elements.findIndex(e => e.id === renamingId)
-      if (elIdx >= 0 && st.currentSlideId) {
+      if (st.currentSlideId) {
         const updatedSlide = {
           ...slide,
           elements: slide.elements.map(e => e.id === renamingId ? { ...e, props: { ...e.props, text: renameVal.trim() } } : e)
@@ -223,48 +223,60 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
     setRenamingId(null)
   }
 
+  const getDropIdx = (clientY: number): number => {
+    const list = document.querySelectorAll<HTMLElement>('[data-layer-idx]')
+    for (let i = 0; i < list.length; i++) {
+      const rect = list[i].getBoundingClientRect()
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        const midY = rect.top + rect.height / 2
+        return clientY < midY ? i : i + 1
+      }
+    }
+    // above or below the list
+    const first = list[0]?.getBoundingClientRect()
+    const last = list[list.length - 1]?.getBoundingClientRect()
+    if (first && clientY < first.top) return 0
+    if (last && clientY > last.bottom) return list.length
+    return -1
+  }
+
   const onPointerDown = (e: React.PointerEvent, idx: number) => {
-    if ((e.target as HTMLElement).closest('button')) return
-    dragRef.current = idx
-    setDragLayerIdx(idx)
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).tagName === 'INPUT') return
+    const el = slide.elements[slide.elements.length - 1 - idx]
+    setSelectedIds([el.id])
+    dragState.current = { fromIdx: idx, startY: e.clientY, moved: false, currentDrop: -1 }
+    setDragIdx(idx)
+
     const onMove = (ev: PointerEvent) => {
-      const list = document.querySelectorAll<HTMLElement>('[data-layer-idx]')
-      let targetIdx = -1
-      list.forEach((el, i) => {
-        const rect = el.getBoundingClientRect()
-        if (ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
-          targetIdx = i
-        }
-      })
-      if (targetIdx >= 0) setDragLayerIdx(targetIdx)
+      const dy = Math.abs(ev.clientY - dragState.current.startY)
+      if (dy < 4 && !dragState.current.moved) return
+      if (!dragState.current.moved) dragState.current.moved = true
+      const d = getDropIdx(ev.clientY)
+      if (d >= 0 && d !== dragState.current.currentDrop) {
+        dragState.current.currentDrop = d
+        setDropIdx(d)
+      }
     }
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
-      if (dragRef.current === null) return
-      const fromIdx = dragRef.current
-      dragRef.current = null
-      const list = document.querySelectorAll<HTMLElement>('[data-layer-idx]')
-      let toIdx = fromIdx
-      list.forEach((el, i) => {
-        const rect = el.getBoundingClientRect()
-        if (ev.clientY >= rect.top && ev.clientY <= rect.bottom) toIdx = i
-      })
-      setDragLayerIdx(null)
-      if (toIdx !== fromIdx) {
-        // reorder elements: reverse indices since list is reversed
+      const { fromIdx, moved } = dragState.current
+      dragState.current = { fromIdx: -1, startY: 0, moved: false, currentDrop: -1 }
+      setDragIdx(null)
+      setDropIdx(null)
+      if (!moved) return
+      const d = getDropIdx(ev.clientY)
+      if (d >= 0 && d !== fromIdx) {
         const total = slide.elements.length
         const fromReal = total - 1 - fromIdx
-        const toReal = total - 1 - toIdx
-        const elId = slide.elements[fromReal].id
+        const toReal = total - 1 - d
+        const adjustedTo = fromIdx < d ? toReal + 1 : toReal  // adjust for removal
         const ns = [...slide.elements]
-        ns.splice(fromReal, 1)
-        ns.splice(toReal, 0, slide.elements[fromReal])
+        const [movedEl] = ns.splice(fromReal, 1)
+        ns.splice(Math.max(0, adjustedTo), 0, movedEl)
         const st = usePptStore.getState()
         if (st.currentSlideId) {
-          const updatedSlide = { ...slide, elements: ns }
-          const allSlides = st.slides.map(s => s.id === st.currentSlideId ? updatedSlide : s)
-          usePptStore.setState({ slides: allSlides })
+          usePptStore.setState({ slides: st.slides.map(s => s.id === st.currentSlideId ? { ...slide, elements: ns } : s) })
         }
       }
     }
@@ -272,32 +284,41 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
     window.addEventListener('pointerup', onUp)
   }
 
+  const isSelected = (el: CanvasElement) => selectedIds.includes(el.id)
+
   return (
-    <div className="space-y-0.5 select-none">
+    <div className="space-y-0 select-none">
       {elements.map((el, i) => (
-        <div
-          key={el.id}
-          data-layer-idx={i}
-          onPointerDown={e => onPointerDown(e, i)}
-          className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-xs transition-colors ${dragLayerIdx === i ? 'bg-bindle-50 ring-1 ring-bindle-300' : 'hover:bg-gray-50'}`}
-          style={{ cursor: 'grab' }}
-        >
-          <GripVertical size={10} className="text-gray-300 shrink-0" />
-          <div className="w-3 h-3 rounded border border-gray-300 shrink-0" style={{ background: el.props.fill || '#e2e8f0' }} />
-          {renamingId === el.id ? (
-            <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
-              onBlur={submitRename}
-              onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenamingId(null) }}
-              className="flex-1 min-w-0 h-[22px] text-xs border border-gray-200 rounded px-1 outline-none select-text"
-              onClick={e => e.stopPropagation()}
-            />
-          ) : (
-            <span className="truncate flex-1" onDoubleClick={el.type === 'text' ? () => startRename(el) : undefined}>
-              {{ text: el.props.text?.slice(0, 16) || '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}
-            </span>
+        <div key={el.id}>
+          {dropIdx === i && dragIdx !== null && dragIdx !== i && (
+            <div className="h-[2px] bg-blue-500 mx-1 transition-all duration-150" />
           )}
+          <div
+            data-layer-idx={i}
+            onPointerDown={e => onPointerDown(e, i)}
+            className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-xs transition-colors ${isSelected(el) ? 'bg-bindle-50' : 'hover:bg-gray-50'} ${dragIdx === i ? 'opacity-40' : ''}`}
+            style={{ cursor: dragIdx !== null ? 'grabbing' : 'grab' }}
+          >
+            <GripVertical size={10} className="text-gray-300 shrink-0" />
+            <div className="w-3 h-3 rounded border border-gray-300 shrink-0" style={{ background: el.props.fill || '#e2e8f0' }} />
+            {renamingId === el.id ? (
+              <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                onBlur={submitRename}
+                onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenamingId(null) }}
+                className="flex-1 min-w-0 h-[22px] text-xs border border-gray-200 rounded px-1 outline-none select-text"
+                onClick={e => e.stopPropagation()}
+              />
+            ) : (
+              <span className="truncate flex-1" onDoubleClick={el.type === 'text' ? () => startRename(el) : undefined}>
+                {{ text: el.props.text?.slice(0, 16) || '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}
+              </span>
+            )}
+          </div>
         </div>
       ))}
+      {dropIdx === elements.length && dragIdx !== null && (
+        <div className="h-[2px] bg-blue-500 mx-1 transition-all duration-150" />
+      )}
     </div>
   )
 }
