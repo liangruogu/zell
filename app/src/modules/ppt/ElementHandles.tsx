@@ -55,18 +55,22 @@ export function ElementHandles({ element }: Props) {
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [activeHandle, element.type])
 
-  const hStyle = (pos: string): React.CSSProperties => ({
-    position: 'absolute', width: HS, height: HS,
-    background: '#3b82f6', border: '2px solid white', borderRadius: '50%',
-    cursor: pos === 'n' || pos === 's' ? 'ns-resize' : pos === 'w' || pos === 'e' ? 'ew-resize'
-      : pos === 'nw' || pos === 'se' ? 'nwse-resize' : 'nesw-resize',
-    ...(pos.includes('n') ? { top: -HS / 2 } : {}),
-    ...(pos.includes('s') ? { bottom: -HS / 2 } : {}),
-    ...(pos.includes('w') ? { left: -HS / 2 } : {}),
-    ...(pos.includes('e') ? { right: -HS / 2 } : {}),
-    ...(pos === 'n' || pos === 's' ? { left: '50%', marginLeft: -HS / 2 } : {}),
-    ...(pos === 'w' || pos === 'e' ? { top: '50%', marginTop: -HS / 2 } : {}),
-  })
+  const hStyle = (pos: string): React.CSSProperties => {
+    const isCorner = pos.length === 2
+    const isH = pos === 'w' || pos === 'e'
+    const isV = pos === 'n' || pos === 's'
+    return {
+      position: 'absolute',
+      background: '#3b82f6', border: '2px solid white',
+      borderRadius: isCorner ? '50%' : '3px',
+      cursor: isV ? 'ns-resize' : isH ? 'ew-resize'
+        : pos === 'nw' || pos === 'se' ? 'nwse-resize' : 'nesw-resize',
+      width: isV ? 18 : HS,
+      height: isH ? 18 : HS,
+      ...(pos.includes('n') ? { top: isV ? -5 : -HS / 2 } : pos.includes('s') ? { bottom: isV ? -5 : -HS / 2 } : { top: '50%', marginTop: isH ? -9 : -HS / 2 }),
+      ...(pos.includes('w') ? { left: isH ? -5 : -HS / 2 } : pos.includes('e') ? { right: isH ? -5 : -HS / 2 } : { left: '50%', marginLeft: isV ? -9 : -HS / 2 }),
+    }
+  }
 
   const handles = element.type === 'arrow' || element.type === 'line' ? ['w', 'e'] : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
 

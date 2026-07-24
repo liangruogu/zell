@@ -56,11 +56,15 @@ function pushSnapshot(slides: Slide[]) {
 }
 
 function pushHistory() {
-  if (historyTimer) clearTimeout(historyTimer)
+  if (!historyTimer) {
+    // first call in a burst: snapshot current state before any pending changes
+    const st = usePptStore.getState()
+    if (st.slides.length > 0) pushSnapshot(st.slides)
+  } else {
+    clearTimeout(historyTimer)
+  }
   historyTimer = setTimeout(() => {
-    const s = usePptStore.getState()
-    if (s.slides.length === 0) return
-    pushSnapshot(s.slides)
+    historyTimer = null
   }, 400)
 }
 
@@ -68,13 +72,6 @@ function flushHistory() {
   if (historyTimer) {
     clearTimeout(historyTimer)
     historyTimer = null
-    const s = usePptStore.getState()
-    if (s.slides.length > 0) {
-      usePptStore.setState({
-        _undo: [...s._undo.slice(-99), clone(s.slides)],
-        _redo: [],
-      })
-    }
   }
 }
 
