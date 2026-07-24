@@ -17,6 +17,9 @@ export function SlideStrip() {
   const [showGhost, setShowGhost] = useState(false)
   const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const flipRef = useRef<{ prevSlides: Slide[] } | null>(null)
+  const [hoverInsertIdx, setHoverInsertIdx] = useState<number | null>(null)
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hoverTargetRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (showGhost && ghostRef.current) {
@@ -201,6 +204,38 @@ export function SlideStrip() {
     })
   }, [slides])
 
+  const handleContainerMouseMove = useCallback((e: React.MouseEvent) => {
+    if (dragIdx !== null) return
+    const el = containerRef.current
+    if (!el) return
+    const st = usePptStore.getState()
+    let targetIdx: number | null = null
+    for (let i = 0; i <= st.slides.length; i++) {
+      const beforeEl = i > 0 ? document.querySelector(`[data-slide-idx="${i - 1}"]`) : null
+      const afterEl = i < st.slides.length ? document.querySelector(`[data-slide-idx="${i}"]`) : null
+      const gapStart = beforeEl ? beforeEl.getBoundingClientRect().right : el.getBoundingClientRect().left
+      const gapEnd = afterEl ? afterEl.getBoundingClientRect().left : el.getBoundingClientRect().right
+      if (e.clientX >= gapStart && e.clientX <= gapEnd && e.clientY >= el.getBoundingClientRect().top && e.clientY <= el.getBoundingClientRect().bottom) {
+        targetIdx = i
+        break
+      }
+    }
+    if (targetIdx !== hoverTargetRef.current) {
+      hoverTargetRef.current = targetIdx
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+      if (targetIdx !== null) {
+        hoverTimerRef.current = setTimeout(() => setHoverInsertIdx(targetIdx), 300)
+      } else {
+        setHoverInsertIdx(null)
+      }
+    }
+  }, [dragIdx])
+
+  const handleContainerMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    setHoverInsertIdx(null)
+  }, [])
+
   const handleClick = useCallback((e: React.MouseEvent, id: string, idx: number) => {
     if (e.ctrlKey || e.metaKey) {
       const st = usePptStore.getState()
@@ -261,7 +296,13 @@ export function SlideStrip() {
           </div>
         </div>
       )}
-      <div ref={containerRef} className="flex gap-2 overflow-x-auto py-1 items-center">
+       <div
+        ref={containerRef}
+        onMouseMove={handleContainerMouseMove}
+        onMouseLeave={handleContainerMouseLeave}
+        className="flex gap-2 overflow-x-auto overflow-y-visible py-1 items-center relative"
+      >
+        {hoverInsertIdx !== null && <InsertButton index={hoverInsertIdx} containerRef={containerRef} onInsert={() => { addSlide(hoverInsertIdx); setHoverInsertIdx(null) }} />}
         {slides.map((sl, i) => (
           <div key={sl.id} data-slide-idx={i} data-slide-id={sl.id} className="flex shrink-0 items-center">
             <div
@@ -343,6 +384,33 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
         <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-0.5 bg-white border border-gray-200 rounded-br hover:bg-red-50"><Trash2 size={9} className="text-red-400" /></button>
       </div>
     </div>
+  )
+}
+
+function InsertButton({ index, containerRef, onInsert }: { index: number; containerRef: { current: HTMLDivElement | null }; onInsert: () => void }) {
+  const [x, setX] = useState(0)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const update = () => {
+      const beforeEl = index > 0 ? document.querySelector(`[data-slide-idx="${index - 1}"]`) : null
+      const afterEl = document.querySelector(`[data-slide-idx="${index}"]`)
+      const left = beforeEl ? beforeEl.getBoundingClientRect().right : el.getBoundingClientRect().left
+      const right = afterEl ? afterEl.getBoundingClientRect().left : el.getBoundingClientRect().right
+      setX((left + right) / 2 - el.getBoundingClientRect().left)
+    }
+    update()
+    const timer = setInterval(update, 100)
+    return () => clearInterval(timer)
+  }, [index, containerRef])
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onInsert() }}
+      style={{ position: 'absolute', left: x - 10, top: '50%', transform: 'translateY(-50%)' }}
+      className="z-50 w-5 h-5 rounded-full bg-bindle-500 text-white flex items-center justify-center shadow-md hover:bg-bindle-600 transition-all"
+    >
+      <Plus size={12} />
+    </button>
   )
 }
 
