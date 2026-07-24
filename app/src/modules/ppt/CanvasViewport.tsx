@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useState } from 'react'
 import { usePptStore } from './store'
 import { CanvasElementView } from './CanvasElement'
 import { ElementHandles } from './ElementHandles'
@@ -8,20 +8,30 @@ export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
   const { slides, currentSlideId, selectedIds, zoom, setZoom, deleteElements } = usePptStore()
   const slide = slides.find(s => s.id === currentSlideId)
+  const [panX, setPanX] = useState(0)
+  const [panY, setPanY] = useState(0)
 
-  // Ctrl+wheel zoom
+  // Ctrl+wheel zoom at mouse position
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.1 : 0.1
-      usePptStore.getState().setZoom(usePptStore.getState().zoom + delta)
+      if (e.ctrlKey) {
+        e.preventDefault()
+        const rect = el.getBoundingClientRect()
+        const mx = e.clientX - rect.left - rect.width / 2 - panX
+        const my = e.clientY - rect.top - rect.height / 2 - panY
+        const oldZoom = usePptStore.getState().zoom
+        const newZoom = Math.max(0.25, Math.min(3, oldZoom + (e.deltaY > 0 ? -0.1 : 0.1)))
+        usePptStore.getState().setZoom(newZoom)
+        const scale = newZoom / oldZoom
+        setPanX(prev => mx - scale * mx + prev)
+        setPanY(prev => my - scale * my + prev)
+      }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [panX, panY])
 
   // Ctrl+/- keys
   useEffect(() => {
@@ -29,10 +39,37 @@ export function CanvasViewport() {
       if (!e.ctrlKey) return
       if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom(zoom + 0.1) }
       if (e.key === '-') { e.preventDefault(); setZoom(zoom - 0.1) }
+      if (e.key === '0') { e.preventDefault(); setZoom(1); setPanX(0); setPanY(0) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [zoom, setZoom])
+
+  // Middle-button pan
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    let panning = false, sx = 0, sy = 0, spx = 0, spy = 0
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 1) return
+      e.preventDefault()
+      panning = true; sx = e.clientX; sy = e.clientY; spx = panX; spy = panY
+    }
+    const onMove = (e: MouseEvent) => {
+      if (!panning) return
+      setPanX(spx + e.clientX - sx)
+      setPanY(spy + e.clientY - sy)
+    }
+    const onUp = () => { panning = false }
+    el.addEventListener('mousedown', onDown)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      el.removeEventListener('mousedown', onDown)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [panX, panY])
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.canvas === 'bg') {
@@ -40,14 +77,11 @@ export function CanvasViewport() {
     }
   }, [])
 
-  // Delete key
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const s = usePptStore.getState()
-        if (s.selectedIds.length > 0 && s.currentSlideId) {
-          s.deleteElements(s.currentSlideId, s.selectedIds)
-        }
+        if (s.selectedIds.length > 0 && s.currentSlideId) s.deleteElements(s.currentSlideId, s.selectedIds)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -59,11 +93,10 @@ export function CanvasViewport() {
   const selEls = selectedIds.map(id => slide.elements.find(e => e.id === id)).filter(Boolean) as any[]
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 flex items-center justify-center overflow-hidden"
-      onMouseDown={handleCanvasClick}
-      tabIndex={0}
+    <div ref={containerRef}
+      className="flex-1 overflow-auto flex items-center justify-center"
+      style={{ cursor: 'default' }}
+      onMouseDown={handleCanvasClick} tabIndex={0}
     >
       <div
         data-canvas="bg"
@@ -72,7 +105,7 @@ export function CanvasViewport() {
           width: SLIDE_W,
           height: SLIDE_H,
           background: slide.background || '#ffffff',
-          transform: `scale(${zoom})`,
+          transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
           transformOrigin: 'center center',
         }}
       >

@@ -68,15 +68,21 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
         <>
           <div><label className="text-[10px] text-gray-500">颜色</label><input type="color" value={el.props.stroke || '#94a3b8'} onChange={e => updateProps({ stroke: e.target.value })} className="w-full h-7 border border-gray-200 rounded cursor-pointer" /></div>
           <div><label className="text-[10px] text-gray-500">粗细</label><input type="number" value={el.props.strokeWidth || 2} min={1} max={20} onChange={e => updateProps({ strokeWidth: +e.target.value })} className="w-full px-1.5 py-0.5 text-xs border border-gray-200 rounded" /></div>
-          <div><label className="text-[10px] text-gray-500">起点形状</label>
-            <select value={el.props.startShape || 'none'} onChange={e => updateProps({ startShape: e.target.value })} className="w-full px-1.5 py-0.5 text-xs border border-gray-200 rounded">
-              {['none', 'arrow', 'circle', 'square'].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+          <div>
+            <label className="text-[10px] text-gray-500">起点</label>
+            <div className="flex gap-1 mt-0.5">
+              {[{ v: 'none', s: '—' }, { v: 'arrow', s: '▶' }, { v: 'circle', s: '●' }, { v: 'square', s: '■' }].map(opt => (
+                <button key={opt.v} onClick={() => updateProps({ startShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.startShape || 'none') === opt.v ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
+              ))}
+            </div>
           </div>
-          <div><label className="text-[10px] text-gray-500">终点形状</label>
-            <select value={el.props.endShape || 'arrow'} onChange={e => updateProps({ endShape: e.target.value })} className="w-full px-1.5 py-0.5 text-xs border border-gray-200 rounded">
-              {['none', 'arrow', 'circle', 'square'].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+          <div>
+            <label className="text-[10px] text-gray-500">终点</label>
+            <div className="flex gap-1 mt-0.5">
+              {[{ v: 'none', s: '—' }, { v: 'arrow', s: '▶' }, { v: 'circle', s: '●' }, { v: 'square', s: '■' }].map(opt => (
+                <button key={opt.v} onClick={() => updateProps({ endShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.endShape || 'arrow') === opt.v ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
+              ))}
+            </div>
           </div>
         </>
       )}
