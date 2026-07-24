@@ -4,15 +4,6 @@ import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
 import type { Slide } from './types'
 
-function captureSlideRects() {
-  const map = new Map<string, DOMRect>()
-  document.querySelectorAll<HTMLElement>('[data-slide-idx]').forEach(el => {
-    const sid = el.dataset.slideId
-    if (sid) map.set(sid, el.getBoundingClientRect())
-  })
-  return map
-}
-
 export function SlideStrip() {
   const s = usePptStore()
   const { slides, currentSlideId, selectedSlideIds, setCurrentSlide, addSlide, deleteSlide, deleteSlides, duplicateSlide, moveSlide, renameSlide } = s
@@ -25,7 +16,7 @@ export function SlideStrip() {
   const ghostRef = useRef<HTMLDivElement>(null)
   const [showGhost, setShowGhost] = useState(false)
   const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
-  const flipRectsRef = useRef<Map<string, DOMRect> | null>(null)
+  const flipRef = useRef<{ prevSlides: Slide[] } | null>(null)
 
   useEffect(() => {
     if (showGhost && ghostRef.current) {
@@ -136,7 +127,7 @@ export function SlideStrip() {
         const dropIdx = findDropIdx(e.clientX, e.clientY, fromIdx)
         if (dropIdx >= 0 && dropIdx !== fromIdx) {
           const realTo = fromIdx < dropIdx ? dropIdx - 1 : dropIdx
-          flipRectsRef.current = captureSlideRects()
+          flipRef.current = { prevSlides: [...usePptStore.getState().slides] }
           moveSlide(fromIdx, realTo)
         }
       }
@@ -175,19 +166,24 @@ export function SlideStrip() {
   }, [])
 
   useLayoutEffect(() => {
-    const prev = flipRectsRef.current
-    if (!prev || prev.size === 0) return
-    flipRectsRef.current = null
-    const st = usePptStore.getState()
+    const flip = flipRef.current
+    if (!flip) return
+    flipRef.current = null
+    const { prevSlides } = flip
+    const nextSlides = usePptStore.getState().slides
+    const SW = 128 + 8 // slide width + gap
+
+    const prevIdx = new Map(prevSlides.map((s, i) => [s.id, i]))
+
     requestAnimationFrame(() => {
       const els = document.querySelectorAll<HTMLElement>('[data-slide-idx]')
       els.forEach(el => {
         const sid = el.dataset.slideId
         if (!sid) return
-        const prevRect = prev.get(sid)
-        if (!prevRect) return
-        const nextRect = el.getBoundingClientRect()
-        const dx = prevRect.left - nextRect.left
+        const i = prevIdx.get(sid)
+        if (i === undefined) return
+        const j = nextSlides.findIndex(s => s.id === sid)
+        const dx = (i - j) * SW
         if (Math.abs(dx) < 1) return
         el.style.transition = 'none'
         el.style.transform = `translateX(${dx}px)`
