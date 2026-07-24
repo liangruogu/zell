@@ -24,8 +24,8 @@ export function CanvasViewport() {
       if (e.ctrlKey) {
         e.preventDefault()
         const rect = el.getBoundingClientRect()
-        const mx = e.clientX - rect.left - rect.width / 2 - panX
-        const my = e.clientY - rect.top - rect.height / 2 - panY
+        const mx = e.clientX - rect.left - rect.width / 2 - panRef.current.x
+        const my = e.clientY - rect.top - rect.height / 2 - panRef.current.y
         const oldZoom = usePptStore.getState().zoom
         const newZoom = Math.max(0.25, Math.min(3, oldZoom + (e.deltaY > 0 ? -0.1 : 0.1)))
         usePptStore.getState().setZoom(newZoom)
@@ -35,7 +35,7 @@ export function CanvasViewport() {
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [panX, panY])
+  }, [])
 
   // Ctrl+/- keys
   useEffect(() => {
