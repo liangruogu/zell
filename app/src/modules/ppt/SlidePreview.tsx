@@ -73,22 +73,23 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
     }
   }, [idx, visible])
 
+  const [hoverSide, setHoverSide] = useState<'left' | 'right' | null>(null)
+
   if (!slide) return null
 
   return (
     <div
-      className="fixed inset-0 z-[99999] bg-black flex items-center justify-center"
+      className="fixed inset-0 z-[99999] bg-black flex items-center justify-center cursor-pointer"
       onClick={(e) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-        const midX = rect.width / 2
-        if (e.clientX > midX) goNext()
+        if (e.clientX > rect.width / 2) goNext()
         else goPrev()
       }}
       onMouseMove={(e) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-        const midX = rect.width / 2
-        e.currentTarget.style.cursor = e.clientX > midX ? 'e-resize' : 'w-resize'
+        setHoverSide(e.clientX > rect.width / 2 ? 'right' : 'left')
       }}
+      onMouseLeave={() => setHoverSide(null)}
     >
       {/* Slide content — fills viewport height, 16:9 aspect */}
       <div
@@ -120,16 +121,12 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       </div>
 
       {/* Navigation hints */}
-      {idx > 0 && (
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
-          <ChevronLeft size={32} />
-        </div>
-      )}
-      {idx < visible.length - 1 && (
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
-          <ChevronRight size={32} />
-        </div>
-      )}
+      <div className={`absolute left-0 top-0 bottom-0 w-1/2 flex items-center justify-start pl-8 pointer-events-none transition-opacity duration-200 ${hoverSide === 'left' ? 'opacity-100' : 'opacity-0'}`}>
+        <ChevronLeft size={48} className="text-white/50" />
+      </div>
+      <div className={`absolute right-0 top-0 bottom-0 w-1/2 flex items-center justify-end pr-8 pointer-events-none transition-opacity duration-200 ${hoverSide === 'right' ? 'opacity-100' : 'opacity-0'}`}>
+        <ChevronRight size={48} className="text-white/50" />
+      </div>
 
       {/* Bottom bar */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
