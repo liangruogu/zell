@@ -182,12 +182,16 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
       {label && <label className="text-[10px] text-gray-500">{label}</label>}
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[24px] px-1">
         <div className="relative shrink-0">
-          <button onClick={() => setShowPalette(!showPalette)} className="block">
-            <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
-          </button>
           <input type="color" value={color} onChange={e => handleColorChange(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer" style={{ width: 16, height: 16, pointerEvents: 'none' }}
+            className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
           />
+          <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
+        </div>
+        {recentColors.length > 0 && (
+          <button onClick={() => setShowPalette(!showPalette)} className="shrink-0 p-0 text-gray-400 hover:text-gray-600">
+            <svg width="8" height="4" viewBox="0 0 8 4"><path d="M0 0l4 4 4-4" fill="currentColor"/></svg>
+          </button>
+        )}
           {showPalette && recentColors.length > 0 && (
             <div ref={paletteRef} className="absolute top-full left-0 mt-1 p-1 bg-white border border-gray-200 rounded shadow-lg z-50 flex gap-0.5 flex-wrap" style={{ width: 96 }}>
               {recentColors.slice(0, 12).map(c => (
@@ -335,6 +339,16 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
 function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
   const shadows: { x: number; y: number; blur: number; color: string }[] = el.props.shadows || (el.props.shadowBlur ? [{ x: el.props.shadowX ?? 0, y: el.props.shadowY ?? 2, blur: el.props.shadowBlur ?? 4, color: el.props.shadowColor ?? 'rgba(0,0,0,0.15)' }] : [])
   const [editIdx, setEditIdx] = useState<number | null>(null)
+  const popRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (editIdx === null) return
+    const onDown = (e: MouseEvent) => {
+      if (popRef.current && !popRef.current.contains(e.target as Node)) setEditIdx(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [editIdx])
 
   const updateShadow = (idx: number, s: Partial<{ x: number; y: number; blur: number; color: string }>) => {
     const ns = shadows.map((sh, i) => i === idx ? { ...sh, ...s } : sh)
@@ -342,7 +356,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
   }
   const removeShadow = (idx: number) => {
     const ns = shadows.filter((_, i) => i !== idx)
-    updateProps({ shadows: ns.length > 0 ? ns : undefined })
+    updateProps({ shadows: ns.length > 0 ? ns : undefined, shadowBlur: undefined, shadowX: undefined, shadowY: undefined, shadowColor: undefined })
     setEditIdx(null)
   }
   const addShadow = () => {
@@ -374,7 +388,8 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             </button>
           </div>
           {editIdx === i && (
-            <div className="mt-1 p-2 bg-gray-50 rounded space-y-1">
+            <div ref={popRef} className="absolute left-full top-0 ml-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 space-y-1">
+              <div className="text-[10px] text-gray-500 font-medium">阴影 {i + 1}</div>
               <ColorChip label="" color={s.color} onChange={v => updateShadow(i, { color: v })} />
               <div className="grid grid-cols-3 gap-1">
                 <ScrubInput label="X" value={s.x} onChange={v => updateShadow(i, { x: v })} min={-50} max={50} />
