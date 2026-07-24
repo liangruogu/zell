@@ -11,8 +11,8 @@ export function PptToolbar() {
     if (!currentSlideId) return
     const defaults: Record<string, Partial<CanvasElement>> = {
       text: { type: 'text', x: 100, y: 100, w: 300, h: 60, opacity: 1, props: { text: '新文本', fontSize: 20, fontColor: '#333', fontWeight: 'normal' } },
-      rect: { type: 'rect', x: 200, y: 150, w: 200, h: 120, opacity: 1, props: { fill: '#e2e8f0', stroke: '#cbd5e1', strokeWidth: 1, borderRadius: 4 } },
-      ellipse: { type: 'ellipse', x: 200, y: 150, w: 120, h: 120, opacity: 1, props: { fill: '#e2e8f0', stroke: '#cbd5e1', strokeWidth: 1 } },
+      rect: { type: 'rect', x: 200, y: 150, w: 200, h: 120, opacity: 1, props: { fill: '#e2e8f0', borderRadius: 4 } },
+      ellipse: { type: 'ellipse', x: 200, y: 150, w: 120, h: 120, opacity: 1, props: { fill: '#e2e8f0' } },
       arrow: { type: 'arrow', x: 100, y: 300, w: 300, h: 30, opacity: 1, props: { stroke: '#94a3b8', strokeWidth: 2, endShape: 'arrow', startShape: 'none' } },
       image: { type: 'image', x: 200, y: 100, w: 400, h: 300, opacity: 1, props: { src: '' } },
     }

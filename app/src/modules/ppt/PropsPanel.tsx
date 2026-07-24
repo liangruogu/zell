@@ -127,6 +127,7 @@ export function PropsPanel() {
 function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; updateElement: any; slideId: string }) {
   const update = (changes: Partial<CanvasElement>) => updateElement(slideId, el.id, changes)
   const updateProps = (props: Partial<CanvasElement['props']>) => update({ props: { ...el.props, ...props } })
+  const hasStroke = el.type === 'arrow' || ((el.props.strokeWidth ?? 0) > 0 && el.props.stroke)
 
   return (
     <div className="space-y-3">
@@ -149,7 +150,7 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       {el.type === 'arrow' && (
         <>
           <div><label className="text-[10px] text-gray-500">颜色</label><input type="color" value={el.props.stroke || '#94a3b8'} onChange={e => updateProps({ stroke: e.target.value })} className="w-full h-7 border border-gray-200 rounded cursor-pointer" /></div>
-          <ScrubInput label="粗细" value={el.props.strokeWidth ?? 2} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
+          <ScrubInput label="粗细" value={el.props.strokeWidth ?? 2} onChange={v => updateProps({ strokeWidth: v })} min={1} max={20} />
           <div>
             <label className="text-[10px] text-gray-500">起点</label>
             <div className="flex gap-1 mt-0.5">
@@ -171,8 +172,15 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       {(el.type === 'rect' || el.type === 'ellipse') && (
         <>
           <div><label className="text-[10px] text-gray-500">填充</label><input type="color" value={el.props.fill || '#e2e8f0'} onChange={e => updateProps({ fill: e.target.value })} className="w-full h-7 border border-gray-200 rounded cursor-pointer" /></div>
-          <div><label className="text-[10px] text-gray-500">边框色</label><input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => updateProps({ stroke: e.target.value })} className="w-full h-7 border border-gray-200 rounded cursor-pointer" /></div>
-          <ScrubInput label="边框粗细" value={el.props.strokeWidth ?? 1} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
+          <div><label className="text-[10px] text-gray-500">边框</label>
+            <div className="flex items-center gap-1 mt-0.5">
+              <input type="checkbox" checked={hasStroke} onChange={e => updateProps(e.target.checked ? { stroke: '#94a3b8', strokeWidth: 1 } : { stroke: undefined, strokeWidth: undefined })} className="shrink-0" />
+              {hasStroke && <>
+                <input type="color" value={el.props.stroke || '#94a3b8'} onChange={e => updateProps({ stroke: e.target.value })} className="w-6 h-5 border border-gray-200 rounded cursor-pointer shrink-0" />
+                <ScrubInput label="" labelLeft value={el.props.strokeWidth ?? 1} onChange={v => updateProps({ strokeWidth: v })} min={1} max={20} />
+              </>}
+            </div>
+          </div>
           {el.type === 'rect' && (
             <>
               <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v })} min={0} max={200} />
