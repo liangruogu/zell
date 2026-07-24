@@ -103,12 +103,17 @@ export function CanvasViewport() {
   // Delete + Undo/Redo keys
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Don't intercept when editing text/inputs
+      if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return
       const s = usePptStore.getState()
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (s.selectedIds.length > 0 && s.currentSlideId) s.deleteElements(s.currentSlideId, s.selectedIds)
+        if (s.selectedSlideIds.length > 0) { e.preventDefault(); s.deleteSlides(s.selectedSlideIds) }
+        else if (s.selectedIds.length > 0 && s.currentSlideId) { e.preventDefault(); s.deleteElements(s.currentSlideId, s.selectedIds) }
       }
       if (e.ctrlKey && e.key === 'z' && !e.shiftKey) { e.preventDefault(); s.undo() }
       if (e.ctrlKey && (e.key === 'Z' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); s.redo() }
+      if (e.ctrlKey && e.key === 'c') { e.preventDefault(); s.copySlide() }
+      if (e.ctrlKey && e.key === 'v') { e.preventDefault(); s.pasteSlide() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

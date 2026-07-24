@@ -11,8 +11,10 @@ interface PptState {
   slides: Slide[]
   currentSlideId: string | null
   selectedIds: string[]
+  selectedSlideIds: string[]
   zoom: number
   guideLines: GuideLine[]
+  clipboardSlide: Slide | null
   _undo: Slide[][]
   _redo: Slide[][]
   _timer: ReturnType<typeof setTimeout> | null
@@ -22,7 +24,10 @@ interface PptState {
   setCurrentSlide: (id: string) => void
   addSlide: (afterIndex?: number) => void
   deleteSlide: (id: string) => void
+  deleteSlides: (ids: string[]) => void
   duplicateSlide: (id: string) => void
+  copySlide: () => void
+  pasteSlide: () => void
   moveSlide: (fromIdx: number, toIdx: number) => void
   renameSlide: (id: string, name: string) => void
 
@@ -65,8 +70,10 @@ export const usePptStore = create<PptState>((set, get) => ({
   slides: [],
   currentSlideId: null,
   selectedIds: [],
+  selectedSlideIds: [],
   zoom: 1,
   guideLines: [],
+  clipboardSlide: null,
   _undo: [],
   _redo: [],
   _timer: null,
@@ -124,6 +131,37 @@ export const usePptStore = create<PptState>((set, get) => ({
     set(s => {
       pushHistory()
       return { slides: s.slides.map(sl => sl.id === id ? { ...sl, name } : sl) }
+    })
+  },
+
+  deleteSlides: (ids) => {
+    if (ids.length === 0) return
+    mutate(set, ({ slides, currentSlideId }) => {
+      const ns = slides.filter(s => !ids.includes(s.id))
+      if (ns.length === 0) return {}
+      ns.forEach((s, i) => { s.name = `幻灯片 ${i + 1}` })
+      const nextId = ids.includes(currentSlideId || '') ? ns[0]?.id || null : currentSlideId
+      return { slides: ns, currentSlideId: nextId, selectedIds: [] }
+    })
+  },
+
+  copySlide: () => {
+    const { currentSlideId, slides } = get()
+    const slide = slides.find(s => s.id === currentSlideId)
+    if (slide) set({ clipboardSlide: clone([slide])[0] })
+  },
+
+  pasteSlide: () => {
+    const { clipboardSlide, slides, currentSlideId } = get()
+    if (!clipboardSlide) return
+    const idx = slides.findIndex(s => s.id === currentSlideId)
+    const after = idx >= 0 ? idx + 1 : slides.length
+    mutate(set, ({ slides: sls }) => {
+      const copy: Slide = { ...clipboardSlide, id: genId(), name: `${clipboardSlide.name} (副本)`, elements: clipboardSlide.elements.map(e => ({ ...e, id: genId() })) }
+      const ns = [...sls]
+      ns.splice(after, 0, copy)
+      ns.forEach((s, i) => { s.name = `幻灯片 ${i + 1}` })
+      return { slides: ns, currentSlideId: copy.id, selectedIds: [] }
     })
   },
 

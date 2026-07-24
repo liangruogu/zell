@@ -4,8 +4,10 @@ import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
 
 export function SlideStrip() {
-  const { slides, currentSlideId, setCurrentSlide, addSlide, deleteSlide, duplicateSlide, moveSlide, renameSlide } = usePptStore()
+  const { slides, currentSlideId, selectedSlideIds, setCurrentSlide, addSlide, deleteSlide, deleteSlides, duplicateSlide, moveSlide, renameSlide } = usePptStore()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameVal, setRenameVal] = useState('')
 
   const handleDragStart = useCallback((e: React.DragEvent, idx: number) => {
     setDragIdx(idx); e.dataTransfer.effectAllowed = 'move'
@@ -17,21 +19,61 @@ export function SlideStrip() {
     setDragIdx(null)
   }, [dragIdx, moveSlide])
 
+  const handleSlideClick = useCallback((e: React.MouseEvent, id: string) => {
+    if (e.ctrlKey || e.metaKey) {
+      usePptStore.setState(s => ({
+        selectedSlideIds: s.selectedSlideIds.includes(id)
+          ? s.selectedSlideIds.filter(sid => sid !== id)
+          : [...s.selectedSlideIds, id],
+      }))
+    } else {
+      setCurrentSlide(id)
+      usePptStore.setState({ selectedSlideIds: [] })
+    }
+  }, [setCurrentSlide])
+
+  const startRename = (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation()
+    setRenamingId(id); setRenameVal(name)
+  }
+  const submitRename = () => {
+    if (renamingId && renameVal.trim()) renameSlide(renamingId, renameVal.trim())
+    setRenamingId(null)
+  }
+
+  const handleDeleteSelected = () => {
+    if (selectedSlideIds.length > 0) {
+      deleteSlides(selectedSlideIds)
+      usePptStore.setState({ selectedSlideIds: [] })
+    } else if (currentSlideId) {
+      deleteSlide(currentSlideId)
+    }
+  }
+
   return (
-    <div className="h-28 border-t border-gray-200 bg-gray-100 flex items-center px-3 gap-2 shrink-0">
+    <div className="h-28 border-t border-gray-200 flex items-center px-3 gap-2 shrink-0 bg-gray-100">
+      <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors">
+        <Plus size={20} />
+      </button>
       <div className="flex gap-2 overflow-x-auto py-1">
         {slides.map((s, i) => (
           <div key={s.id} draggable
             onDragStart={e => handleDragStart(e, i)} onDragOver={handleDragOver} onDrop={e => handleDrop(e, i)}
-            onClick={() => setCurrentSlide(s.id)}
-            onDoubleClick={() => { const n = prompt('幻灯片名称', s.name); if (n) renameSlide(s.id, n) }}
+            onClick={e => handleSlideClick(e, s.id)}
             className={cn('group relative w-28 h-[72px] border rounded cursor-pointer shrink-0 transition-all',
-              s.id === currentSlideId ? 'border-bindle-400 ring-2 ring-bindle-200' : 'border-gray-300 hover:border-gray-400',
+              s.id === currentSlideId ? 'border-bindle-400 ring-2 ring-bindle-200' : selectedSlideIds.includes(s.id) ? 'border-blue-300 bg-blue-50' : 'border-gray-300 hover:border-gray-400',
               dragIdx === i && 'opacity-50')}
           >
             <div className="w-full h-full bg-white rounded flex items-center justify-center text-[10px] text-gray-400">{i + 1}</div>
-            <div className="absolute bottom-0 left-0 right-0 bg-black/30 text-white text-[9px] px-1 py-0.5 rounded-b flex items-center justify-between opacity-0 group-hover:opacity-100">
-              <span className="truncate flex-1">{s.name}</span>
+            <div className="absolute bottom-0 left-0 right-0 rounded-b flex items-center bg-black/20 text-white text-[9px] px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              {renamingId === s.id ? (
+                <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                  onBlur={submitRename} onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenamingId(null) }}
+                  onClick={e => e.stopPropagation()}
+                  className="flex-1 bg-transparent outline-none text-[9px] min-w-0" />
+              ) : (
+                <span className="truncate flex-1" onDoubleClick={e => startRename(e, s.id, s.name)} title="双击重命名">{s.name}</span>
+              )}
               <GripHorizontal size={9} className="cursor-grab shrink-0 ml-0.5" />
             </div>
             <div className="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100">
@@ -41,9 +83,11 @@ export function SlideStrip() {
           </div>
         ))}
       </div>
-      <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors">
-        <Plus size={20} />
-      </button>
+      {selectedSlideIds.length > 0 && (
+        <button onClick={handleDeleteSelected} className="shrink-0 p-1.5 text-red-400 hover:bg-red-50 rounded" title="删除选中">
+          <Trash2 size={14} />
+        </button>
+      )}
     </div>
   )
 }
