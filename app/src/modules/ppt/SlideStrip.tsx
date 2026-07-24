@@ -217,9 +217,14 @@ export function SlideStrip() {
       <div ref={containerRef} className="flex gap-2 overflow-x-auto py-1 items-center">
         {slides.map((sl, i) => (
           <div key={sl.id} data-slide-idx={i} className="flex shrink-0 items-center">
-            {dragOverIdx === i && dragIdx !== null && dragIdx !== i && (
-              <div className="w-1 h-[72px] bg-blue-500 rounded shrink-0 mr-0.5" />
-            )}
+            <div
+              className="h-[72px] bg-blue-500 rounded shrink-0 transition-all duration-200 ease-out"
+              style={{
+                width: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 4 : 0,
+                marginRight: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 2 : 0,
+                opacity: (dragOverIdx === i && dragIdx !== null && dragIdx !== i) ? 1 : 0,
+              }}
+            />
             <SlideThumb
               slide={sl}
               index={i}
@@ -237,9 +242,14 @@ export function SlideStrip() {
             />
           </div>
         ))}
-        {dragOverIdx === slides.length && dragIdx !== null && (
-          <div className="w-1 h-[72px] bg-blue-500 rounded shrink-0" />
-        )}
+        <div
+          className="h-[72px] bg-blue-500 rounded shrink-0 transition-all duration-200 ease-out"
+          style={{
+            width: (dragOverIdx === slides.length && dragIdx !== null) ? 4 : 0,
+            marginRight: (dragOverIdx === slides.length && dragIdx !== null) ? 2 : 0,
+            opacity: (dragOverIdx === slides.length && dragIdx !== null) ? 1 : 0,
+          }}
+        />
       </div>
       <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors">
         <Plus size={20} />
