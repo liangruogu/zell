@@ -7,6 +7,7 @@ import type { Slide } from './types'
 export function SlideStrip() {
   const { slides, currentSlideId, selectedSlideIds, setCurrentSlide, addSlide, deleteSlide, deleteSlides, duplicateSlide, moveSlide, renameSlide } = usePptStore()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const dragRef = useRef<number | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
   const lastClickedRef = useRef<number | null>(null)
@@ -43,9 +44,6 @@ export function SlideStrip() {
 
   return (
     <div className="h-28 border-t border-gray-200 flex items-center px-3 gap-2 shrink-0 bg-gray-100">
-      <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors">
-        <Plus size={20} />
-      </button>
       <div className="flex gap-2 overflow-x-auto py-1">
         {slides.map((s, i) => (
           <SlideThumb
@@ -61,14 +59,17 @@ export function SlideStrip() {
             onSubmitRename={submitRename}
             onStartRename={startRename}
             onClick={handleClick}
-            onDragStart={(e) => setDragIdx(i)}
+            onDragStart={(e) => { dragRef.current = i; setDragIdx(i) }}
             onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); if (dragIdx !== null && dragIdx !== i) moveSlide(dragIdx, i); setDragIdx(null) }}
+            onDrop={(e) => { e.preventDefault(); const from = dragRef.current; if (from !== null && from !== i) moveSlide(from, i); setDragIdx(null); dragRef.current = null }}
             onDuplicate={() => duplicateSlide(s.id)}
             onDelete={() => deleteSlide(s.id)}
           />
         ))}
       </div>
+      <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors">
+        <Plus size={20} />
+      </button>
       {selectedSlideIds.length > 0 && (
         <button onClick={handleDeleteSelected} className="shrink-0 p-1.5 text-red-400 hover:bg-red-50 rounded" title="Delete selected">
           <Trash2 size={14} />

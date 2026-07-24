@@ -15,6 +15,7 @@ interface PptState {
   zoom: number
   guideLines: GuideLine[]
   clipboardSlide: Slide | null
+  clipboardSlides: Slide[] | null
   _undo: Slide[][]
   _redo: Slide[][]
   _timer: ReturnType<typeof setTimeout> | null
@@ -74,6 +75,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   zoom: 1,
   guideLines: [],
   clipboardSlide: null,
+  clipboardSlides: null,
   _undo: [],
   _redo: [],
   _timer: null,
@@ -146,22 +148,28 @@ export const usePptStore = create<PptState>((set, get) => ({
   },
 
   copySlide: () => {
-    const { currentSlideId, slides } = get()
-    const slide = slides.find(s => s.id === currentSlideId)
-    if (slide) set({ clipboardSlide: clone([slide])[0] })
+    const { selectedSlideIds, slides, currentSlideId } = get()
+    if (selectedSlideIds.length > 0) {
+      const copies = slides.filter(s => selectedSlideIds.includes(s.id))
+      set({ clipboardSlide: clone(copies)[0], clipboardSlides: clone(copies) })
+    } else {
+      const slide = slides.find(s => s.id === currentSlideId)
+      if (slide) set({ clipboardSlide: clone([slide])[0], clipboardSlides: null })
+    }
   },
 
   pasteSlide: () => {
-    const { clipboardSlide, slides, currentSlideId } = get()
-    if (!clipboardSlide) return
+    const { clipboardSlides, clipboardSlide, slides, currentSlideId } = get()
+    const toPaste = clipboardSlides || (clipboardSlide ? [clipboardSlide] : [])
+    if (toPaste.length === 0) return
     const idx = slides.findIndex(s => s.id === currentSlideId)
     const after = idx >= 0 ? idx + 1 : slides.length
     mutate(set, ({ slides: sls }) => {
-      const copy: Slide = { ...clipboardSlide, id: genId(), name: `${clipboardSlide.name} (副本)`, elements: clipboardSlide.elements.map(e => ({ ...e, id: genId() })) }
+      const copies = toPaste.map(s => ({ ...s, id: genId(), name: `${s.name} (副本)`, elements: s.elements.map(e => ({ ...e, id: genId() })) }))
       const ns = [...sls]
-      ns.splice(after, 0, copy)
+      ns.splice(after, 0, ...copies)
       ns.forEach((s, i) => { s.name = `幻灯片 ${i + 1}` })
-      return { slides: ns, currentSlideId: copy.id, selectedIds: [] }
+      return { slides: ns, currentSlideId: copies[0].id, selectedIds: [] }
     })
   },
 
