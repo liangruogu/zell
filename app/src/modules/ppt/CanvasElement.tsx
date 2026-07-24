@@ -57,7 +57,7 @@ function renderArrowHead(x1: number, y1: number, x2: number, y2: number, shape: 
   }
   if (shape === 'square') {
     const px = -uy * size * 0.4; const py = ux * size * 0.4
-    return <rect x={baseX + px - size * 0.4} y={baseY + py - size * 0.4} width={size * 0.8} height={size * 0.8} fill={color} />
+    return <rect x={baseX + px - size * 0.4} y={baseY + py - size * 0.4} width={size * 0.8} height={size * 0.8} fill='none' stroke={color} strokeWidth={sw} />
   }
   return null
 }
@@ -99,11 +99,6 @@ function ArrowEl({ el }: EProps) {
   )
 }
 
-function LineEl({ el }: EProps) {
-  const { onMouseDown } = useDrag(el.id)
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: Math.max(el.h, 3), opacity: el.opacity, background: el.props.stroke || '#94a3b8', cursor: 'grab' }} onMouseDown={onMouseDown} />
-}
-
 function RectEl({ el }: EProps) {
   const { onMouseDown } = useDrag(el.id)
   const br = el.props.borderRadius || 0
@@ -126,7 +121,6 @@ export function CanvasElementView({ element, isSelected }: Props) {
     case 'text': return <TextEl {...p} />
     case 'ellipse': return <EllipseEl {...p} />
     case 'arrow': return <ArrowEl {...p} />
-    case 'line': return <LineEl {...p} />
     default: return <RectEl {...p} />
   }
 }

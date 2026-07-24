@@ -54,13 +54,14 @@ export function CanvasViewport() {
       if (e.button !== 1) return
       e.preventDefault()
       panning = true; sx = e.clientX; sy = e.clientY; spx = panX; spy = panY
+      el.style.cursor = 'grabbing'
     }
     const onMove = (e: MouseEvent) => {
       if (!panning) return
       setPanX(spx + e.clientX - sx)
       setPanY(spy + e.clientY - sy)
     }
-    const onUp = () => { panning = false }
+    const onUp = () => { panning = false; el.style.cursor = '' }
     el.addEventListener('mousedown', onDown)
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
@@ -97,9 +98,10 @@ export function CanvasViewport() {
 
   return (
     <div ref={containerRef}
-      className="flex-1 overflow-auto flex items-center justify-center"
+      className="w-full h-full overflow-auto flex items-center justify-center"
       style={{ cursor: 'default' }}
       onMouseDown={handleCanvasClick} tabIndex={0}
+      onContextMenu={e => e.preventDefault()}
     >
       <div
         data-canvas="bg"
