@@ -6,7 +6,7 @@ import { SLIDE_W, SLIDE_H } from './types'
 
 export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { slides, currentSlideId, selectedIds, zoom, setZoom, deleteElements } = usePptStore()
+  const { slides, currentSlideId, selectedIds, zoom, guideLines, setZoom, deleteElements } = usePptStore()
   const slide = slides.find(s => s.id === currentSlideId)
   const [, forceUpdate] = useState(0)
   const panRef = useRef({ x: 0, y: 0 })
@@ -142,6 +142,19 @@ export function CanvasViewport() {
         {selEls.map(el => (
           <ElementHandles key={`h-${el.id}`} element={el} />
         ))}
+        {/* Guide lines */}
+        {guideLines.length > 0 && (
+          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 99 }}>
+            {guideLines.map((g, i) => (
+              <line
+                key={i}
+                x1={g.type === 'v' ? g.pos : g.start} y1={g.type === 'h' ? g.pos : g.start}
+                x2={g.type === 'v' ? g.pos : g.end} y2={g.type === 'h' ? g.pos : g.end}
+                stroke="#3b82f6" strokeWidth={1} strokeDasharray="4 3" opacity={0.7}
+              />
+            ))}
+          </svg>
+        )}
       </div>
     </div>
   )

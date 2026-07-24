@@ -4,6 +4,8 @@ import { usePptStore } from './store'
 
 const SNAP = 6
 
+interface GuideLine { type: 'h' | 'v'; pos: number; start: number; end: number }
+
 function useDrag(elementId: string) {
   const [dragging, setDragging] = useState(false)
   const ref = useRef({ mx: 0, my: 0, ox: 0, oy: 0, shift: false, alt: false, clonedId: '' })
@@ -43,7 +45,7 @@ function useDrag(elementId: string) {
       }
       s.updateElement(s.currentSlideId, tid, { x: nx, y: ny })
     }
-    const onUp = () => setDragging(false)
+    const onUp = () => { setDragging(false); usePptStore.getState().setGuideLines([]) }
     window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [dragging, elementId])
@@ -54,18 +56,23 @@ function useDrag(elementId: string) {
 function snapPos(el: CanvasElement, others: CanvasElement[], x: number, y: number) {
   const elx = x, ely = y, erx = x + el.w, eby = y + el.h, ecx = x + el.w / 2, ecy = y + el.h / 2
   let sx = x, sy = y
+  const guides: GuideLine[] = []
+
   // Canvas center (1280x720)
-  if (Math.abs(ecx - 640) < SNAP) sx = 640 - el.w / 2
-  if (Math.abs(ecy - 360) < SNAP) sy = 360 - el.h / 2
+  if (Math.abs(ecx - 640) < SNAP) { sx = 640 - el.w / 2; guides.push({ type: 'v', pos: 640, start: 0, end: 720 }) }
+  if (Math.abs(ecy - 360) < SNAP) { sy = 360 - el.h / 2; guides.push({ type: 'h', pos: 360, start: 0, end: 1280 }) }
+
   for (const o of others) {
     const ocx = o.x + o.w / 2, ocy = o.y + o.h / 2
-    if (Math.abs(ecx - ocx) < SNAP) sx = ocx - el.w / 2
-    if (Math.abs(ecy - ocy) < SNAP) sy = ocy - el.h / 2
-    if (Math.abs(elx - o.x) < SNAP) sx = o.x
-    if (Math.abs(erx - (o.x + o.w)) < SNAP) sx = o.x + o.w - el.w
-    if (Math.abs(ely - o.y) < SNAP) sy = o.y
-    if (Math.abs(eby - (o.y + o.h)) < SNAP) sy = o.y + o.h - el.h
+    if (Math.abs(ecx - ocx) < SNAP) { sx = ocx - el.w / 2; guides.push({ type: 'v', pos: ocx, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
+    if (Math.abs(ecy - ocy) < SNAP) { sy = ocy - el.h / 2; guides.push({ type: 'h', pos: ocy, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
+    if (Math.abs(elx - o.x) < SNAP) { sx = o.x; guides.push({ type: 'v', pos: o.x, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
+    if (Math.abs(erx - (o.x + o.w)) < SNAP) { sx = o.x + o.w - el.w; guides.push({ type: 'v', pos: o.x + o.w, start: Math.min(y, o.y), end: Math.max(y + el.h, o.y + o.h) }) }
+    if (Math.abs(ely - o.y) < SNAP) { sy = o.y; guides.push({ type: 'h', pos: o.y, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
+    if (Math.abs(eby - (o.y + o.h)) < SNAP) { sy = o.y + o.h - el.h; guides.push({ type: 'h', pos: o.y + o.h, start: Math.min(x, o.x), end: Math.max(x + el.w, o.x + o.w) }) }
   }
+
+  if (guides.length > 0) usePptStore.getState().setGuideLines(guides)
   return { x: Math.round(sx), y: Math.round(sy) }
 }
 
@@ -83,24 +90,24 @@ function ArrowHead(x1: number, y1: number, x2: number, y2: number, shape: string
 interface EP { el: CanvasElement; isSelected: boolean }
 
 function ImageEl({ el }: EP) {
-  const { onMouseDown } = useDrag(el.id)
+  const \{ onMouseDown, dragging \} = useDrag(el.id)
   return <img src={el.props.src || ''} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity }} onMouseDown={onMouseDown} draggable={false} />
 }
 function TextEl({ el, isSelected }: EP) {
-  const { onMouseDown } = useDrag(el.id)
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', cursor: 'grab' }} onMouseDown={onMouseDown} contentEditable={isSelected} suppressContentEditableWarning onBlur={e => { const s = usePptStore.getState(); if (s.currentSlideId) s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, text: e.currentTarget.textContent || '' } }) }}>{el.props.text || '双击编辑文本'}</div>
+  const \{ onMouseDown, dragging \} = useDrag(el.id)
+  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', cursor: dragging ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} contentEditable={isSelected} suppressContentEditableWarning onBlur={e => { const s = usePptStore.getState(); if (s.currentSlideId) s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, text: e.currentTarget.textContent || '' } }) }}>{el.props.text || '双击编辑文本'}</div>
 }
 function EllipseEl({ el }: EP) {
-  const { onMouseDown } = useDrag(el.id)
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: el.props.stroke ? `${el.props.strokeWidth || 1}px solid ${el.props.stroke}` : 'none', cursor: 'grab' }} onMouseDown={onMouseDown} />
+  const \{ onMouseDown, dragging \} = useDrag(el.id)
+  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: el.props.stroke ? `${el.props.strokeWidth || 1}px solid ${el.props.stroke}` : 'none', cursor: dragging ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} />
 }
 function ArrowEl({ el }: EP) {
-  const { onMouseDown } = useDrag(el.id)
+  const \{ onMouseDown, dragging \} = useDrag(el.id)
   const sw = el.props.strokeWidth || 2, c = el.props.stroke || '#94a3b8', hs = sw * 5
   const x1 = el.props.startShape && el.props.startShape !== 'none' ? hs : 0
   const x2 = el.props.endShape && el.props.endShape !== 'none' ? el.w - hs : el.w
   return (
-    <svg style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, overflow: 'visible', cursor: 'grab', opacity: el.opacity }} onMouseDown={onMouseDown}>
+    <svg style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, overflow: 'visible', cursor: dragging ? 'grabbing' : 'default', opacity: el.opacity }} onMouseDown={onMouseDown}>
       <line x1={x1} y1={el.h / 2} x2={x2} y2={el.h / 2} stroke={c} strokeWidth={sw} />
       {ArrowHead(0, el.h / 2, el.w, el.h / 2, el.props.startShape, c, sw)}
       {ArrowHead(el.w, el.h / 2, 0, el.h / 2, el.props.endShape, c, sw)}
@@ -108,9 +115,9 @@ function ArrowEl({ el }: EP) {
   )
 }
 function RectEl({ el }: EP) {
-  const { onMouseDown } = useDrag(el.id)
+  const \{ onMouseDown, dragging \} = useDrag(el.id)
   const br = el.props.borderRadius || 0
-  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: el.props.stroke ? `${el.props.strokeWidth || 1}px solid ${el.props.stroke}` : '1px solid #cbd5e1', cursor: 'grab' }} onMouseDown={onMouseDown} />
+  return <div style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: el.props.stroke ? `${el.props.strokeWidth || 1}px solid ${el.props.stroke}` : '1px solid #cbd5e1', cursor: dragging ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} />
 }
 
 export function CanvasElementView({ element, isSelected }: { element: CanvasElement; isSelected: boolean }) {

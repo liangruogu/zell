@@ -5,11 +5,14 @@ function clone(slides: Slide[]): Slide[] {
   return JSON.parse(JSON.stringify(slides))
 }
 
+interface GuideLine { type: 'h' | 'v'; pos: number; start: number; end: number }
+
 interface PptState {
   slides: Slide[]
   currentSlideId: string | null
   selectedIds: string[]
   zoom: number
+  guideLines: GuideLine[]
   _undo: Slide[][]
   _redo: Slide[][]
   _timer: ReturnType<typeof setTimeout> | null
@@ -28,6 +31,7 @@ interface PptState {
   deleteElements: (slideId: string, elementIds: string[]) => void
   setSelectedIds: (ids: string[]) => void
   setZoom: (z: number) => void
+  setGuideLines: (lines: GuideLine[]) => void
   undo: () => void
   redo: () => void
 }
@@ -62,6 +66,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   currentSlideId: null,
   selectedIds: [],
   zoom: 1,
+  guideLines: [],
   _undo: [],
   _redo: [],
   _timer: null,
@@ -141,6 +146,7 @@ export const usePptStore = create<PptState>((set, get) => ({
 
   setSelectedIds: (ids) => set({ selectedIds: ids }),
   setZoom: (z) => set({ zoom: Math.max(0.25, Math.min(3, z)) }),
+  setGuideLines: (lines) => set({ guideLines: lines }),
 
   undo: () => {
     const { _undo, slides } = get()
