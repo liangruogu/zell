@@ -68,8 +68,8 @@ Bindle 是一个将项目所有资料与上下文（Context）打包并呈现在
 ┌──────────────────────────────────────────────────────────┐
 │                    前端层 (Tauri WebView)                  │
 │  ┌─────────┐ ┌──────────┐ ┌───────────┐ ┌─────────────┐ │
-│  │  React   │ │ TipTap   │ │  tldraw   │ │ TailwindCSS │ │
-│  │  18.x   │ │ 编辑器    │ │  画布     │ │ + shadcn/ui │ │
+│  │  React   │ │ TipTap   │ │ PPT Canvas│ │ TailwindCSS │ │
+│  │  19.x    │ │ 编辑器    │ │  画布     │ │ + shadcn/ui │ │
 │  └─────────┘ └──────────┘ └───────────┘ └─────────────┘ │
 ├──────────────────────────────────────────────────────────┤
 │                    Tauri 桥接层 (Rust)                     │
@@ -123,13 +123,13 @@ Bindle 是一个将项目所有资料与上下文（Context）打包并呈现在
 | 类别 | 技术 | 版本 | 选型理由 |
 |------|------|------|----------|
 | **桌面框架** | Tauri | 2.x | Rust 内核，安装包小（~5MB），跨平台，原生性能 |
-| **UI 框架** | React | 18.x | 生态丰富，社区成熟，大量现成组件 |
+| **UI 框架** | React | 19.x | 生态丰富，社区成熟，大量现成组件 |
 | **语言** | TypeScript | 5.x | 类型安全，提升代码质量 |
 | **状态管理** | Zustand | 5.x | 轻量（<1KB），简洁 API，支持中间件 |
 | **UI 组件库** | shadcn/ui | latest | 基于 Radix UI，无样式依赖，可定制 |
 | **CSS** | Tailwind CSS | 4.x | 原子化 CSS，快速开发，与 shadcn/ui 天然契合 |
 | **Markdown 编辑器** | TipTap | 2.x | 基于 ProseMirror，高度可扩展，支持实时协作(Yjs) |
-| **画布/白板** | tldraw | 2.x | 开源白板 SDK，内置画笔/形状/箭头等工具 |
+| **画布/白板** | 自研 DOM Canvas（PPT）| Zustand + CSS Transform，6 种元素类型，对齐吸附，成组，多选 |
 | **协作引擎** | Yjs | 13.x | 成熟 CRDT 实现，支持多种数据类型 |
 | **网络请求** | TanStack Query | 5.x | 服务端状态管理，缓存/重试/乐观更新 |
 | **构建工具** | Vite | 6.x | 快速 HMR，Rollup 打包 |
@@ -418,8 +418,9 @@ CREATE TABLE whiteboards (
     id          TEXT PRIMARY KEY,
     project_id  TEXT NOT NULL REFERENCES projects(id),
     name        TEXT NOT NULL,
-    snapshot    BLOB DEFAULT NULL,         -- tldraw 快照(JSON序列化)
-    update_log  BLOB DEFAULT NULL,         -- 增量更新日志(CRDT)
+    wb_type     TEXT DEFAULT 'free',         -- free | ppt | aigc | ui
+    snapshot    BLOB DEFAULT NULL,           -- JSON 快照（PPT为PptData格式）
+    update_log  BLOB DEFAULT NULL,           -- 增量更新日志(CRDT)
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL,
     deleted_at  TEXT DEFAULT NULL
@@ -755,119 +756,97 @@ function buildContextFromLinks(links: ExternalLink[]): string {
 - 支持拖拽排序
 - 链接类型自动检测（输入 GitHub URL → 自动识别类型并拉取 repo 名）
 
-### 7.4 头脑风暴区
+### 7.4 创意白板系统
 
-**目标**：可自由绘制的白板画布，支持画笔/文字/矩形/箭头，选中文本时 @AI 进行思维发散或图片生成。
+**目标**：提供三种类型的白板画布——PPT（幻灯片编辑器）、AIGC（生图/生视频工作台，含头脑风暴）、UI（原型设计工具）。
 
-#### 7.4.1 画布实现
+#### 7.4.1 三种白板类型
 
-**技术选型**：tldraw 2.x
+| 类型 | `wb_type` | 状态 | 说明 |
+|------|-----------|------|------|
+| **PPT** | `ppt` | ✅ 已实现 | 自研 DOM Canvas 幻灯片编辑器。矩形/圆形/箭头/文本/图片工具。Zoom/Pan 无限画布。对齐吸附系统。多选/成组/框选。分组拖拽/缩放/复制。图层面板。属性面板（填充/边框/阴影/圆角）。全屏预览模式。导出 PDF。 |
+| **AIGC** | `aigc` | 🔜 规划 | 生图/生视频工作台，合并原 Free 头脑风暴功能。内嵌品牌/海报等场景提示词模板。AI 辅助内容生成。 |
+| **UI** | `ui` | 🔜 规划 | 原型设计工具，关注动效和交互演示。 |
 
-tldraw 原生支持：
-- ✅ 画笔（Draw tool）
-- ✅ 文字（Text tool）
-- ✅ 矩形/圆角矩形/圆形（Geo tool）
-- ✅ 箭头/连线（Arrow tool + Line tool）
-- ✅ 颜色/粗细/样式（Style panel）
-- ✅ 粘贴图片
-- ✅ 无限画布/缩放/平移
-- ✅ 完整的 undo/redo
+**白板数据结构**：
 
-**自定义扩展**：
+```sql
+CREATE TABLE whiteboards (
+    id          TEXT PRIMARY KEY,
+    project_id  TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    wb_type     TEXT NOT NULL DEFAULT 'free',  -- free | ppt | aigc | ui
+    snapshot    BLOB,                           -- JSON 快照（各类型格式不同）
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+```
+
+**PPT 快照数据结构**：
 
 ```typescript
-// 自定义 AI 工具
-class AITool extends StateNode {
-  static override id = 'ai';
-  
-  override onEnter() {
-    // 显示AI面板
-    this.editor.setCursor({ type: 'crosshair' });
-  }
-  
-  override onPointerDown(info) {
-    const selectedText = this.editor.getSelectedShapeIds()
-      .map(id => {
-        const shape = this.editor.getShape(id);
-        return shape?.type === 'text' ? shape.props.text : null;
-      })
-      .filter(Boolean)
-      .join('\n');
-    
-    if (selectedText) {
-      // 弹出 AI 操作菜单
-      showAIPanel({
-        context: selectedText,
-        actions: ['brainstorm', 'generate_image', 'summarize', 'expand']
-      });
-    }
-  }
+interface PptData {
+  slides: Slide[]
 }
-
-// 注册自定义工具
-const customTools = [AITool];
-```
-
-**白板数据持久化**：
-
-tldraw 使用 `TLStore` 进行数据管理，快照 (snapshot) 序列化为 JSON 存数据库：
-
-```
-tldraw editor → getSnapshot() → JSON.stringify → SQLite/PostgreSQL BLOB
-                                                      ↓
-                                              Yjs CRDT 同步(团队模式)
-```
-
-**实时协作**（团队模式）：
-
-tldraw 原生支持 Yjs 绑定：
-
-```typescript
-import { useYjsStore } from './yjsStore';
-
-function Whiteboard() {
-  const store = useYjsStore({
-    roomId: `whiteboard-${whiteboardId}`,
-    hostUrl: wsUrl,
-  });
-
-  return <Tldraw store={store} />;
+interface Slide {
+  id: string; name: string; elements: CanvasElement[];
+  background: string; backgroundOpacity?: number; hidden?: boolean;
+}
+interface CanvasElement {
+  id: string; name?: string; type: 'text'|'rect'|'ellipse'|'line'|'arrow'|'image'|'group';
+  x: number; y: number; w: number; h: number; opacity: number;
+  props: { fill?, stroke?, strokeWidth?, borderRadius?, borderRadiusTL/TR/BL/BR?, shadows?[], ... };
+  groupChildren?: CanvasElement[];  // 编组子元素（相对坐标）
 }
 ```
 
-#### 7.4.2 AI 辅助头脑风暴
-
-**交互流程**：
+#### 7.4.2 PPT Canvas 架构
 
 ```
-用户选中白板上的文字
-     ↓
-浮动工具栏出现 "✨ AI 发散" 按钮
-     ↓
-点击后弹出面板，选择模式：
-  ├── "思维发散"    → LLM 生成更多想法/关联概念
-  ├── "图片生成"    → DALL-E/Stable Diffusion 生成插图
-  ├── "总结摘要"    → LLM 提炼核心观点
-  └── "扩展论述"    → LLM 将简短想法扩展为段落
-     ↓
-结果展示在画布上（文字以新 Shape 插入，图片以 Image Shape 插入）
+modules/ppt/
+├── PptCanvas.tsx         # 顶层：CanvasViewport + PropsPanel + SlideStrip + PreviewButton
+├── CanvasViewport.tsx    # Zoom/Pan + 框选(Marquee) + 参考线 + GroupBoundingBox
+├── CanvasElement.tsx     # 元素渲染 + useDrag(单拖/分组拖/Shift轴锁定/Alt复制) + snapPos
+├── ElementHandles.tsx    # 8 个缩放手柄(四角圆形+四边条形) + Zoom自适应 + 对齐吸附
+├── PropsPanel.tsx        # 属性+图层双Tab。ColorChip/ScrubInput/ShadowSection/CornerSection
+├── PptToolbar.tsx        # 浮动工具栏（添加元素）
+├── SlideStrip.tsx        # 缩略图拖拽排序(FLIP) + 插入按钮 + 多选/隐藏/重命名
+├── SlidePreview.tsx      # 全屏预览 + 左右导航 + 进度条
+├── store.ts              # Zustand PptStore（CRUD/undo-redo 100步/group/snap/resetView）
+└── types.ts              # Slide/CanvasElement/PptData
 ```
 
-**Prompt 设计**：
+**关键交互**：
+- **Zoom/Pan**：Ctrl+滚轮缩放（鼠标位置），中键拖拽平移，聚焦按钮
+- **对齐吸附**：6px 阈值，边缘/中心/画布中心，动态蓝色虚线参考线。拖拽时缩放也支持
+- **多选/框选**：画布空白区拖拽 → AABB 碰撞检测选中。Shift 追加。外围大方框可整体缩放
+- **成组**：Ctrl+G 成组，Ctrl+Shift+G 解组。组内元素只读，整体拖拽/缩放/Alt复制
+- **撤销**：离散操作立即快照（move/paste/delete），拖拽缩放去重（400ms debounce 仅首次保存）
+- **数值调节**：Figma 风格 ScrubInput（grip 拖拽 + 点击输入），ColorChip（色块+hex+透明度）
 
-```
-思维发散：
-  你是项目顾问。以下是项目背景：{projectBackground}
-  用户在头脑风暴中写了："{selectedText}"
-  请从5个不同维度进行发散思考，每个维度给出2-3个具体想法。
-  使用 Markdown 格式。
+#### 7.4.3 AI 与白板的集成
 
-图片生成：
-  基于以下项目背景和文字描述生成一张示意图片：
-  项目背景：{projectBackground}
-  描述文字："{selectedText}"
-  风格：专业商务 / 简洁现代
-```
+每种白板类型拥有独立的 AI 工具集。所有白板类型共享基础工具：搜索知识库、搜索外部资源、读取文章。
+
+**PPT AI 工具**：
+- `create_element(type, props)` — 创建元素
+- `update_element(id, changes)` — 修改元素属性
+- `delete_element(id)` — 删除元素
+- `add_slide(afterIndex?)` — 新建幻灯片
+- `get_slide_elements(slideId?)` — 查看幻灯片元素列表
+- `generate_image(prompt)` — 调用生图 API 插入画布
+- 两种模式：单页精细调整（迭代修改指定页面） / 全局框架生成（根据知识库内容生成完整幻灯片结构）
+
+**AIGC AI 工具**（规划中）：
+- `generate_image(prompt, style?)` — 生图（支持品牌/海报/产品等场景模板）
+- `generate_video(prompt)` — 生视频
+- `brainstorm(topic)` — 思维发散，生成概念图/文字
+- `apply_preset(presetName)` — 应用预设提示词模板
+
+**UI AI 工具**（规划中）：
+- `create_component(type, props)` — 创建原型组件
+- `add_interaction(trigger, action)` — 添加交互/动效
+- `export_prototype()` — 导出可交互原型
 
 ### 7.5 分享与协作
 
@@ -1227,84 +1206,70 @@ impl Vault {
 
 ## 11. 开发实施路径
 
-### 阶段一：基础设施搭建 (第 1-2 周)
+### 阶段一：基础设施搭建 (第 1-2 周) ✅ 已完成
+
+### 阶段二：知识库核心 (第 3-5 周) ✅ 已完成
+
+### 阶段三：外部资源链接 (第 6-7 周) ✅ 已完成
+
+### 阶段四：PPT 自定义 Canvas (第 7-12 周) ✅ 已完成
 
 ```
-□ Tauri 2.x 项目初始化（Vite + React + TypeScript 模板）
-□ shadcn/ui + Tailwind CSS 安装配置
-□ Zustand 状态管理骨架
-□ Tauri Rust 端 SQLite 初始化与迁移脚本
-□ 项目创建/编辑/列表基础 CRUD 完成
-□ 应用设置页（AI Provider 配置保存）
+☑ 自研 DOM Canvas 架构（Zustand + CSS Transform）
+☑ 6 种元素类型渲染（Text, Rect, Ellipse, Arrow, Line, Image）
+☑ Zoom/Pan 无限画布（Ctrl+滚轮，中键拖拽）
+☑ 8 个缩放手柄（四角圆形 + 四边条形，Zoom 自适应）
+☑ 对齐吸附系统（snapPos，6px 阈值，动态参考线）
+☑ 属性面板（Figma 风格 ColorChip + ScrubInput + 双 Tab）
+☑ 图层管理（拖拽重排，插入条动画，双向选中同步）
+☑ 幻灯片管理（拖拽排序 + FLIP 动画，复制粘贴，多选，重命名，隐藏）
+☑ 框选/多选（AABB 碰撞检测，Shift 追加）
+☑ 成组/解组（Ctrl+G / Ctrl+Shift+G）
+☑ 多选整体操作（外围大方框，整体拖拽/缩放/Shift轴锁定/Alt复制）
+☑ 撤销/重做 100 步（离散立即快照 + 拖拽去重）
+☑ 全屏预览模式（全屏 API + 左右导航 + 进度条 + 自动隐藏光标）
+☑ 导出 PDF（Pandoc + 引擎检测）
+☑ 白板类型选择（PPT/AIGC/UI）
 ```
 
-### 阶段二：知识库核心 (第 3-5 周)
+### 阶段五：PPT 模块完善 (当前)
 
 ```
-□ TipTap 编辑器集成，基础 Markdown 扩展
-□ 文章 CRUD（本地 SQLite 存取）
-□ 层级目录/文档树组件
-□ 图片拖拽/粘贴/上传
-□ 代码块语法高亮
-□ Word 导出（Go 后端 unioffice 模板渲染）
-□ PDF 导出（LibreOffice 无头模式 / go-wkhtmltopdf）
-□ 样式映射表调试与完善
+☐ 图片工具完善（抠图模型、裁切、蒙版笔刷）
+☐ 箭头工具完善（曲线箭头、折线箭头、圆角拐弯）
+☐ 文字工具完善（字体、行高、对齐等高级属性）
+☐ 新图形类型（三角形、梯形等）
+☐ 导出 PPTX
 ```
 
-### 阶段三：头脑风暴区 (第 5-7 周)
+### 阶段六：AI 辅助生成
 
 ```
-□ tldraw 集成与自定义主题
-□ 白板 CRUD（本地 SQLite 存取）
-□ 画布基础工具验证（画笔/文字/矩形/箭头/颜色）
-□ 选中文字 → AI 按钮浮层（自定义工具）
-□ AI 思维发散接入（LLM 流式输出到画布文本框）
-□ AI 图片生成接入（DALL-E → 插入为画布图片）
+☐ PPT AI 单页精细调整（自然语言 → 元素操作）
+☐ PPT AI 全局框架生成（知识库 → 幻灯片结构）
+☐ 每种白板类型专属 AI 工具集
+☐ AIGC 白板实现（生图/生视频 + 提示词模板）
+☐ UI 白板实现（原型设计 + 动效交互）
 ```
 
-### 阶段四：外部资源链接 (第 7-8 周)
+### 阶段七：实时协作
 
 ```
-□ 外部链接 CRUD
-□ 链接类型自动检测
-□ 一键打开系统浏览器（tauri-plugin-shell::open）
-□ AI Skill 上下文注入
+☐ Go 后端基础框架（Gin + WebSocket Hub）
+☐ PostgreSQL 数据模型 + 迁移
+☐ Yjs CRDT 实时协作（知识库 + PPT + 白板）
+☐ 协作光标感知
+☐ 密钥制邀请系统（分享链接加入项目）
+☐ 离线队列与重连
 ```
 
-### 阶段五：分享与协作 (第 8-10 周)
+### 阶段八：完善与交付
 
 ```
-□ 邀请码生成/管理/撤销
-□ 密钥验证中间件
-□ JWT 签发与验证
-□ 分享链接生成与解析
-□ 客户端 Client ID 生成与管理
-```
-
-### 阶段六：实时协作 (第 10-13 周)
-
-```
-□ Go 后端基础框架搭建（Gin + 路由 + WebSocket Hub）
-□ PostgreSQL 数据模型 + 迁移
-□ Yjs WebSocket Provider 服务端
-□ 知识库 CRDT 实时协作
-□ 白板 CRDT 实时协作
-□ 离线队列与重连机制
-□ 操作日志与审计
-```
-
-### 阶段七：完善与交付 (第 13-16 周)
-
-```
-□ Docker Compose 一键部署编排
-□ 自动更新服务（tauri-plugin-updater）
-□ 性能优化（大文件加载、虚拟滚动）
-□ 错误处理完善（Tauri 崩溃报告、Sentry 集成）
-□ E2E 测试（Playwright + Tauri driver）
-□ 多平台 CI/CD（Windows/Mac/Linux 构建流水线）
-□ 文档编写（API 文档 / 用户指南）
-□ 开放源码仓库准备（License / CONTRIBUTING / CODE_OF_CONDUCT）
-```
+☐ Docker Compose 一键部署
+☐ 自动更新服务
+☐ CI/CD 多平台构建
+☐ E2E 测试
 
 ---
 
@@ -1433,7 +1398,8 @@ jobs:
 
 | 方案 | 画笔 | 箭头 | 文字 | 协作 | 自定义 | 结论 |
 |------|------|------|------|------|--------|------|
-| **tldraw** | ✅ | ✅ | ✅ | ✅ Yjs | ✅ 高 | ✅ 采用 |
+| **自研 DOM Canvas** | — | ✅ | ✅ | 🔜 | ✅ 极高 | ✅ 采用（PPT） |
+| tldraw | ✅ | ✅ | ✅ | ✅ Yjs | ✅ 高 | ❌ 已替换（API 不足） |
 | Excalidraw | ✅ | ✅ | ✅ | ✅ 自有 | ✅ 中 | ⚠️ 备选 |
 | Fabric.js | ❌ | ❌ | ❌ | ❌ | ✅ 高 | ❌ 太底层 |
 | Konva.js | ❌ | ❌ | ❌ | ❌ | ✅ 高 | ❌ 太底层 |
@@ -1449,6 +1415,6 @@ jobs:
 
 ---
 
-> **文档版本**：v1.0  
-> **最后更新**：2026-06-07  
+> **文档版本**：v1.1  
+> **最后更新**：2026-07-25  
 > **维护者**：Bindle 开发团队

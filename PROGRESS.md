@@ -1,12 +1,12 @@
 # Bindle 开发进度报告
 
-> 最后更新：2026-07-23
+> 最后更新：2026-07-25
 
 ---
 
 ## 一、项目概述
 
-Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目知识管理工具。Rust 后端使用 SQLite 本地存储，前端通过 TipTap 编辑器、tldraw 白板等组件提供知识库、头脑风暴、外部资源链接等功能。
+Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目知识管理工具。Rust 后端使用 SQLite 本地存储，前端通过 TipTap 编辑器、自研 PPT Canvas 等组件提供知识库、创意白板（PPT/AIGC/UI）、外部资源链接等功能。
 
 ---
 
@@ -32,20 +32,32 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 | HTML ↔ Markdown 双向转换 | ✅ | `turndown` (HTML→MD) + `marked` (MD→HTML)，保留图片尺寸 |
 | 文章 CRUD | ✅ | 6 个 Rust 命令：create/get/list/update/delete/reorder |
 | 文章列表 + 大纲 | ✅ | 双 Tab：文件列表（hover 导出/删除）+ 大纲树（可折叠，点击跳转） |
-| 图片粘贴/拖入/右键菜单 | ✅ | Ctrl+V 粘贴、拖入文件自动插入，右键菜单调整尺寸（滑块 50-800px + 预设） |
+| 图片粘贴/拖入/右键菜单 | ✅ | Ctrl+V 粘贴、拖入文件自动插入，右键菜单调整尺寸 |
 | Ctrl+S 手动保存 | ✅ | 立即保存跳过 800ms 防抖，状态栏绿色 `✓ 已保存` 提示 |
 | Ctrl+F 编辑器内搜索 | ✅ | 编辑器内原生搜索；`Ctrl+Shift+F` 搜索文章 |
 | Ctrl+Shift+X 创建 TODO | ✅ | 切换任务列表 |
 | 导出 Word | ✅ | 生成 HTML-based .doc 文件下载 |
 
-### 阶段三：头脑风暴区（已完成）
+### 阶段三：创意白板 — PPT 模块（已完成）
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
-| tldraw 白板 | ✅ | 完整画笔/文字/矩形/箭头等工具 |
-| 白板 CRUD | ✅ | 6 个 Rust 命令：create/get/list/save_snapshot/rename/delete |
-| 快照持久化 | ✅ | tldraw snapshot prop 自动加载/保存 JSON |
-| 白板列表 | ✅ | 左侧面板，hover 删除，底部内联新建 |
+| 自研 DOM Canvas | ✅ | 替换 tldraw，React + CSS Transform，Zustand Store 驱动 |
+| 6 种元素类型 | ✅ | Text, Rect, Ellipse, Arrow, Line, Image |
+| 8+8 缩放手柄 | ✅ | 四角圆形 + 四边条形，缩放时对齐吸附 |
+| Zoom/Pan 无限画布 | ✅ | Ctrl+滚轮缩放，中键拖拽平移，聚焦按钮复位 |
+| 对齐吸附系统 | ✅ | 边缘/中心吸附，动态蓝色虚线参考线 |
+| 属性面板（Figam 风格） | ✅ | 双 Tab（属性+图层），ScrubInput 拖拽调节数值，ColorChip 色块+hex+透明度 |
+| 元素属性 | ✅ | 填充色/边框色/边框粗细（可开关）、阴影（多层，弹出面板）、圆角（四角独立） |
+| 图层管理 | ✅ | 拖拽重排序，插入条动画，双击重命名，双向选中同步 |
+| 幻灯片管理 | ✅ | 缩略图拖拽排序（Pointer Events）+ FLIP 动画，复制粘贴（Ctrl+C/V），多选（Shift/Ctrl+click），重命名，隐藏 |
+| 框选/多选 | ✅ | 画布空白区拖拽框选，Shift 追加选择 |
+| 成组/解组 | ✅ | Ctrl+G 成组，Ctrl+Shift+G 解组。组内元素只读，整体拖拽/缩放/复制 |
+| 多选整体操作 | ✅ | 外围虚线大方框，拖拽同步移动（Shift 轴锁定），Alt 整体复制 |
+| 撤销/重做 | ✅ | Ctrl+Z / Ctrl+Shift+Z，100 步，离散操作立即快照+拖拽去重 |
+| 全屏预览 | ✅ | 左下角 Play 按钮 → 全屏 API，左右点击导航，ESC 退出，蓝色进度条，自动隐藏光标 |
+| 导出 PDF | ✅ | Pandoc + 引擎检测（xelatex→wkhtmltopdf→pdflatex），中文支持 |
+| 白板类型选择 | ✅ | Free/PPT/AIGC/UI 四种类型在创建时选择 |
 
 ### 阶段四：外部资源链接（已完成）
 
@@ -57,7 +69,6 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 | 文件描述字段 | ✅ | 用户可添加描述，注入 AI 上下文 |
 | 文件重命名 | ✅ | 双击内联编辑 |
 | 一键打开浏览器 | ✅ | `opener` crate 跨平台打开文件/链接 |
-| 链接表单 | ✅ | 右侧编辑面板，标题/URL/类型/描述 |
 
 ### 阶段五：AI Agent（已完成）
 
@@ -69,18 +80,16 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 | 知识库搜索工具 | ✅ | search_knowledge：FTS5 全文搜索文章 |
 | 外部资源搜索工具 | ✅ | search_resources：搜索文件/链接提取文本 |
 | 文章读取工具 | ✅ | get_article / list_articles |
-| 资源读取工具 | ✅ | get_resource：读取外部文件完整内容 |
 | 项目上下文注入 | ✅ | 自动注入项目背景 + 文章列表 + 文件描述 |
 | 代码高亮 | ✅ | highlight.js 12 种语言 |
 | Token 用量可视化 | ✅ | SVG 圆环 + hover tooltip |
-| 删除二次确认 | ✅ | 浮动弹窗确认 |
 
 ### 阶段六：完善交付（部分完成）
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
 | 应用图标 | ✅ | `logo.png` → `pnpm tauri icon` 生成全平台图标 |
-| 设置模态框 | ✅ | 4 个分类：外观（字号+工具栏开关）、AI 服务、编辑器、服务器 |
+| 设置模态框 | ✅ | 4 个分类：外观、AI 服务、编辑器、服务器 |
 | Toast 通知 | ✅ | 保存成功 2 秒自动消失 |
 | 自动更新 | ❌ | |
 | CI/CD | ❌ | |
@@ -88,54 +97,51 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 
 ---
 
-## 三、特色功能详情
+## 三、PPT 模块技术要点
 
-### 3.1 侧边栏
+### 3.1 Canvas 架构
 
-- 默认收起（`collapsed: true`）
-- `w-56` ↔ `w-14` 切换，仅图标模式
-- 手动点击 toggle 切换，不会自动展开/收起
-- 移除品牌文字 "Bindle"
-- 底部：新建项目 + 设置按钮
+```
+app/src/modules/ppt/
+├── PptCanvas.tsx         # 主组件，调度 CanvasViewport + PropsPanel + SlideStrip + PptToolbar
+├── CanvasViewport.tsx    # Zoom/Pan + 中键拖拽 + 框选 + 参考线渲染 + GroupBoundingBox
+├── CanvasElement.tsx     # 6 种元素渲染 + useDrag Hook（单拖/分组拖/Shift轴锁定/Alt复制）
+├── ElementHandles.tsx    # 8 个缩放手柄 + Zoom自适应尺寸 + 对齐吸附
+├── PropsPanel.tsx        # Figma风格属性面板：ColorChip/ScrubInput/LayersTab/ShadowSection/CornerSection
+├── PptToolbar.tsx        # 浮动工具栏（添加元素按钮）
+├── SlideStrip.tsx        # 幻灯片缩略图 + 拖拽排序(FLIP动画) + 插入按钮 + Delete键删除
+├── SlidePreview.tsx      # 全屏预览模式 + 左右导航 + 进度条
+├── store.ts              # Zustand PptStore（slides/elements CRUD/undo-redo/group/snap）
+└── types.ts              # Slide, CanvasElement, PptData 类型定义
+```
 
-### 3.2 知识库面板
+### 3.2 数据模型
 
-- **文件 Tab**：文章列表，hover 显示导出/删除
-- **大纲 Tab**：当前文章标题树，可折叠，点击跳转
-- **新建文章**：内联输入框，Enter 确认 / Esc 取消
-- **搜索**：`Ctrl+Shift+F` 弹出搜索框
-- **导入**：拖拽 `.md` 文件到列表区域自动导入，重名自动追加 `(1)` 后缀
-- **侧边栏**：`Ctrl+Shift+L` 切换，可拖拽调节宽度（120-400px），<80px 自动吸附收起
+```typescript
+interface CanvasElement {
+  id: string; name?: string; type: ElementType;  // text/rect/ellipse/line/arrow/image/group
+  x: number; y: number; w: number; h: number; opacity: number;
+  props: { fill, stroke, strokeWidth, borderRadius, shadows[], ... };
+  groupChildren?: CanvasElement[];  // 编组子元素（相对坐标）
+}
+interface Slide { id, name, elements[], background, backgroundOpacity, hidden? }
+```
 
-### 3.3 Markdown 编辑器
+### 3.3 快捷键（PPT 专用）
 
-- **所见即所得模式**：TipTap 富文本，工具栏 17 个按钮
-- **分屏模式**：左侧源码编辑，右侧实时预览，中间可拖拽调节宽度（20%-80%）
-- **底部状态栏**：字符数 + 代码语言名（Typora 风格）+ 更新于时间 / 保存提示
-- **点击状态栏文字**切换视图模式
-- **Tab 键**插入制表符，不跳出编辑器
-
-### 3.4 图片处理
-
-- **粘贴**：`Ctrl+V` 粘贴剪贴板图片 → base64 插入
-- **拖入**：从文件管理器拖入图片 → base64 插入
-- **右键菜单**：滑块调节宽度（50-800px）+ 预设（小/中/大/原始）+ 复制图片/链接
-- **持久化**：`[alt](url =400x)` 自定义语法双向保留图片尺寸
-
-### 3.5 项目状态
-
-4 种状态标签，存储在 `settings` JSON 的 `status` 字段：
-
-| 状态 | 标签 | 颜色 | 含义 |
-|------|------|------|------|
-| `seedling` | 萌芽 | 绿色 | 项目起步，初步发展 |
-| `sprint` | 冲刺 | 蓝色 | 快速推进 |
-| `polish` | 打磨 | 紫色 | 临近结束，细微修改 |
-| `alert` | 预警 | 琥珀色 | 推进过慢，需加速 |
-
-### 3.6 Emoji 选择器
-
-4 个分类（常用/趣味/自然/物件），共 64 个 emoji，Tab 切换。
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl+Z` / `Ctrl+Shift+Z` | 撤销/重做 |
+| `Ctrl+C` / `Ctrl+V` | 复制/粘贴幻灯片 |
+| `Ctrl+G` / `Ctrl+Shift+G` | 成组/解组 |
+| `Ctrl+滚轮` | 缩放画布 |
+| `Delete/Backspace` | 删除选中元素或幻灯片 |
+| `Shift+拖动` | 轴锁定移动 |
+| `Alt+拖动` | 复制元素 |
+| `Shift+Alt+拖动` | 轴锁定复制 |
+| `Shift+点击` | 范围多选（幻灯片） |
+| `Ctrl+点击` | 追加选中 |
+| `Ctrl+Shift+L` | 侧边栏切换 |
 
 ---
 
@@ -147,13 +153,12 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 |------|------|------|
 | 桌面框架 | Tauri | 2.x |
 | UI | React | 19.x |
-| 语言 | TypeScript | 6.0 |
+| 语言 | TypeScript | 5.x |
 | 状态管理 | Zustand | 5.x |
 | 路由 | React Router | 7.x |
 | CSS | Tailwind CSS | 4.x |
-| 组件 | shadcn/ui 风格手写 | - |
 | 编辑器 | TipTap | 3.x |
-| 白板 | tldraw | 5.x |
+| PPT 画布 | 自研 DOM Canvas | — |
 | Markdown 转换 | turndown + marked | 7.x / 18.x |
 | 代码高亮 | lowlight + highlight.js | 3.x / 11.x |
 | 构建 | Vite | 6.x |
@@ -167,7 +172,7 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 | ORM | 无（直接 SQL） |
 | UUID | uuid v7（时间排序） |
 | 时间 | chrono |
-| 加密 | aes-gcm + ring（骨架） |
+| 导出 | Pandoc（PDF）+ Word（HTML-based） |
 | 插件 | tauri-plugin-shell, tauri-plugin-fs, tauri-plugin-dialog, tauri-plugin-log |
 
 ### 4.3 数据库表结构
@@ -177,35 +182,45 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 | `projects` | 项目（含 settings JSON） |
 | `knowledge_articles` | 知识库文章 |
 | `external_links` | 外部资源链接 |
-| `whiteboards` | 白板快照 |
+| `whiteboards` | 白板（含 wb_type: free/ppt/aigc/ui + snapshot JSON） |
 | `ai_conversations` | AI 对话记录 |
 | `invite_codes` | 分享邀请码 |
 | `settings` | 全局键值设置 |
 
-### 4.4 Tauri 命令清单（23 个）
-
-**项目管理（7 个）**：`create_project`, `get_projects`, `get_project`, `update_project`, `delete_project`, `get_setting`, `set_setting`
-
-**知识库（6 个）**：`create_knowledge_article`, `get_knowledge_articles`, `get_knowledge_article`, `update_knowledge_article`, `delete_knowledge_article`, `reorder_knowledge_articles`
-
-**白板（6 个）**：`create_whiteboard`, `get_whiteboards`, `get_whiteboard`, `save_whiteboard_snapshot`, `rename_whiteboard`, `delete_whiteboard`
-
-**外部链接（4 个）**：`create_external_link`, `get_external_links`, `update_external_link`, `delete_external_link`
-
 ---
 
-## 五、快捷键汇总
+## 五、开发路线图
 
-| 快捷键 | 位置 | 功能 |
-|--------|------|------|
-| `Ctrl+S` | 编辑器 | 手动保存当前文章 |
-| `Ctrl+F` | 编辑器内 | 浏览器原生搜索文章内容 |
-| `Ctrl+F` | 编辑器外 | 打开文章搜索框 |
-| `Ctrl+Shift+F` | 任意 | 打开文章搜索框 |
-| `Ctrl+Shift+X` | 编辑器 | 创建/切换 TODO |
-| `Ctrl+Shift+L` | 知识库/白板/链接 | 切换左侧面板 |
-| `Tab` | 编辑器 | 插入制表符 |
-| `Esc` | 搜索框 | 关闭搜索 |
+### 当前 — PPT 模块完善中
+
+- [ ] **图片工具**：抠图模型部署、裁切、蒙版笔刷羽化边缘
+- [ ] **箭头工具**：曲线箭头、折线箭头（拐弯处圆角）
+- [ ] **文字工具**：字体选择、行高、对齐等高级属性
+- [ ] **新图形**：三角形、梯形等
+- [ ] **导出 PPT**：PPTX 格式导出
+
+### Phase 2 — AI 辅助生成
+
+- [ ] PPT AI 单页精细调整模式（自然语言驱动元素修改）
+- [ ] PPT AI 全局框架生成模式（一键生成幻灯片结构）
+- [ ] AI 工具接入知识库（搜索文章/外部资源）
+- [ ] AIGC 白板（生图/生视频工作台 + 提示词模板）
+- [ ] UI 白板（原型设计 + 动效演示）
+
+### Phase 3 — 实时协作
+
+- [ ] Go 后端服务（REST API + WebSocket + 文档转换）
+- [ ] Yjs CRDT 实时协作引擎（知识库 + PPT + 白板）
+- [ ] 协作光标感知（看到伙伴的鼠标位置和操作）
+- [ ] 密钥制邀请系统（分享链接加入项目）
+- [ ] 离线队列与重连
+
+### Phase 4 — 分发与完善
+
+- [ ] Docker Compose 一键部署
+- [ ] 自动更新服务
+- [ ] CI/CD 多平台构建
+- [ ] E2E 测试
 
 ---
 
@@ -215,65 +230,19 @@ Bindle 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目�
 bindle/
 ├── ARCHITECTURE.md
 ├── README.md
-├── PROGRESS.md                    # 本文档
-├── logo.png                       # 应用图标源文件
+├── PROGRESS.md
+├── logo.png
 │
 ├── app/                           # Tauri 前端应用
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── index.html
-│   │
 │   ├── src/
-│   │   ├── main.tsx
-│   │   ├── App.tsx
-│   │   ├── router.tsx
-│   │   ├── index.css
-│   │   │
-│   │   ├── components/
-│   │   │   ├── ui/                # Button, Input, Textarea, Dialog, Card, Badge
-│   │   │   ├── layout/           # AppShell, Sidebar, Header, ResizablePanel
-│   │   │   ├── editor/           # MarkdownEditor, EditorToolbar, FloatingImageMenu
-│   │   │   ├── project/          # ProjectCard, CreateProjectDialog, ProjectForm, EmojiPicker
-│   │   │   └── share/            # SettingsDialog
-│   │   │
+│   │   ├── components/            # ui/, layout/, editor/, project/, share/
 │   │   ├── pages/                 # Home, Project, KnowledgeBase, Whiteboard, ExternalLinks, Settings
+│   │   ├── modules/ppt/           # PPT 自研 Canvas 模块（10 个文件）
 │   │   ├── stores/                # 9 Zustand stores
-│   │   ├── types/                 # TypeScript 类型定义
-│   │   └── lib/                   # utils, constants, format, markdown
-│   │
-│   └── src-tauri/                 # Rust 后端
-│       ├── Cargo.toml
-│       ├── tauri.conf.json
-│       └── src/
-│           ├── main.rs
-│           ├── lib.rs
-│           ├── db/                # mod, models, migrations
-│           ├── commands/          # project, knowledge, whiteboard, link
-│           └── crypto/            # vault (placeholder)
+│   │   ├── services/              # db, api, aiService, exportService, fileService
+│   │   └── lib/                   # utils, constants, markdown
+│   └── src-tauri/                 # Rust 后端（SQLite + Commands）
+│
+├── server/                        # Go 后端（规划中）
+└── docs/superpowers/              # 设计文档和实现计划
 ```
-
----
-
-## 七、待办事项
-
-### 高优先级
-
-- [ ] **Go 后端サービス**：REST API + WebSocket + 文档转换
-- [ ] **分享协作**：邀请码生成/管理 + 密钥验证
-- [ ] **AI 聊天面板 UI**：前端聊天界面（store 已有骨架）
-- [ ] **Word/PDF 导出服务端实现**：目前 Word 导出是 HTML-based，需 Go 后端 unioffice
-- [ ] **数据同步引擎**：Yjs CRDT + 离线队列
-
-### 中优先级
-
-- [ ] **白板自动保存**：定期保存 tldraw snapshot 到 SQLite
-- [ ] **图片上传到本地文件系统**：当前图片以 base64 存储在 Markdown 中
-- [ ] **提示词模板管理**：AI 上下文自动注入
-- [ ] **性能优化**：代码分割（当前 JS 3.5MB），按路由懒加载 tldraw
-
-### 低优先级
-
-- [ ] **Docker Compose 部署**：PostgreSQL + Redis + Nginx/Caddy
-- [ ] **CI/CD 流水线**：GitHub Actions 多平台构建
-- [ ] **自动更新**：tauri-plugin-updater
-- [ ] **E2E 测试**：Playwright + Tauri driver
