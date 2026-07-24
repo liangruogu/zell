@@ -278,10 +278,9 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             ) : (
               <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[12px] text-gray-600 cursor-default min-w-[24px] text-right">{opDisplay}%</span>
             )}
-            </div>,
-            document.body
-          )}
-        </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
