@@ -16,7 +16,6 @@ import type { TLStore } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { PptCanvas } from '@/modules/ppt/PptCanvas'
 
-
 /* ------------------------------------------------------------------ */
 /*  page                                                               */
 /* ------------------------------------------------------------------ */
@@ -47,7 +46,7 @@ export default function WhiteboardPage() {
     []
   )
 
-  /* ---------- 椤圭洰 & 鐧芥澘鍒楄〃 ---------- */
+  /* ---------- project & whiteboard list ---------- */
   useEffect(() => {
     if (projectId) {
       fetchProject(projectId)
@@ -55,7 +54,7 @@ export default function WhiteboardPage() {
     }
   }, [projectId, fetchProject, fetchWhiteboards])
 
-  /* ---------- 閹镐椒绠欓崠?---------- */
+  /* ---------- persistence ---------- */
   useEffect(() => {
     if (!currentWhiteboard) {
       setStore(null)
@@ -77,15 +76,13 @@ export default function WhiteboardPage() {
         setLoadState({ status: 'ready' })
       } catch (error: any) {
         setLoadState({ status: 'error', error: error.message })
-        console.error('鍔犺浇澶辫触:', error)
+        console.error('load failed:', error)
       }
     })()
 
     const throttledSave = throttle(() => {
       const json = JSON.stringify(getSnapshot(newStore))
-      saveSnapshot(currentWhiteboard.id, json)
-        .then(() => console.log('鑷姩淇濆瓨鎴愬姛'))
-        .catch((e) => console.error('鑷姩淇濆瓨澶辫触:', e))
+      saveSnapshot(currentWhiteboard.id, json).catch((e) => console.error('save failed:', e))
     }, 1000)
 
     const cleanupFn = newStore.listen(throttledSave)
@@ -100,7 +97,7 @@ export default function WhiteboardPage() {
     setCurrentWhiteboard(wb)
   }, [setCurrentWhiteboard])
 
-  /* ---------- 闁款喚娲?---------- */
+  /* ---------- keyboard ---------- */
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
@@ -135,9 +132,9 @@ export default function WhiteboardPage() {
         <div {...panel.panelProps}>
           <div className="flex-1 overflow-auto py-1">
             {loading ? (
-              <p className="px-3 py-4 text-sm text-gray-400 text-center">鍔犺浇涓?..</p>
+              <p className="px-3 py-4 text-sm text-gray-400 text-center">loading...</p>
             ) : whiteboards.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-gray-400 text-center">鏆傛棤鐧芥澘</p>
+              <p className="px-3 py-4 text-sm text-gray-400 text-center">no whiteboards</p>
             ) : (
               whiteboards.map((wb) => (
                 <WhiteboardItem
@@ -154,7 +151,7 @@ export default function WhiteboardPage() {
           <div className="p-2 border-t border-gray-100 space-y-1 shrink-0">
             {showCreate ? (
               <div className="space-y-2">
-                <input autoFocus type="text" placeholder="鐧芥澘鍚嶇О" value={newName}
+                <input autoFocus type="text" placeholder="Whiteboard name" value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleCreate()
@@ -172,19 +169,19 @@ export default function WhiteboardPage() {
                         newType === t ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                       )}
                     >
-                      {{ free: '鑷敱', ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[t]}
+                      {{ free: 'Free', ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[t]}
                     </button>
                   ))}
                 </div>
-                <Button size="sm" onClick={handleCreate} disabled={!newName.trim()} className="w-full">纭畾</Button>
+                <Button size="sm" onClick={handleCreate} disabled={!newName.trim()} className="w-full">Create</Button>
               </div>
             ) : (
               <button onClick={() => setShowCreate(true)}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded transition-colors">
-                <Plus size={14} /> 鏂板缓鐧芥澘
+                <Plus size={14} /> New Whiteboard
               </button>
             )}
-            <p className="text-xs text-gray-400 px-2.5">{whiteboards.length} 涓櫧鏉?/p>
+            <p className="text-xs text-gray-400 px-2.5">{whiteboards.length} whiteboards</p>
           </div>
         </div>
 
@@ -195,13 +192,10 @@ export default function WhiteboardPage() {
           {currentWhiteboard ? (
             <div className="flex-1 relative">
               {loadState.status === 'loading' ? (
-                <div className="flex items-center justify-center h-full">
-                  <DefaultSpinner />
-                </div>
+                <div className="flex items-center justify-center h-full"><DefaultSpinner /></div>
               ) : loadState.status === 'error' ? (
                 <div className="flex flex-col items-center justify-center h-full text-red-500 gap-2">
-                  <AlertCircle size={32} />
-                  <p>鍔犺浇澶辫触: {loadState.error}</p>
+                  <AlertCircle size={32} /><p>{loadState.error}</p>
                 </div>
               ) : store ? (
                 currentWhiteboard.wb_type === 'ppt' ? (
@@ -215,7 +209,7 @@ export default function WhiteboardPage() {
             <div className="flex-1 flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <PenTool size={48} strokeWidth={1} className="mx-auto mb-3" />
-                <p className="text-lg">閫夋嫨鎴栧垱寤轰竴涓櫧鏉?/p>
+                <p className="text-lg">Select or create a whiteboard</p>
               </div>
             </div>
           )}
@@ -223,18 +217,17 @@ export default function WhiteboardPage() {
       </div>
 
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}
-        title="鍒犻櫎鐧芥澘"
-        description={`纭畾瑕佸垹闄ゃ€?{deleteTarget?.name}銆嶅悧锛熸鎿嶄綔涓嶅彲鎾ら攢銆俙}>
+        title="Delete Whiteboard"
+        description={`Delete "${deleteTarget?.name}"? This cannot be undone.`}>
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={() => setDeleteTarget(null)}>鍙栨秷</Button>
-          <Button variant="destructive" onClick={handleDelete}>纭鍒犻櫎</Button>
+          <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button variant="destructive" onClick={handleDelete}>Delete</Button>
         </div>
       </Dialog>
     </AppShell>
   )
 }
 
-/* ------------------------------------------------------------------ */
 /* ------------------------------------------------------------------ */
 /*  WhiteboardItem                                                     */
 /* ------------------------------------------------------------------ */
@@ -292,7 +285,7 @@ function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete, onRename }: 
       )}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button onClick={(e) => { e.stopPropagation(); onDelete(whiteboard) }}
-          className="p-0.5 rounded hover:bg-red-100" title="删除">
+          className="p-0.5 rounded hover:bg-red-100" title="Delete">
           <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
         </button>
       </div>
