@@ -18,7 +18,7 @@ export function SlideStrip() {
   }, [dragIdx, moveSlide])
 
   return (
-    <div className="h-28 border-t border-gray-200 bg-gray-50 flex items-center px-3 gap-2 shrink-0">
+    <div className="h-28 border-t border-gray-200 bg-gray-100 flex items-center px-3 gap-2 shrink-0">
       <div className="flex gap-2 overflow-x-auto py-1">
         {slides.map((s, i) => (
           <div key={s.id} draggable

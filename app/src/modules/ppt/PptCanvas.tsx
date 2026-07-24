@@ -28,7 +28,7 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 flex min-h-0">
-        <div className="flex-1 flex items-center justify-center bg-gray-200">
+        <div className="flex-1 flex items-center justify-center bg-gray-100">
           {hasSlides ? (
             <CanvasViewport />
           ) : (
