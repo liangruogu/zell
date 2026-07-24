@@ -14,7 +14,7 @@ export function PreviewButton() {
     return (
       <button
         onClick={() => setFullscreen(true)}
-        className="absolute bottom-3 right-3 z-50 p-2 bg-white/80 backdrop-blur rounded-lg shadow hover:bg-white transition"
+        className="p-2 bg-white/80 backdrop-blur rounded-lg shadow hover:bg-white transition"
         title="预览"
       >
         <Play size={16} className="text-gray-600" />
