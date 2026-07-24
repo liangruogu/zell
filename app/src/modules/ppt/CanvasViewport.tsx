@@ -103,10 +103,9 @@ export function CanvasViewport() {
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return
       const target = e.target as HTMLElement
-      // only start marquee when clicking directly on canvas bg
-      const onBg = target.closest('[data-canvas="bg"]') && !(target as HTMLElement).closest('[style*="position: absolute"]')
-      console.log('[marquee] onDown target:', target.tagName, target.className?.slice(0,30), 'onBg:', onBg)
-      if (onBg) {
+      // start marquee when clicking on canvas bg or container empty area
+      if (target.closest('[style*="position: absolute"]')) return // clicked an element
+      if (target.closest('[data-canvas="bg"]') || target === el || el.contains(target)) {
         dragging = true
         const rect = el.getBoundingClientRect()
         marqueeRef.current = { sx: e.clientX - rect.left, sy: e.clientY - rect.top, ex: e.clientX - rect.left, ey: e.clientY - rect.top }

@@ -530,7 +530,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
       const rowEl = rowRefs.current.get(editIdx)
       if (rowEl) {
       const rect = rowEl.getBoundingClientRect()
-      setPopPos({ x: rect.right - 200, y: rect.bottom + 4 })
+      setPopPos({ x: rect.left - 200, y: rect.bottom + 4 })
       }
     }
     updatePos()
