@@ -410,16 +410,25 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
 
   useEffect(() => {
     if (editIdx === null) return
-    const rowEl = rowRefs.current.get(editIdx)
-    if (rowEl) {
-      const rect = rowEl.getBoundingClientRect()
-      setPopPos({ x: rect.left - 168, y: rect.top })
+    const updatePos = () => {
+      const rowEl = rowRefs.current.get(editIdx)
+      if (rowEl) {
+        const rect = rowEl.getBoundingClientRect()
+        setPopPos({ x: rect.left - 168, y: rect.top })
+      }
     }
+    updatePos()
     const onDown = (e: MouseEvent) => {
       if (popRef.current && !popRef.current.contains(e.target as Node)) setEditIdx(null)
     }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    window.addEventListener('resize', updatePos)
+    window.addEventListener('scroll', updatePos, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('resize', updatePos)
+      window.removeEventListener('scroll', updatePos, true)
+    }
   }, [editIdx])
 
   const updateShadow = (idx: number, s: Partial<{ x: number; y: number; blur: number; color: string }>) => {
