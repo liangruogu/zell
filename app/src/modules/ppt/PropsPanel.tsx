@@ -5,13 +5,41 @@ import type { CanvasElement } from './types'
 
 const SCRUB = { threshold: 3, speed: 1 }
 
-// recent color palette (shared across all ColorChips)
-const recentColors: string[] = []
+// recent color palette — persisted to localStorage
+const STORAGE_KEY = 'bindle_recent_colors'
+function loadRecentColors(): string[] {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch { return [] }
+}
+function saveRecentColors() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(recentColors))
+}
+const recentColors: string[] = loadRecentColors()
 function addRecentColor(c: string) {
   const idx = recentColors.indexOf(c)
   if (idx >= 0) recentColors.splice(idx, 1)
   recentColors.unshift(c)
-  if (recentColors.length > 12) recentColors.pop()
+  if (recentColors.length > 16) recentColors.pop()
+  saveRecentColors()
+}
+// sync recent colors with currently-used colors in the project
+function syncRecentColors(slides: { elements: { props: { fill?: string; stroke?: string; fontColor?: string; shadowColor?: string; shadows?: { color: string }[] } }[] }[]) {
+  const used = new Set<string>()
+  for (const sl of slides) {
+    for (const el of sl.elements) {
+      const p = el.props
+      if (p.fill) used.add(p.fill)
+      if (p.stroke) used.add(p.stroke)
+      if (p.fontColor) used.add(p.fontColor)
+      if (p.shadowColor) used.add(p.shadowColor)
+      if (p.shadows) p.shadows.forEach(s => used.add(s.color))
+    }
+  }
+  // merge: keep existing recent colors that are still used, add new ones
+  const merged = recentColors.filter(c => used.has(c))
+  for (const c of used) { if (!merged.includes(c)) merged.push(c) }
+  recentColors.length = 0
+  recentColors.push(...merged.slice(0, 16))
+  saveRecentColors()
 }
 
 /* ── CSS-only grip indicator (two vertical lines) ── */
@@ -195,7 +223,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
                 <>
                   <span className="text-[9px] text-gray-400">最近使用</span>
                   <div className="flex gap-0.5 flex-wrap">
-                    {recentColors.slice(0, 14).map(c => (
+                    {recentColors.slice(0, 16).map(c => (
                       <button key={c} onClick={() => { handleColorChange(c); setShowPicker(false) }}
                         className="w-4 h-4 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
                         style={{ background: c }} title={c}
@@ -245,6 +273,8 @@ export function PropsPanel() {
   const [activeTab, setActiveTab] = useState<'props' | 'layers'>('props')
   const slide = slides.find(s => s.id === currentSlideId)
   const el = selectedIds.length === 1 ? slide?.elements.find(e => e.id === selectedIds[0]) : null
+
+  useEffect(() => { syncRecentColors(slides) }, [slides])
 
   return (
     <div className="w-48 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none">
@@ -412,8 +442,8 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
     const updatePos = () => {
       const rowEl = rowRefs.current.get(editIdx)
       if (rowEl) {
-        const rect = rowEl.getBoundingClientRect()
-        setPopPos({ x: rect.left - 168, y: rect.top })
+      const rect = rowEl.getBoundingClientRect()
+      setPopPos({ x: rect.left, y: rect.bottom + 4 })
       }
     }
     updatePos()
