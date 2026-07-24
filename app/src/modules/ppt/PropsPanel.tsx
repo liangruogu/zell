@@ -92,10 +92,22 @@ function ScrubInput({ label, value, onChange, min, max, step = 1, integer = true
   )
 }
 
+function expandHex(raw: string): string | null {
+  const h = raw.replace(/[^0-9a-fA-F]/g, '').slice(0, 6).toLowerCase()
+  if (h.length === 0) return null
+  if (h.length === 1) return h.repeat(6)
+  if (h.length === 2) return h.repeat(3)
+  if (h.length === 3) return h[0] + h[0] + h[1] + h[1] + h[2] + h[2]
+  if (h.length === 4 || h.length === 5) return expandHex(h.slice(0, 3))
+  return h
+}
+
 function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
   label: string; color: string; onChange: (c: string) => void
   opacity?: number; onOpacityChange?: (o: number) => void
 }) {
+  const [hexEdit, setHexEdit] = useState(false)
+  const [hexText, setHexText] = useState('')
   const [opEdit, setOpEdit] = useState(false)
   const [opText, setOpText] = useState('')
   const opRef = useRef({ v0: 0, mx: 0 })
@@ -116,6 +128,11 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
     window.addEventListener('pointerup', onUp)
   }
 
+  const commitHex = () => {
+    const expanded = expandHex(hexText)
+    if (expanded && expanded.length === 6) onChange('#' + expanded)
+    setHexEdit(false)
+  }
   const commitOp = () => {
     const n = parseInt(opText)
     if (!isNaN(n)) onOpacityChange?.(Math.max(0, Math.min(100, n)) / 100)
@@ -132,21 +149,35 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
           />
           <div className="w-6 h-5 rounded border border-gray-300" style={{ background: color }} />
         </div>
-        <span className="text-[10px] text-gray-600 flex-1 font-mono">{color}</span>
+        {hexEdit ? (
+          <input autoFocus type="text" value={hexText}
+            onChange={e => setHexText(e.target.value)}
+            onBlur={commitHex}
+            onKeyDown={e => { if (e.key === 'Enter') commitHex(); if (e.key === 'Escape') setHexEdit(false) }}
+            className="flex-1 h-[20px] min-w-0 text-[11px] font-mono border border-gray-200 rounded px-1 outline-none"
+          />
+        ) : (
+          <span onClick={() => { setHexText(color.replace('#', '')); setHexEdit(true) }}
+            className="flex-1 text-[11px] text-gray-600 font-mono cursor-default truncate">{color}</span>
+        )}
         {onOpacityChange && opacity != null && (
           <div className="flex items-center gap-0.5 shrink-0">
-            <div onPointerDown={onOpGrip} className="cursor-ew-resize text-gray-400 hover:text-gray-600">
-              <GripHorizontal size={10} />
+            <div
+              onPointerDown={onOpGrip}
+              className="cursor-ew-resize text-gray-400 hover:text-gray-600 flex items-center"
+              title="拖拽调节透明度"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0" y="0" width="3" height="10" fill="currentColor" opacity="0.5" rx="1"/><rect x="7" y="0" width="3" height="10" fill="currentColor" rx="1"/></svg>
             </div>
             {opEdit ? (
               <input autoFocus type="text" value={opText}
                 onChange={e => setOpText(e.target.value)}
                 onBlur={commitOp}
                 onKeyDown={e => { if (e.key === 'Enter') commitOp(); if (e.key === 'Escape') setOpEdit(false) }}
-                className="w-8 h-[20px] text-[10px] text-center border border-gray-200 rounded outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-8 h-[20px] text-[11px] text-center border border-gray-200 rounded outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             ) : (
-              <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[10px] text-gray-600 cursor-default min-w-[20px] text-right">{opDisplay}%</span>
+              <span onClick={() => { setOpText(String(opDisplay)); setOpEdit(true) }} className="text-[11px] text-gray-600 cursor-default min-w-[24px] text-right">{opDisplay}%</span>
             )}
           </div>
         )}
@@ -239,16 +270,16 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       {(el.type === 'rect' || el.type === 'ellipse') && (
         <>
           <ColorChip label="填充" color={el.props.fill || '#e2e8f0'} onChange={v => updateProps({ fill: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
-          <ColorChip label="边框色" color={el.props.stroke || '#cbd5e1'} onChange={v => updateProps({ stroke: v })} />
+          <ColorChip label="边框色" color={el.props.stroke || '#cbd5e1'} onChange={v => updateProps({ stroke: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
           <ScrubInput label="边框粗细" value={el.props.strokeWidth ?? 0} onChange={v => updateProps({ strokeWidth: v })} min={0} max={20} />
           {el.type === 'rect' && (
             <>
               <ScrubInput label="圆角" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v })} min={0} max={200} />
               <div className="grid grid-cols-2 gap-2">
-                <ScrubInput label="┌" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
-                <ScrubInput label="┐" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
-                <ScrubInput label="└" labelLeft value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v })} min={0} max={200} />
-                <ScrubInput label="┘" labelLeft value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v })} min={0} max={200} />
+                <ScrubInput label="TL" labelLeft value={el.props.borderRadiusTL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTL: v })} min={0} max={200} />
+                <ScrubInput label="TR" labelLeft value={el.props.borderRadiusTR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusTR: v })} min={0} max={200} />
+                <ScrubInput label="BL" labelLeft value={el.props.borderRadiusBL ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBL: v })} min={0} max={200} />
+                <ScrubInput label="BR" labelLeft value={el.props.borderRadiusBR ?? el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadiusBR: v })} min={0} max={200} />
               </div>
             </>
           )}
