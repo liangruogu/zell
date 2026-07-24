@@ -59,7 +59,11 @@ export function ElementHandles({ element, zoom }: Props) {
           case 's': nh = snapped.eby - ny; break
           case 'w': nx = snapped.x; nw = ref.current.ox + ref.current.ow - nx; break
           case 'e': nw = snapped.erx - nx; break
-          default: nx = snapped.x; ny = snapped.y; break
+          // corners: keep opposite corner fixed
+          case 'nw': nx = snapped.x; ny = snapped.y; nw = ref.current.ox + ref.current.ow - nx; nh = ref.current.oy + ref.current.oh - ny; break
+          case 'ne': ny = snapped.y; nw = snapped.erx - nx; nh = ref.current.oy + ref.current.oh - ny; break
+          case 'sw': nx = snapped.x; nw = ref.current.ox + ref.current.ow - nx; nh = snapped.eby - ny; break
+          case 'se': nw = snapped.erx - nx; nh = snapped.eby - ny; break
         }
       }
 
