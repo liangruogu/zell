@@ -247,6 +247,9 @@ export function CanvasViewport() {
         {selEls.map(el => (
           <ElementHandles key={`h-${el.id}`} element={el} zoom={zoom} />
         ))}
+        {selEls.length > 1 && (
+          <GroupBoundingBox elements={selEls} zoom={zoom} />
+        )}
         {/* Guide lines */}
         {guideLines.length > 0 && (
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 99 }}>
@@ -261,6 +264,108 @@ export function CanvasViewport() {
           </svg>
         )}
       </div>
+    </div>
+  )
+}
+
+function GroupBoundingBox({ elements, zoom }: { elements: CanvasElement[]; zoom: number }) {
+  const [activeHandle, setActiveHandle] = useState<string | null>(null)
+  const ref = useRef({ mx: 0, my: 0, ox: 0, oy: 0, ow: 0, oh: 0, els: [] as CanvasElement[] })
+  const HS = 8, CS = 10
+
+  if (elements.length === 0) return null
+  const x1 = Math.min(...elements.map(e => e.x))
+  const y1 = Math.min(...elements.map(e => e.y))
+  const x2 = Math.max(...elements.map(e => e.x + e.w))
+  const y2 = Math.max(...elements.map(e => e.y + e.h))
+  const w = x2 - x1
+  const h = y2 - y1
+
+  const startResize = useCallback((e: React.MouseEvent, handle: string) => {
+    e.stopPropagation(); e.preventDefault()
+    setActiveHandle(handle)
+    ref.current = { mx: e.clientX, my: e.clientY, ox: x1, oy: y1, ow: w, oh: h, els: elements.map(el => ({...el})) }
+  }, [x1, y1, w, h, elements])
+
+  useEffect(() => {
+    if (!activeHandle) return
+    const st = usePptStore.getState()
+    if (!st.currentSlideId) return
+    const z = st.zoom || 1
+    const onMove = (e: MouseEvent) => {
+      const dx = (e.clientX - ref.current.mx) / z
+      const dy = (e.clientY - ref.current.my) / z
+      const { ox, oy, ow, oh, els } = ref.current
+      if (ow === 0 || oh === 0) return
+
+      let nx = ox, ny = oy, nw = ow, nh = oh
+      switch (activeHandle) {
+        case 'nw': nx = ox + dx; ny = oy + dy; nw = ow - dx; nh = oh - dy; break
+        case 'ne': ny = oy + dy; nw = ow + dx; nh = oh - dy; break
+        case 'sw': nx = ox + dx; nw = ow - dx; nh = oh + dy; break
+        case 'se': nw = ow + dx; nh = oh + dy; break
+        case 'n': ny = oy + dy; nh = oh - dy; break
+        case 's': nh = oh + dy; break
+        case 'w': nx = ox + dx; nw = ow - dx; break
+        case 'e': nw = ow + dx; break
+      }
+      if (nw < 10) nw = 10
+      if (nh < 10) nh = 10
+
+      const sx = nw / ow
+      const sy = nh / oh
+      const slide = st.slides.find(s => s.id === st.currentSlideId)
+      if (!slide) return
+
+      for (const el of els) {
+        const orig = elements.find(oe => oe.id === el.id)
+        if (!orig) continue
+        const relX = (orig.x - ox) * sx
+        const relY = (orig.y - oy) * sy
+        const newW = orig.w * sx
+        const newH = orig.h * sy
+        st.updateElement(st.currentSlideId, el.id, {
+          x: Math.round(nx + relX),
+          y: Math.round(ny + relY),
+          w: Math.round(newW),
+          h: Math.round(newH),
+        })
+      }
+    }
+    const onUp = () => setActiveHandle(null)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [activeHandle])
+
+  const hStyle = (pos: string): React.CSSProperties => {
+    const isCorner = pos.length === 2
+    const isH = pos === 'w' || pos === 'e'
+    const isV = pos === 'n' || pos === 's'
+    const s = 1 / zoom
+    const cSize = (isCorner ? CS : HS) * s
+    const barLen = (isV || isH ? 18 : cSize / s) * s
+    return {
+      position: 'absolute',
+      background: '#3b82f6', border: `${2 * s}px solid white`,
+      borderRadius: isCorner ? '50%' : `${3 * s}px`,
+      cursor: isV ? 'ns-resize' : isH ? 'ew-resize' : pos === 'nw' || pos === 'se' ? 'nwse-resize' : 'nesw-resize',
+      width: isV ? barLen : cSize, height: isH ? barLen : cSize,
+      ...(pos.includes('n') ? { top: -(cSize / 2) } : pos.includes('s') ? { bottom: -(cSize / 2) } : {}),
+      ...(pos.includes('w') ? { left: -(cSize / 2) } : pos.includes('e') ? { right: -(cSize / 2) } : {}),
+      ...(isV ? { left: '50%', marginLeft: -(barLen / 2) } : {}),
+      ...(isH ? { top: '50%', marginTop: -(barLen / 2) } : {}),
+    }
+  }
+
+  const handles = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
+
+  return (
+    <div style={{ position: 'absolute', left: x1, top: y1, width: w, height: h, pointerEvents: 'none', zIndex: 2 }}>
+      <div style={{ position: 'absolute', inset: `-${2 / zoom}px`, border: `${2 / zoom}px dashed rgba(59,130,246,0.6)`, pointerEvents: 'none' }} />
+      {handles.map(p => (
+        <div key={p} style={{ ...hStyle(p), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
+      ))}
     </div>
   )
 }
