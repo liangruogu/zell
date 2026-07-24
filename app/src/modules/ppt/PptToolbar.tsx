@@ -41,7 +41,7 @@ export function PptToolbar() {
   }
 
   return (
-    <div className="h-10 bg-gray-100 flex items-center justify-center px-3 gap-2 shrink-0">
+    <div className="h-10 bg-white/80 backdrop-blur rounded-lg shadow border border-gray-200 flex items-center justify-center px-3 gap-2">
       <button onClick={() => add('text')} className="p-2 rounded hover:bg-gray-100" title="文本"><Type size={16} /></button>
       <button onClick={() => add('rect')} className="p-2 rounded hover:bg-gray-100" title="矩形"><Square size={16} /></button>
       <button onClick={() => add('ellipse')} className="p-2 rounded hover:bg-gray-100" title="圆形"><Circle size={16} /></button>

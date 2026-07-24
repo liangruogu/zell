@@ -8,10 +8,13 @@ export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
   const { slides, currentSlideId, selectedIds, zoom, setZoom, deleteElements } = usePptStore()
   const slide = slides.find(s => s.id === currentSlideId)
-  const [panX, setPanX] = useState(0)
-  const [panY, setPanY] = useState(0)
+  const [, forceUpdate] = useState(0)
   const panRef = useRef({ x: 0, y: 0 })
-  panRef.current = { x: panX, y: panY }
+
+  const setPan = useCallback((x: number, y: number) => {
+    panRef.current = { x, y }
+    forceUpdate(n => n + 1)
+  }, [])
 
   // Ctrl+wheel zoom at mouse position
   useEffect(() => {
@@ -26,9 +29,8 @@ export function CanvasViewport() {
         const oldZoom = usePptStore.getState().zoom
         const newZoom = Math.max(0.25, Math.min(3, oldZoom + (e.deltaY > 0 ? -0.1 : 0.1)))
         usePptStore.getState().setZoom(newZoom)
-        const scale = newZoom / oldZoom
-        setPanX(prev => mx - scale * mx + prev)
-        setPanY(prev => my - scale * my + prev)
+      const scale = newZoom / oldZoom
+      setPan(mx - scale * mx + panRef.current.x, my - scale * my + panRef.current.y)
       }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -41,7 +43,7 @@ export function CanvasViewport() {
       if (!e.ctrlKey) return
       if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom(zoom + 0.1) }
       if (e.key === '-') { e.preventDefault(); setZoom(zoom - 0.1) }
-      if (e.key === '0') { e.preventDefault(); setZoom(1); setPanX(0); setPanY(0) }
+      if (e.key === '0') { e.preventDefault(); setZoom(1); setPan(0, 0) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -61,8 +63,7 @@ export function CanvasViewport() {
     }
     const onMove = (e: MouseEvent) => {
       if (!panning) return
-      setPanX(spx + e.clientX - sx)
-      setPanY(spy + e.clientY - sy)
+      setPan(spx + e.clientX - sx, spy + e.clientY - sy)
     }
     const onUp = () => { panning = false; el.style.cursor = '' }
     el.addEventListener('mousedown', onDown)
@@ -114,7 +115,7 @@ export function CanvasViewport() {
           width: SLIDE_W,
           height: SLIDE_H,
           background: slide.background || '#ffffff',
-          transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+          transform: `translate(${panRef.current.x}px, ${panRef.current.y}px) scale(${zoom})`,
           transformOrigin: 'center center',
         }}
       >

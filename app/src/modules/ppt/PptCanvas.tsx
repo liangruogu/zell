@@ -43,7 +43,11 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
         </div>
         <PropsPanel />
       </div>
-      {hasSlides && <PptToolbar />}
+      {hasSlides && (
+        <div className="absolute bottom-[128px] left-1/2 -translate-x-1/2 z-50">
+          <PptToolbar />
+        </div>
+      )}
       {hasSlides && <SlideStrip />}
     </div>
   )
