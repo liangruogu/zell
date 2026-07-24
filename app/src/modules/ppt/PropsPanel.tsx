@@ -224,7 +224,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
                   <span className="text-[10px] text-gray-400">最近使用</span>
                   <div className="flex gap-0.5 flex-wrap">
                     {recentColors.slice(0, 16).map(c => (
-                      <button key={c} onClick={() => { handleColorChange(c); setShowPicker(false) }}
+                      <button key={c} onClick={() => handleColorChange(c)}
                         className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
                         style={{ background: c }} title={c}
                       />
@@ -289,7 +289,7 @@ export function PropsPanel() {
           ) : (
             <>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-700">
+                <span className="text-[13px] font-medium text-gray-700">
                   {{ text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片' }[el.type]}
                 </span>
                 <button onClick={() => setSelectedIds([])} className="p-0.5 text-gray-400 hover:text-gray-600"><X size={12} /></button>
@@ -365,6 +365,18 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
 
 function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
   const hasStroke = (el.props.strokeWidth ?? 0) > 0 && el.props.stroke
+  const [showStrokePicker, setShowStrokePicker] = useState(false)
+  const strokePickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showStrokePicker) return
+    const onDown = (e: MouseEvent) => {
+      if (strokePickerRef.current && !strokePickerRef.current.contains(e.target as Node)) setShowStrokePicker(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showStrokePicker])
+
   const [editW, setEditW] = useState(false)
   const [wText, setWText] = useState('')
   const wRef = useRef({ v0: 0, mx: 0 })
@@ -404,10 +416,31 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
       {hasStroke && (
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[26px] px-1">
           <div className="relative shrink-0">
-            <input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => updateProps({ stroke: e.target.value })}
-              className="absolute inset-0 opacity-0 w-6 h-5 cursor-pointer"
-            />
-            <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: el.props.stroke || '#cbd5e1' }} />
+            <button onClick={() => setShowStrokePicker(!showStrokePicker)} className="block">
+              <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: el.props.stroke || '#cbd5e1' }} />
+            </button>
+            {showStrokePicker && (
+              <div ref={strokePickerRef} className="absolute top-full left-0 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] space-y-1.5" style={{ width: 160 }}>
+                <span className="text-[10px] text-gray-400">取色器</span>
+                <div className="flex items-center gap-1">
+                  <input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => { addRecentColor(e.target.value); updateProps({ stroke: e.target.value }) }} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
+                  <span className="text-[12px] text-gray-600 font-mono">{el.props.stroke || '#cbd5e1'}</span>
+                </div>
+                {recentColors.length > 0 && (
+                  <>
+                    <span className="text-[10px] text-gray-400">最近使用</span>
+                    <div className="flex gap-0.5 flex-wrap">
+                      {recentColors.slice(0, 16).map(c => (
+                        <button key={c} onClick={() => { addRecentColor(c); updateProps({ stroke: c }) }}
+                          className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                          style={{ background: c }} title={c}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center h-full overflow-hidden">
             <div onPointerDown={onWGrip} className="h-full shrink-0" style={{ cursor: 'ew-resize', touchAction: 'none' }}>
@@ -498,9 +531,28 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             </button>
           </div>
           {editIdx === i && (
-            <div ref={popRef} className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-2 space-y-1" style={{ width: 200, top: popPos.y, left: popPos.x }}>
-              <div className="text-[10px] text-gray-500 font-medium">阴影 {i + 1}</div>
-              <ColorChip label="" color={s.color} onChange={v => updateShadow(i, { color: v })} />
+            <div ref={popRef} className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-2 space-y-1.5" style={{ width: 200, top: popPos.y, left: popPos.x }}>
+              <div className="text-[12px] text-gray-600 font-medium">阴影 {i + 1}</div>
+              <div className="space-y-1">
+                <span className="text-[10px] text-gray-400">颜色</span>
+                <div className="flex items-center gap-1">
+                  <input type="color" value={s.color} onChange={e => { addRecentColor(e.target.value); updateShadow(i, { color: e.target.value }) }} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
+                  <span className="text-[12px] text-gray-600 font-mono">{s.color}</span>
+                </div>
+              </div>
+              {recentColors.length > 0 && (
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-gray-400">最近使用</span>
+                  <div className="flex gap-0.5 flex-wrap">
+                    {recentColors.slice(0, 16).map(c => (
+                      <button key={c} onClick={() => updateShadow(i, { color: c })}
+                        className="w-5 h-5 rounded-sm border border-gray-300 hover:scale-110 transition-transform"
+                        style={{ background: c }} title={c}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-1">
                 <ScrubInput label="X" value={s.x} onChange={v => updateShadow(i, { x: v })} min={-50} max={50} />
                 <ScrubInput label="Y" value={s.y} onChange={v => updateShadow(i, { y: v })} min={-50} max={50} />
