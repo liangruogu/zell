@@ -98,7 +98,6 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
     setCurrentSlideId(slideId)
     const shape = editor.getShape(slideId)
     if (!shape) return
-    // Lock camera to exact slide bounds with no padding
     editor.setCameraOptions({
       isLocked: true,
       constraints: {
@@ -110,11 +109,31 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
         padding: { x: 0, y: 0 },
       },
     })
-    editor.zoomToBounds(
-      { x: shape.x, y: shape.y, w: shape.props.w, h: shape.props.h },
+    // Force camera to exact position
+    editor.setCamera(
+      { x: shape.x + shape.props.w / 2, y: shape.y + shape.props.h / 2, z: 1 },
       { animation: { duration: 250 } }
     )
   }, [editor])
+
+  // Keep camera locked to current slide
+  useEffect(() => {
+    if (!editor || !currentSlideId) return
+    const snapCamera = () => {
+      const shape = editor.getShape(currentSlideId)
+      if (!shape) return
+      const c = editor.getCamera()
+      const cx = shape.x + shape.props.w / 2
+      const cy = shape.y + shape.props.h / 2
+      if (Math.abs(c.x - cx) > 1 || Math.abs(c.y - cy) > 1 || Math.abs(c.z - 1) > 0.01) {
+        requestAnimationFrame(() => {
+          editor.setCamera({ x: cx, y: cy, z: 1 }, { animation: { duration: 150 } })
+        })
+      }
+    }
+    const unsub = editor.store.listen(snapCamera as any)
+    return () => unsub()
+  }, [editor, currentSlideId])
 
   const addSlide = useCallback((afterIndex?: number) => {
     if (!editor) return
@@ -203,7 +222,7 @@ export function PptCanvas({ store, whiteboardId }: PptCanvasProps) {
 
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 relative bg-gray-300">
-          <Tldraw key={whiteboardId} store={store} hideUi onMount={(ed) => setEditor(ed)} />
+          <Tldraw key={whiteboardId} store={store} hideUi licenseKey="temporary" onMount={(ed) => setEditor(ed)} />
           {slides.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
               <div className="text-center text-gray-500 bg-white/80 rounded-xl p-8 shadow-sm">
