@@ -79,18 +79,25 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
 
   return (
     <div
-      className="fixed inset-0 z-[99999] bg-black flex items-center justify-center cursor-pointer"
-      onClick={(e) => {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-        if (e.clientX > rect.width / 2) goNext()
-        else goPrev()
-      }}
+      className="fixed inset-0 z-[99999] bg-black flex items-center justify-center"
       onMouseMove={(e) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
         setHoverSide(e.clientX > rect.width / 2 ? 'right' : 'left')
       }}
       onMouseLeave={() => setHoverSide(null)}
     >
+      {/* Left click zone */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1/2 z-10"
+        style={{ cursor: 'w-resize' }}
+        onClick={goPrev}
+      />
+      {/* Right click zone */}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1/2 z-10"
+        style={{ cursor: 'e-resize' }}
+        onClick={goNext}
+      />
       {/* Slide content — fills viewport height, 16:9 aspect */}
       <div
         className="relative shadow-2xl flex-shrink-0"
