@@ -1,4 +1,4 @@
-module bindle-server
+module zell-server
 
 go 1.22
 
