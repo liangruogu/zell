@@ -6,7 +6,7 @@
 
 ## 一、项目概述
 
-Zell 是一个基于 **Tauri 2.x + React 19 + TypeScript** 的桌面端项目知识管理工具。Rust 后端使用 SQLite 本地存储，Go 后端提供局域网协作能力。前端通过 TipTap 编辑器、自研 PPT Canvas 等组件提供知识库、设计画布（PPT/Mood/UI）、外部资源链接等功能。
+Zell 是一个开源免费的、可自托管的全方位设计工具，覆盖知识整理、创意脑暴到演示文稿制作。基于 **Tauri 2.x + React 19 + TypeScript**，Rust 后端 SQLite 本地存储，Go 后端提供局域网协作能力。
 
 ---
 
