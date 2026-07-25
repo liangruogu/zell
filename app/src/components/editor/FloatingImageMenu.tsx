@@ -8,9 +8,9 @@ interface FloatingImageMenuProps {
 }
 
 const SIZE_PRESETS = [
-  { label: '�?, width: 200 },
-  { label: '�?, width: 400 },
-  { label: '�?, width: 600 },
+  { label: '小', width: 200 },
+  { label: '中', width: 400 },
+  { label: '大', width: 600 },
   { label: '充满', width: 'full' as const },
 ]
 
@@ -101,7 +101,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
       const view = editor.view
       const posNum = view.posAtDOM(target, 0)
 
-      // Check if inside an imageGroup �?skip
+      // Check if inside an imageGroup —skip
       const $pos = view.state.doc.resolve(posNum)
       if ($pos.parent.type.name === 'imageGroup') return
 
@@ -248,7 +248,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
       {isMulti ? (
         <>
           <h4 className="text-xs font-semibold text-gray-700 mb-3">
-            已选择 {selectedImagesRef.current.size} 张图�?          </h4>
+            已选择 {selectedImagesRef.current.size} 张图片          </h4>
           <button
             type="button"
             onClick={handleGroupImages}
@@ -259,7 +259,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
         </>
       ) : isGroup ? (
         <>
-          <h4 className="text-xs font-semibold text-gray-700 mb-3">图片�?/h4>
+          <h4 className="text-xs font-semibold text-gray-700 mb-3">图片组</h4>
           <button
             type="button"
             onClick={handleUngroup}

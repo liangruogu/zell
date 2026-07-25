@@ -1,0 +1,1 @@
+fix: trim trailing newline in code blocks from markdown rendering

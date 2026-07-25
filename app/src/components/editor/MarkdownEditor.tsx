@@ -72,34 +72,51 @@ export function MarkdownEditor({
   const loadSettings = useSettingsStore((s) => s.loadSettings)
   useEffect(() => { loadSettings() }, [loadSettings])
 
-  // Inject custom CSS
-  const customCss = useSettingsStore((s) => s.settings['custom_css'])
-  useEffect(() => {
-    let styleEl = document.getElementById('bindle-custom-css') as HTMLStyleElement | null
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = 'bindle-custom-css'
-      document.head.appendChild(styleEl)
-    }
-    styleEl.textContent = customCss || ''
-    return () => {
-      if (styleEl) styleEl.textContent = ''
-    }
-  }, [customCss])
+  // Inject custom CSS (now handled by theme system)
+  // Legacy custom_css setting support removed — use custom themes instead
 
-  // Apply theme
+  // Apply theme (default + custom)
   const appearanceSettings = useSettingsStore((s) => s.settings['appearance'])
   useEffect(() => {
-    try {
-      if (appearanceSettings) {
-        const parsed = JSON.parse(appearanceSettings)
-        if (parsed.theme) {
-          document.documentElement.setAttribute('data-bindle-theme', parsed.theme)
-        } else {
-          document.documentElement.removeAttribute('data-bindle-theme')
+    const apply = async () => {
+      try {
+        if (!appearanceSettings) {
+          document.documentElement.removeAttribute('data-zell-theme')
+          return
         }
+        const parsed = JSON.parse(appearanceSettings)
+        const theme = parsed.theme || ''
+        const DEFAULT_THEME_KEYS = ['bindle', 'github', 'notion', 'minimal']
+        if (DEFAULT_THEME_KEYS.includes(theme) || !theme) {
+          document.documentElement.removeAttribute('data-zell-custom-theme')
+          if (theme) {
+            document.documentElement.setAttribute('data-zell-theme', theme)
+          } else {
+            document.documentElement.removeAttribute('data-zell-theme')
+          }
+          return
+        }
+        // Custom theme: load CSS file
+        document.documentElement.removeAttribute('data-zell-theme')
+        const { appDataDir, join } = await import('@tauri-apps/api/path')
+        const { readTextFile } = await import('@tauri-apps/plugin-fs')
+        const dir = await appDataDir()
+        const filePath = await join(dir, 'themes', `${theme}.css`)
+        const css = await readTextFile(filePath)
+        document.documentElement.setAttribute('data-zell-custom-theme', theme)
+        let styleEl = document.getElementById('zell-custom-theme') as HTMLStyleElement | null
+        if (!styleEl) {
+          styleEl = document.createElement('style')
+          styleEl.id = 'zell-custom-theme'
+          document.head.appendChild(styleEl)
+        }
+        styleEl.textContent = css
+      } catch {
+        document.documentElement.removeAttribute('data-zell-theme')
+        document.documentElement.removeAttribute('data-zell-custom-theme')
       }
-    } catch { document.documentElement.removeAttribute('data-bindle-theme') }
+    }
+    apply()
   }, [appearanceSettings])
 
   // Collaboration mode
@@ -354,7 +371,7 @@ export function MarkdownEditor({
     onUpdate: handleUpdate,
     editorProps: {
       attributes: {
-        class: 'prose bindle-prose focus:outline-none min-h-[300px]',
+        class: 'prose zell-prose focus:outline-none min-h-[300px]',
       },
       handleKeyDown: (_view, event) => {
         if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {
@@ -785,7 +802,7 @@ export function MarkdownEditor({
             <div className="flex-1 overflow-auto flex justify-center">
               <div
                 ref={previewRef}
-                className="w-full max-w-3xl px-8 py-4 prose bindle-prose"
+                className="w-full max-w-3xl px-8 py-4 prose zell-prose"
                 dangerouslySetInnerHTML={{ __html: resolvedPreviewHtml }}
               />
             </div>

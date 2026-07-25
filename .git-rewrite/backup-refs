@@ -1,0 +1,4 @@
+59e79ccc07db74c22ee6421163f4d064bc39bcb5 commit	refs/heads/agent-rebuild
+80153aeb1ff04f9963f81afb7dcaf81fb0a66195 commit	refs/heads/master
+67dc42a565656dd482293c3711d1a632409d6326 commit	refs/remotes/origin/master
+a793cd80fe6b1061462983188b3760dfb8504d40 commit	refs/stash

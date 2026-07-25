@@ -149,7 +149,7 @@ export function SlideStrip() {
             const realTo = dropIdx - beforeCount
             const ns = [...rest]
             ns.splice(Math.max(0, realTo), 0, ...moving)
-            ns.forEach((s, i) => { s.name = `幻灯�?${i + 1}` })
+            ns.forEach((s, i) => { s.name = `幻灯片${i + 1}` })
             usePptStore.setState({ slides: ns })
           } else {
             const realTo = fromIdx < dropIdx ? dropIdx - 1 : dropIdx

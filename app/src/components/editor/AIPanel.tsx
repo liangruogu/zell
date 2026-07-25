@@ -42,12 +42,12 @@ function renderMarkdown(content: string): string {
   const div = document.createElement('div')
   div.innerHTML = html
   div.querySelectorAll('pre code').forEach((block) => {
-    // Code fence content always ends with \n �?trim it visually
+    // Code fence content always ends with \n —trim it visually
     if (block.lastChild?.nodeType === Node.TEXT_NODE) {
       const t = block.lastChild as Text
       t.textContent = t.textContent?.replace(/\n+$/, '') ?? ''
     } else if (block.childNodes.length > 0) {
-      // hljs may have already run �?check all text nodes
+      // hljs may have already run —check all text nodes
       block.childNodes.forEach((child) => {
         if (child.nodeType === Node.TEXT_NODE) {
           const t = child as Text
@@ -199,7 +199,7 @@ export function AIPanel() {
           <span className="truncate">
             {activeConversationId
               ? (conversations.find(c => c.id === activeConversationId)?.title || '对话')
-              : '新对�?}
+              : '新对话'}
           </span>
           <ChevronDown size={10} />
         </button>
@@ -280,7 +280,7 @@ export function AIPanel() {
         {!hasAI && (
           <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg text-sm text-amber-700">
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
-            <span>请在设置中配�?AI 服务（API Key �?Ollama�?/span>
+            <span>请在设置中配置AI 服务（API Key 或Ollama）</span>
           </div>
         )}
 
@@ -290,8 +290,8 @@ export function AIPanel() {
             <p className="text-gray-500 font-medium mb-2">我能帮你做什么？</p>
             <div className="text-xs space-y-1 text-gray-400">
               <p>🔍 搜索知识库和外部资源</p>
-              <p>📖 读取文章和文件完整内�?/p>
-              <p>💡 基于项目上下文回答问�?/p>
+              <p>📖 读取文章和文件完整内容</p>
+              <p>💡 基于项目上下文回答问题</p>
             </div>
           </div>
         )}
@@ -307,7 +307,7 @@ export function AIPanel() {
                   rows={3}
                 />
                 <div className="flex gap-2">
-                  <button onClick={handleEditSend} className="px-3 py-1 text-xs bg-zell-500 text-white rounded">发�?/button>
+                  <button onClick={handleEditSend} className="px-3 py-1 text-xs bg-zell-500 text-white rounded">发送</button>
                   <button onClick={() => setEditingIndex(null)} className="px-3 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded">取消</button>
                 </div>
               </div>
@@ -340,7 +340,7 @@ export function AIPanel() {
                   {msg.role === 'user' && (
                     deleteConfirmIdx === i ? (
                       <div className="absolute top-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg px-2 py-1.5 flex items-center gap-1.5 z-10">
-                        <span className="text-[10px] text-gray-500">删除这条对话�?/span>
+                        <span className="text-[10px] text-gray-500">删除这条对话？</span>
                         <button onClick={confirmDelete} className="px-2 py-0.5 text-[10px] bg-red-500 text-white rounded hover:bg-red-600">确认</button>
                         <button onClick={() => setDeleteConfirmIdx(null)} className="px-2 py-0.5 text-[10px] bg-gray-100 text-gray-600 rounded hover:bg-gray-200">取消</button>
                       </div>
@@ -418,7 +418,7 @@ export function AIPanel() {
             value={pendingInput}
             onChange={(e) => setPendingInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入问题，Enter 发�?.."
+            placeholder="输入问题，Enter 发送.."
             rows={1}
             className="flex-1 resize-none px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-zell-400"
             disabled={streaming}

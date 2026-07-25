@@ -37,14 +37,14 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="新建项目"
-      description="创建一个新项目，填写基本信息后将自动建�?AI 上下文索引�?>
+      description="创建一个新项目，填写基本信息后将自动建立AI 上下文索引。">
       <div className="space-y-4">
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">图标</label>
           <EmojiPicker value={icon} onChange={setIcon} />
         </div>
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">项目状�?/label>
+          <label className="block text-sm font-medium text-gray-700">项目状态</label>
           <div className="flex gap-2 flex-wrap">
             {PROJECT_STATUS.map((s) => (
               <button key={s.value} type="button"
@@ -66,16 +66,16 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
         </div>
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">项目描述</label>
-          <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="简要描述项目内�? />
+          <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="简要描述项目内容" />
         </div>
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">项目背景</label>
           <Textarea rows={5} value={background} onChange={(e) => setBackground(e.target.value)}
-            placeholder="详细描述项目背景信息，将作为 AI 上下文自动注�? />
+            placeholder="详细描述项目背景信息，将作为 AI 上下文自动注入" />
         </div>
         <div className="flex justify-end pt-2">
           <Button onClick={handleSubmit} disabled={!name.trim() || submitting}>
-            {submitting ? '创建�?..' : '创建项目'}
+            {submitting ? '创建中...' : '创建项目'}
           </Button>
         </div>
       </div>

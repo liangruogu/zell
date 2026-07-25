@@ -34,7 +34,7 @@ export function Sidebar() {
   const projectNavItems = projectId
     ? [
         { to: `/project/${projectId}`, icon: LayoutDashboard, label: '概览', end: true },
-        { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '知识�? },
+        { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '知识库' },
         { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '设计画布' },
         { to: `/project/${projectId}/links`, icon: Link2, label: '外部资源' },
       ]
@@ -52,7 +52,7 @@ export function Sidebar() {
           <button
             onClick={toggle}
             className="p-1.5 rounded hover:bg-zell-200 transition-colors text-zell-500 shrink-0"
-            title={collapsed ? '展开侧边�? : '收起侧边�?}
+            title={collapsed ? '展开侧边栏' : '收起侧边栏'}
           >
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>

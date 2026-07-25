@@ -33,7 +33,7 @@ pub fn start_server(
                 return Err("服务器已在运行中".into());
             }
             Err(e) => {
-                return Err(format!("检查进程状态失�? {}", e));
+                return Err(format!("检查进程状态失败 {}", e));
             }
         }
     }
@@ -52,7 +52,7 @@ pub fn start_server(
 
     let child_process = Command::new(&bin_path)
         .spawn()
-        .map_err(|e| format!("启动服务器失�? {}。请确认 {} 文件存在", e, bin_path))?;
+        .map_err(|e| format!("启动服务器失败 {}。请确认 {} 文件存在", e, bin_path))?;
 
     let pid = child_process.id();
     *child = Some(child_process);
@@ -92,7 +92,7 @@ pub fn stop_server(
             }
         }
     } else {
-        Err("服务器未在运�?.into())
+        Err("服务器未在运行".into())
     }
 }
 

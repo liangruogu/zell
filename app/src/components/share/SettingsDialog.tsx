@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { X, Palette, Bot, FileText, Server, CheckCircle, Plus, Trash2, Loader2, Link2, ChevronDown, ChevronRight } from 'lucide-react'
+import { X, Palette, Bot, FileText, Server, CheckCircle, Plus, Trash2, Loader2, Link2, ChevronDown, ChevronRight, Pencil, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -7,6 +7,9 @@ import { useForm } from 'react-hook-form'
 import { cn } from '@/lib/utils'
 import { testProviderConnection, type AIProvider } from '@/services/aiService'
 import { ServerManager } from './ServerManager'
+import { invoke } from '@tauri-apps/api/core'
+import { appDataDir, join } from '@tauri-apps/api/path'
+import { readTextFile, writeTextFile, remove, readDir, rename, mkdir, exists } from '@tauri-apps/plugin-fs'
 
 type SettingsCategory = 'appearance' | 'ai' | 'editor' | 'server' | 'sync'
 
@@ -147,12 +150,15 @@ function parseSettings(settings: Record<string, string>) {
 }
 
 // ---- Appearance Settings ----
-const THEME_OPTIONS = [
-  { value: 'bindle', label: 'Bindle 默认', preview: 'bg-gradient-to-br from-blue-50 to-indigo-100 text-bindle-600' },
-  { value: 'github', label: 'GitHub', preview: 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700' },
-  { value: 'notion', label: 'Notion', preview: 'bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700' },
-  { value: 'minimal', label: '极简', preview: 'bg-gradient-to-br from-white to-gray-50 text-gray-500' },
+const DEFAULT_THEMES = [
+  { value: 'bindle', label: 'Zell 默认' },
+  { value: 'github', label: 'GitHub' },
+  { value: 'notion', label: 'Notion' },
+  { value: 'minimal', label: '报告' },
 ]
+const DEFAULT_THEME_KEYS = new Set(DEFAULT_THEMES.map(t => t.value))
+
+interface CustomTheme { name: string; label: string }
 
 function AppearanceSettings({ parsed, setSetting, showToast }: {
   parsed: ReturnType<typeof parseSettings>
@@ -161,14 +167,99 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
 }) {
   const showToolbarVal = parsed.appearance.showToolbar !== false
   const currentTheme = String(parsed.appearance.theme || 'bindle')
-  const [customCss, setCustomCss] = useState('')
-  const [cssExpanded, setCssExpanded] = useState(false)
-  const [cssRefExpanded, setCssRefExpanded] = useState(false)
+  const [customThemes, setCustomThemes] = useState<CustomTheme[]>([])
+  const [newName, setNewName] = useState('')
+  const [renameTarget, setRenameTarget] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
 
-  useEffect(() => {
-    const raw = parsed as Record<string, unknown>
-    setCustomCss(String((raw as Record<string, string>).customCss || ''))
-  }, [parsed])
+  const themesDir = useCallback(async () => {
+    const dir = await appDataDir()
+    return join(dir, 'themes')
+  }, [])
+
+  const ensureThemesDir = useCallback(async () => {
+    const dir = await themesDir()
+    if (!(await exists(dir))) {
+      await mkdir(dir, { recursive: true })
+    }
+  }, [themesDir])
+
+  const loadCustomThemes = useCallback(async () => {
+    try {
+      await ensureThemesDir()
+      const dir = await themesDir()
+      const entries = await readDir(dir)
+      const themes: CustomTheme[] = []
+      for (const entry of entries) {
+        if (entry.name && entry.name.endsWith('.css')) {
+          const name = entry.name.replace(/\.css$/, '')
+          if (!DEFAULT_THEME_KEYS.has(name)) {
+            themes.push({ name, label: name })
+          }
+        }
+      }
+      setCustomThemes(themes)
+    } catch { setCustomThemes([]) }
+  }, [themesDir])
+
+  useEffect(() => { loadCustomThemes() }, [loadCustomThemes])
+
+  const createTheme = useCallback(async () => {
+    const name = newName.trim()
+    if (!name) { showToast('请输入主题名称'); return }
+    if (DEFAULT_THEME_KEYS.has(name)) { showToast('不能使用默认主题名称'); return }
+    if (customThemes.some(t => t.name === name)) { showToast('主题名称已存在'); return }
+    try {
+      await ensureThemesDir()
+      const dir = await themesDir()
+      const filePath = await join(dir, `${name}.css`)
+      await writeTextFile(filePath, `/* ${name} 自定义主题 */\n.zell-prose {\n  \n}\n`)
+      await invoke('open_in_system', { filePath })
+      setNewName('')
+      await loadCustomThemes()
+      showToast(`已创建主题 "${name}"`)
+    } catch (e) { showToast(`创建失败: ${e}`) }
+  }, [newName, customThemes, themesDir, showToast, loadCustomThemes])
+
+  const editTheme = useCallback(async (name: string) => {
+    try {
+      const dir = await themesDir()
+      const filePath = await join(dir, `${name}.css`)
+      await invoke('open_in_system', { filePath })
+    } catch (e) { showToast(`打开失败: ${e}`) }
+  }, [themesDir, showToast])
+
+  const deleteTheme = useCallback(async (name: string) => {
+    if (DEFAULT_THEME_KEYS.has(name)) return
+    try {
+      const dir = await themesDir()
+      const filePath = await join(dir, `${name}.css`)
+      await remove(filePath)
+      if (currentTheme === name) {
+        await setSetting('appearance', JSON.stringify({ ...parsed.appearance, theme: 'bindle' }))
+        document.documentElement.removeAttribute('data-zell-custom-theme')
+        document.documentElement.setAttribute('data-zell-theme', 'bindle')
+      }
+      await loadCustomThemes()
+      showToast('主题已删除')
+    } catch (e) { showToast(`删除失败: ${e}`) }
+  }, [themesDir, currentTheme, parsed.appearance, setSetting, showToast, loadCustomThemes])
+
+  const renameTheme = useCallback(async (oldName: string) => {
+    const newNameVal = renameValue.trim()
+    if (!newNameVal || newNameVal === oldName) { setRenameTarget(null); return }
+    if (DEFAULT_THEME_KEYS.has(newNameVal)) { showToast('不能使用默认主题名称'); return }
+    try {
+      const dir = await themesDir()
+      await rename(await join(dir, `${oldName}.css`), await join(dir, `${newNameVal}.css`))
+      if (currentTheme === oldName) {
+        await setSetting('appearance', JSON.stringify({ ...parsed.appearance, theme: newNameVal }))
+      }
+      setRenameTarget(null)
+      await loadCustomThemes()
+      showToast(`已重命名为 "${newNameVal}"`)
+    } catch (e) { showToast(`重命名失败: ${e}`) }
+  }, [renameValue, themesDir, currentTheme, parsed.appearance, setSetting, showToast, loadCustomThemes])
 
   const { register, handleSubmit, reset } = useForm({
     defaultValues: {
@@ -191,18 +282,37 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
       showToolbar: data.showToolbar,
       theme: currentTheme,
     }))
-    if (customCss !== undefined) {
-      await setSetting('custom_css', customCss)
-    }
     showToast('外观设置已保存')
-  }, [setSetting, showToast, parsed.appearance, currentTheme, customCss])
+  }, [setSetting, showToast, parsed.appearance, currentTheme])
 
   const handleThemeChange = useCallback(async (theme: string) => {
     const updated = { ...parsed.appearance, theme }
     await setSetting('appearance', JSON.stringify(updated))
-    document.documentElement.setAttribute('data-bindle-theme', theme)
+    if (DEFAULT_THEME_KEYS.has(theme)) {
+      document.documentElement.removeAttribute('data-zell-custom-theme')
+      document.documentElement.setAttribute('data-zell-theme', theme)
+    } else {
+      document.documentElement.removeAttribute('data-zell-theme')
+      try {
+        const dir = await themesDir()
+        const filePath = await join(dir, `${theme}.css`)
+        const css = await readTextFile(filePath)
+        document.documentElement.setAttribute('data-zell-custom-theme', theme)
+        let styleEl = document.getElementById('zell-custom-theme') as HTMLStyleElement | null
+        if (!styleEl) {
+          styleEl = document.createElement('style')
+          styleEl.id = 'zell-custom-theme'
+          document.head.appendChild(styleEl)
+        }
+        styleEl.textContent = css
+      } catch {
+        document.documentElement.removeAttribute('data-zell-custom-theme')
+      }
+    }
     showToast('主题已切换')
-  }, [parsed.appearance, setSetting, showToast])
+  }, [parsed.appearance, setSetting, showToast, themesDir])
+
+  const allThemes = [...DEFAULT_THEMES, ...customThemes]
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -211,90 +321,106 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
       {/* Theme selector */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">Markdown 主题</label>
-        <div className="grid grid-cols-4 gap-2">
-          {THEME_OPTIONS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => handleThemeChange(t.value)}
-              className={cn(
-                'flex flex-col items-center gap-1.5 p-3 rounded-lg border text-xs font-medium transition-all',
-                currentTheme === t.value
-                  ? 'border-bindle-400 bg-bindle-50 text-bindle-700 shadow-sm'
-                  : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
-              )}
-            >
-              <span className={cn('w-10 h-6 rounded', t.preview)} />
-              {t.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <select
+            value={currentTheme}
+            onChange={(e) => handleThemeChange(e.target.value)}
+            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-zell-400 appearance-none cursor-pointer"
+          >
+            <optgroup label="默认主题">
+              {DEFAULT_THEMES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </optgroup>
+            {customThemes.length > 0 && (
+              <optgroup label="自定义主题">
+                {customThemes.map(t => (
+                  <option key={t.name} value={t.name}>{t.label}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <button
+            type="button"
+            onClick={() => setNewName(newName ? '' : '_')}
+            className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-zell-700 bg-zell-50 hover:bg-zell-100 border border-zell-200 rounded-md transition-colors shrink-0"
+          >
+            <Plus size={14} />
+            新建
+          </button>
         </div>
+
+        {/* New theme input */}
+        {newName !== '' && (
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              value={newName === '_' ? '' : newName}
+              onChange={(e) => setNewName(e.target.value || '_')}
+              onKeyDown={(e) => { if (e.key === 'Enter') createTheme(); if (e.key === 'Escape') setNewName('') }}
+              placeholder="主题名称"
+              className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-zell-400"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={createTheme}
+              className="px-3 py-1.5 text-xs font-medium text-white bg-zell-500 hover:bg-zell-600 rounded-md transition-colors shrink-0"
+            >
+              创建
+            </button>
+          </div>
+        )}
+
+        {/* Custom theme management */}
+        {customThemes.length > 0 && (
+          <div className="space-y-0.5 pt-1">
+            {customThemes.map(t => (
+              <div key={t.name} className="flex items-center gap-1.5 pl-1">
+                {renameTarget === t.name ? (
+                  <>
+                    <input
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') renameTheme(t.name); if (e.key === 'Escape') setRenameTarget(null) }}
+                      className="flex-1 px-2 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-zell-400"
+                      autoFocus
+                      placeholder="新名称"
+                    />
+                    <button type="button" onClick={() => renameTheme(t.name)} className="px-2 py-0.5 text-xs text-zell-600 hover:bg-zell-50 rounded">确定</button>
+                    <button type="button" onClick={() => setRenameTarget(null)} className="px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-50 rounded">取消</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-xs text-gray-500 truncate">{t.label}</span>
+                    <button type="button" onClick={() => editTheme(t.name)} className="p-0.5 text-gray-400 hover:text-zell-600 rounded" title="编辑CSS">
+                      <ExternalLink size={13} />
+                    </button>
+                    <button type="button" onClick={() => { setRenameTarget(t.name); setRenameValue(t.name) }} className="p-0.5 text-gray-400 hover:text-zell-600 rounded" title="重命名">
+                      <Pencil size={13} />
+                    </button>
+                    <button type="button" onClick={() => deleteTheme(t.name)} className="p-0.5 text-gray-400 hover:text-red-500 rounded" title="删除">
+                      <Trash2 size={13} />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Font size + toolbar */}
       <div className="space-y-4">
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">编辑器字号</label>
-          <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('fontSize')}>
+          <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400 appearance-none bg-white" {...register('fontSize')}>
             {FONT_SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <label className="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" className="w-4 h-4 accent-bindle-500" {...register('showToolbar')} />
+          <input type="checkbox" className="w-4 h-4 accent-zell-500" {...register('showToolbar')} />
           <span className="text-sm text-gray-700">显示编辑器工具栏</span>
         </label>
-      </div>
-
-      {/* Custom CSS */}
-      <div className="space-y-2 border-t border-gray-100 pt-4">
-        <button
-          type="button"
-          onClick={() => setCssExpanded(!cssExpanded)}
-          className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
-        >
-          {cssExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          自定义 CSS
-        </button>
-        {cssExpanded && (
-          <div className="space-y-2">
-            <textarea
-              value={customCss}
-              onChange={(e) => setCustomCss(e.target.value)}
-              placeholder={`/* 在此编写自定义 CSS */\n.bindle-prose h1 {\n  color: #your-color;\n}`}
-              spellCheck={false}
-              className="w-full h-32 px-3 py-2 text-xs font-mono bg-gray-900 text-gray-100 border border-gray-700 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400 resize-y"
-            />
-            <button
-              type="button"
-              onClick={() => setCssRefExpanded(!cssRefExpanded)}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-            >
-              {cssRefExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              可修改的元素参考
-            </button>
-            {cssRefExpanded && (
-              <pre className="text-[11px] text-gray-500 bg-gray-50 rounded p-3 border border-gray-100 overflow-x-auto select-all">
-{`/* 修改 H1 标题颜色 */
-.bindle-prose h1 { color: #your-color; }
-
-/* 修改正文字体和大小 */
-.bindle-prose { font-family: 'your-font', sans-serif; font-size: 16px; }
-
-/* 修改代码块背景色 */
-.bindle-prose pre { background: #1e1e1e; }
-
-/* 修改链接颜色 */
-.bindle-prose a { color: #your-color; }
-
-/* 修改表格边框 */
-.bindle-prose table { border-color: #your-color; }
-
-/* 修改引用块样式 */
-.bindle-prose blockquote { border-left-color: #your-color; }`}
-              </pre>
-            )}
-          </div>
-        )}
       </div>
 
       <Button type="submit" size="sm">保存外观</Button>
