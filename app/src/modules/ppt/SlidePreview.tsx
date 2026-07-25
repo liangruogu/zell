@@ -99,7 +99,7 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   if (ended) {
     return (
       <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center">
-        <p className="text-white/60 text-lg">已经到最后一张幻灯片了，按 ESC 退出</p>
+        <p className="text-white/60 text-lg">已经到最后一张幻灯片了，�?ESC 退�?/p>
       </div>
     )
   }
@@ -117,7 +117,7 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       <div className="absolute left-0 top-0 bottom-0 w-1/2 z-10" onClick={goPrev} style={{ cursor: 'default' }} />
       {/* Right click zone */}
       <div className="absolute right-0 top-0 bottom-0 w-1/2 z-10" onClick={goNext} style={{ cursor: 'default' }} />
-      {/* Slide content — fills viewport height, 16:9 aspect */}
+      {/* Slide content �?fills viewport height, 16:9 aspect */}
       <div
         className="relative shadow-2xl flex-shrink-0"
         style={{
@@ -157,7 +157,7 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       {/* Bottom bar */}
       <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/15">
         <div
-          className="h-full bg-bindle-500 transition-all duration-300"
+          className="h-full bg-zell-500 transition-all duration-300"
           style={{ width: `${((idx + 1) / visible.length) * 100}%` }}
         />
       </div>

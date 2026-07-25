@@ -13,7 +13,7 @@ import { CreateProjectDialog } from '@/components/project/CreateProjectDialog'
 
 export default function HomePage() {
   const { projects, loading, fetchProjects, createProject } = useProjectStore()
-  const { connected, serverUrl, setToken } = useSyncStore()
+  const { serverUrl, setToken } = useSyncStore()
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [joinCode, setJoinCode] = useState('')
@@ -65,11 +65,9 @@ export default function HomePage() {
         subtitle=""
         actions={
           <div className="flex gap-2">
-            {connected && (
-              <Button variant="outline" size="sm" onClick={() => setShowJoin(true)}>
-                <Link2 size={14} /> 加入项目
-              </Button>
-            )}
+            <Button variant="outline" size="sm" onClick={() => setShowJoin(true)}>
+              <Link2 size={14} /> 加入项目
+            </Button>
             <Button onClick={() => setShowCreate(true)} size="sm">
               新建项目
             </Button>

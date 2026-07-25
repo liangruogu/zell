@@ -4,19 +4,19 @@ import { cn } from '@/lib/utils'
 const CATEGORIES = [
   {
     name: '常用',
-    emojis: ['📁', '📂', '📋', '📝', '📊', '📈', '📌', '📎', '💡', '🚀', '⭐', '🔥', '🎯', '💻', '🎨', '🔧'],
+    emojis: ['📁', '📂', '📋', '📝', '📊', '📈', '📌', '📎', '💡', '🚀', '�?, '🔥', '🎯', '💻', '🎨', '🔧'],
   },
   {
     name: '趣味',
-    emojis: ['🦄', '🐉', '🌮', '🍕', '🧙', '🦸', '🧛', '👾', '🕹️', '🎮', '🎲', '🧩', '🪄', '🔮', '👑', '💎'],
+    emojis: ['🦄', '🐉', '🌮', '🍕', '🧙', '🦸', '🧛', '👾', '🕹�?, '🎮', '🎲', '🧩', '🪄', '🔮', '👑', '💎'],
   },
   {
     name: '自然',
-    emojis: ['🌱', '🌿', '🌻', '🌸', '🍀', '🌙', '☀️', '🌈', '💧', '🔥', '❄️', '🌊', '🏔️', '🌴', '🍄', '🪐'],
+    emojis: ['🌱', '🌿', '🌻', '🌸', '🍀', '🌙', '☀�?, '🌈', '💧', '🔥', '❄️', '🌊', '🏔�?, '🌴', '🍄', '🪐'],
   },
   {
     name: '物件',
-    emojis: ['🗺️', '🧭', '📡', '🔬', '🧪', '⚙️', '🛠️', '🔑', '🏷️', '📯', '🎪', '🏆', '🎁', '📦', '🧲', '🛡️'],
+    emojis: ['🗺�?, '🧭', '📡', '🔬', '🧪', '⚙️', '🛠�?, '🔑', '🏷�?, '📯', '🎪', '🏆', '🎁', '📦', '🧲', '🛡�?],
   },
 ]
 
@@ -34,7 +34,7 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-14 h-14 flex items-center justify-center text-2xl border border-gray-300 rounded-lg hover:border-bindle-400 transition-colors"
+        className="w-14 h-14 flex items-center justify-center text-2xl border border-gray-300 rounded-lg hover:border-zell-400 transition-colors"
       >
         {value || '📁'}
       </button>
@@ -52,7 +52,7 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
                   onClick={() => setTab(i)}
                   className={cn(
                     'px-3 py-1.5 text-xs font-medium rounded-t transition-colors',
-                    tab === i ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'
+                    tab === i ? 'text-zell-600 border-b-2 border-zell-500' : 'text-gray-500 hover:text-gray-700'
                   )}
                 >
                   {cat.name}
@@ -68,7 +68,7 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
                   onClick={() => { onChange(emoji); setOpen(false) }}
                   className={cn(
                     'w-10 h-10 flex items-center justify-center text-lg rounded hover:bg-gray-100 transition-colors',
-                    value === emoji && 'bg-bindle-100 ring-1 ring-bindle-300'
+                    value === emoji && 'bg-zell-100 ring-1 ring-zell-300'
                   )}
                 >
                   {emoji}

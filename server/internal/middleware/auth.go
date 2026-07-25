@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"bindle-server/internal/repository"
+	"zell-server/internal/repository"
 
 	"github.com/gin-gonic/gin"
 )

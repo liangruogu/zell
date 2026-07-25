@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { TitleBar } from './TitleBar'
 import { AIPanel } from '@/components/editor/AIPanel'
 import { useKeyboardShortcutDialog } from '@/components/share/KeyboardShortcutDialog'
 import { useAIStore } from '@/stores/aiStore'
@@ -73,7 +74,9 @@ export function AppShell({ children }: AppShellProps) {
   }, [isAIOpen, openPanel, closePanel])
 
   return (
-    <div className="flex h-full bg-white">
+    <div className="flex flex-col h-full bg-white">
+      <TitleBar />
+      <div className="flex flex-1 min-h-0">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0">
         {children}
@@ -82,7 +85,7 @@ export function AppShell({ children }: AppShellProps) {
         <>
           <div
             onMouseDown={handleAIDragStart}
-            className="w-1.5 shrink-0 cursor-col-resize bg-transparent hover:bg-bindle-300 transition-colors z-10"
+            className="w-1.5 shrink-0 cursor-col-resize bg-transparent hover:bg-zell-300 transition-colors z-10"
           />
           <div style={{ width: aiWidth }} className="shrink-0">
             <AIPanel />
@@ -90,6 +93,7 @@ export function AppShell({ children }: AppShellProps) {
         </>
       )}
       {shortcutDialog}
+      </div>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-export const APP_NAME = 'Bindle'
+export const APP_NAME = 'Zell'
 export const APP_VERSION = '0.1.0'
 
 export const LINK_TYPE_LABELS: Record<string, string> = {

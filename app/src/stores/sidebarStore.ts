@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-const STORAGE_KEY = 'bindle_sidebar_collapsed'
+const STORAGE_KEY = 'zell_sidebar_collapsed'
 
 function loadCollapsed(): boolean {
   try {

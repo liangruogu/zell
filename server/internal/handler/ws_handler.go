@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"bindle-server/internal/repository"
-	"bindle-server/internal/ws"
+	"zell-server/internal/repository"
+	"zell-server/internal/ws"
 
 	"github.com/gin-gonic/gin"
 	gorillaWs "github.com/gorilla/websocket"

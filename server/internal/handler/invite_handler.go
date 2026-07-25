@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"bindle-server/internal/repository"
+	"zell-server/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

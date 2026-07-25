@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { invoke } from '@tauri-apps/api/core'
 
-const STORAGE_OPEN_KEY = 'bindle_ai_open'
-const STORAGE_INPUT_KEY = 'bindle_ai_input'
+const STORAGE_OPEN_KEY = 'zell_ai_open'
+const STORAGE_INPUT_KEY = 'zell_ai_input'
 
 function loadAIOpen(): boolean {
   try { return localStorage.getItem(STORAGE_OPEN_KEY) === '1' } catch { return false }

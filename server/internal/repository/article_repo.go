@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"bindle-server/internal/model"
+	"zell-server/internal/model"
 )
 
 func (db *DB) ListArticles(projectID string) ([]model.Article, error) {

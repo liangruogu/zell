@@ -3,16 +3,16 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --color-bindle-50: #f0f4ff;
-  --color-bindle-100: #dbe4ff;
-  --color-bindle-200: #bac8ff;
-  --color-bindle-300: #91a7ff;
-  --color-bindle-400: #748ffc;
-  --color-bindle-500: #5c7cfa;
-  --color-bindle-600: #4c6ef5;
-  --color-bindle-700: #4263eb;
-  --color-bindle-800: #3b5bdb;
-  --color-bindle-900: #364fc7;
+  --color-zell-50: #f0f4ff;
+  --color-zell-100: #dbe4ff;
+  --color-zell-200: #bac8ff;
+  --color-zell-300: #91a7ff;
+  --color-zell-400: #748ffc;
+  --color-zell-500: #5c7cfa;
+  --color-zell-600: #4c6ef5;
+  --color-zell-700: #4263eb;
+  --color-zell-800: #3b5bdb;
+  --color-zell-900: #364fc7;
 }
 
 html, body, #root {
@@ -22,18 +22,18 @@ html, body, #root {
 }
 
 /* ======== Custom Scrollbar ======== */
-.bindle-scrollbar::-webkit-scrollbar {
+.zell-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-.bindle-scrollbar::-webkit-scrollbar-track {
+.zell-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
-.bindle-scrollbar::-webkit-scrollbar-thumb {
+.zell-scrollbar::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 3px;
 }
-.bindle-scrollbar::-webkit-scrollbar-thumb:hover {
+.zell-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
 
@@ -43,27 +43,27 @@ html, body, #root {
   scrollbar-color: #d1d5db transparent;
 }
 
-/* ======== Bindle Prose Overrides (use WITH prose class) ======== */
-.prose.bindle-prose {
+/* ======== Zell Prose Overrides (use WITH prose class) ======== */
+.prose.zell-prose {
   font-size: 1rem;
   color: #1f2937;
   max-width: none;
 }
 
-.prose.bindle-prose h1 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
-.prose.bindle-prose h2 { font-size: 1.3rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
-.prose.bindle-prose h3 { font-size: 1.15rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+.prose.zell-prose h1 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+.prose.zell-prose h2 { font-size: 1.3rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.prose.zell-prose h3 { font-size: 1.15rem; margin-top: 1rem; margin-bottom: 0.5rem; }
 
 /* Tighter paragraph and list spacing */
-.prose.bindle-prose :where(p) { margin-top: 0.5em; margin-bottom: 0.5em; }
-.prose.bindle-prose :where(li) { margin-top: 0.125em; margin-bottom: 0.125em; }
-.prose.bindle-prose :where(ul), .prose.bindle-prose :where(ol) { margin-top: 0.25em; margin-bottom: 0.25em; }
-.prose.bindle-prose :where(img) { display: block; margin-left: auto; margin-right: auto; max-width: 100%; height: auto; }
+.prose.zell-prose :where(p) { margin-top: 0.5em; margin-bottom: 0.5em; }
+.prose.zell-prose :where(li) { margin-top: 0.125em; margin-bottom: 0.125em; }
+.prose.zell-prose :where(ul), .prose.zell-prose :where(ol) { margin-top: 0.25em; margin-bottom: 0.25em; }
+.prose.zell-prose :where(img) { display: block; margin-left: auto; margin-right: auto; max-width: 100%; height: auto; }
 .ProseMirror img.ProseMirror-selectednode { outline: 1.5px solid #3b82f6; outline-offset: 2px; }
-.ProseMirror img.bindle-img-multi-selected { outline: 2px dashed #5c7cfa; outline-offset: 2px; background: rgba(92, 124, 250, 0.06); }
+.ProseMirror img.zell-img-multi-selected { outline: 2px dashed #5c7cfa; outline-offset: 2px; background: rgba(92, 124, 250, 0.06); }
 
 /* Inline code: match body font size */
-.prose.bindle-prose :where(code):not(pre code) {
+.prose.zell-prose :where(code):not(pre code) {
   font-size: 0.9em;
   background: #f3f4f6;
   padding: 0.125em 0.375em;
@@ -72,7 +72,7 @@ html, body, #root {
 }
 
 /* Code blocks: same font size as body */
-.prose.bindle-prose :where(pre) {
+.prose.zell-prose :where(pre) {
   font-size: 1em;
   background: #f8f9fa;
   border: 1px solid #e5e7eb;
@@ -82,7 +82,7 @@ html, body, #root {
   margin-top: 1em;
   margin-bottom: 1em;
 }
-.prose.bindle-prose :where(pre code) {
+.prose.zell-prose :where(pre code) {
   font-size: 1em;
   background: transparent;
   padding: 0;
@@ -105,11 +105,11 @@ html, body, #root {
 }
 
 /* Language label on code blocks (via data-language attr set by JS) */
-.prose.bindle-prose pre[data-language] {
+.prose.zell-prose pre[data-language] {
   position: relative;
   padding-top: 2.25rem;
 }
-.prose.bindle-prose pre[data-language]::before {
+.prose.zell-prose pre[data-language]::before {
   content: attr(data-language);
   position: absolute;
   top: 0;
@@ -125,11 +125,11 @@ html, body, #root {
 }
 
 /* ======== Task List (TipTap) ======== */
-.prose.bindle-prose ul[data-type="taskList"] {
+.prose.zell-prose ul[data-type="taskList"] {
   list-style: none !important;
   padding-left: 0 !important;
 }
-.prose.bindle-prose ul[data-type="taskList"] li {
+.prose.zell-prose ul[data-type="taskList"] li {
   list-style: none !important;
   display: flex !important;
   align-items: flex-start;
@@ -137,39 +137,39 @@ html, body, #root {
   margin-top: 0.25em;
   margin-bottom: 0.25em;
 }
-.prose.bindle-prose ul[data-type="taskList"] li::before {
+.prose.zell-prose ul[data-type="taskList"] li::before {
   display: none !important;
 }
-.prose.bindle-prose ul[data-type="taskList"] li > label {
+.prose.zell-prose ul[data-type="taskList"] li > label {
   flex-shrink: 0;
   padding-top: 0.15em;
 }
-.prose.bindle-prose ul[data-type="taskList"] li > label input[type="checkbox"] {
+.prose.zell-prose ul[data-type="taskList"] li > label input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
   margin: 0;
   cursor: pointer;
   accent-color: #4c6ef5;
 }
-.prose.bindle-prose ul[data-type="taskList"] li > div {
+.prose.zell-prose ul[data-type="taskList"] li > div {
   flex: 1;
   min-width: 0;
 }
-.prose.bindle-prose ul[data-type="taskList"] li p {
+.prose.zell-prose ul[data-type="taskList"] li p {
   margin: 0;
 }
 
 /* Markdown rendered checkboxes (split preview via marked) */
-.prose.bindle-prose li:has(> input[type="checkbox"]) {
+.prose.zell-prose li:has(> input[type="checkbox"]) {
   list-style: none !important;
   display: flex !important;
   align-items: flex-start;
   gap: 0.5rem;
 }
-.prose.bindle-prose li:has(> input[type="checkbox"])::before {
+.prose.zell-prose li:has(> input[type="checkbox"])::before {
   display: none !important;
 }
-.prose.bindle-prose li > input[type="checkbox"]:first-child {
+.prose.zell-prose li > input[type="checkbox"]:first-child {
   width: 1rem;
   height: 1rem;
   margin: 0;
@@ -179,35 +179,35 @@ html, body, #root {
 }
 
 /* ======== Code Highlight (Light Theme) ======== */
-.prose.bindle-prose pre code .hljs-keyword,
+.prose.zell-prose pre code .hljs-keyword,
 .prose pre code .hljs-keyword  { color: #d73a49; }
-.prose.bindle-prose pre code .hljs-string,
+.prose.zell-prose pre code .hljs-string,
 .prose pre code .hljs-string   { color: #032f62; }
-.prose.bindle-prose pre code .hljs-number,
+.prose.zell-prose pre code .hljs-number,
 .prose pre code .hljs-number   { color: #005cc5; }
-.prose.bindle-prose pre code .hljs-comment,
+.prose.zell-prose pre code .hljs-comment,
 .prose pre code .hljs-comment  { color: #6a737d; font-style: italic; }
-.prose.bindle-prose pre code .hljs-function,
+.prose.zell-prose pre code .hljs-function,
 .prose pre code .hljs-function { color: #6f42c1; }
-.prose.bindle-prose pre code .hljs-built_in,
+.prose.zell-prose pre code .hljs-built_in,
 .prose pre code .hljs-built_in { color: #6f42c1; }
-.prose.bindle-prose pre code .hljs-title,
+.prose.zell-prose pre code .hljs-title,
 .prose pre code .hljs-title    { color: #6f42c1; }
-.prose.bindle-prose pre code .hljs-type,
+.prose.zell-prose pre code .hljs-type,
 .prose pre code .hljs-type     { color: #005cc5; }
-.prose.bindle-prose pre code .hljs-attr,
+.prose.zell-prose pre code .hljs-attr,
 .prose pre code .hljs-attr     { color: #005cc5; }
-.prose.bindle-prose pre code .hljs-params,
+.prose.zell-prose pre code .hljs-params,
 .prose pre code .hljs-params   { color: #24292e; }
-.prose.bindle-prose pre code .hljs-meta,
+.prose.zell-prose pre code .hljs-meta,
 .prose pre code .hljs-meta     { color: #d73a49; }
-.prose.bindle-prose pre code .hljs-literal,
+.prose.zell-prose pre code .hljs-literal,
 .prose pre code .hljs-literal  { color: #005cc5; }
-.prose.bindle-prose pre code .hljs-variable,
+.prose.zell-prose pre code .hljs-variable,
 .prose pre code .hljs-variable { color: #24292e; }
-.prose.bindle-prose pre code .hljs-selector-class,
+.prose.zell-prose pre code .hljs-selector-class,
 .prose pre code .hljs-selector-class { color: #22863a; }
-.prose.bindle-prose pre code .hljs-selector-tag,
+.prose.zell-prose pre code .hljs-selector-tag,
 .prose pre code .hljs-selector-tag   { color: #d73a49; }
 
 /* Image group layout */
@@ -244,41 +244,41 @@ kbd {
 }
 
 /* ======== Theme: GitHub ======== */
-[data-bindle-theme="github"] .prose.bindle-prose {
+[data-zell-theme="github"] .prose.zell-prose {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #24292f;
   line-height: 1.6;
 }
-[data-bindle-theme="github"] .prose.bindle-prose h1 { font-size: 2em; border-bottom: 1px solid #d8dee4; padding-bottom: 0.3em; }
-[data-bindle-theme="github"] .prose.bindle-prose h2 { font-size: 1.5em; border-bottom: 1px solid #d8dee4; padding-bottom: 0.3em; }
-[data-bindle-theme="github"] .prose.bindle-prose h3 { font-size: 1.25em; }
-[data-bindle-theme="github"] .prose.bindle-prose pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; }
-[data-bindle-theme="github"] .prose.bindle-prose code:not(pre code) { background: #afb8c133; border-radius: 6px; padding: 0.2em 0.4em; }
-[data-bindle-theme="github"] .prose.bindle-prose table { border-collapse: collapse; }
-[data-bindle-theme="github"] .prose.bindle-prose th, [data-bindle-theme="github"] .prose.bindle-prose td { border: 1px solid #d0d7de; padding: 6px 13px; }
-[data-bindle-theme="github"] .prose.bindle-prose th { background: #f6f8fa; }
-[data-bindle-theme="github"] .prose.bindle-prose blockquote { border-left-color: #d0d7de; color: #656d76; }
+[data-zell-theme="github"] .prose.zell-prose h1 { font-size: 2em; border-bottom: 1px solid #d8dee4; padding-bottom: 0.3em; }
+[data-zell-theme="github"] .prose.zell-prose h2 { font-size: 1.5em; border-bottom: 1px solid #d8dee4; padding-bottom: 0.3em; }
+[data-zell-theme="github"] .prose.zell-prose h3 { font-size: 1.25em; }
+[data-zell-theme="github"] .prose.zell-prose pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; }
+[data-zell-theme="github"] .prose.zell-prose code:not(pre code) { background: #afb8c133; border-radius: 6px; padding: 0.2em 0.4em; }
+[data-zell-theme="github"] .prose.zell-prose table { border-collapse: collapse; }
+[data-zell-theme="github"] .prose.zell-prose th, [data-zell-theme="github"] .prose.zell-prose td { border: 1px solid #d0d7de; padding: 6px 13px; }
+[data-zell-theme="github"] .prose.zell-prose th { background: #f6f8fa; }
+[data-zell-theme="github"] .prose.zell-prose blockquote { border-left-color: #d0d7de; color: #656d76; }
 
 /* ======== Theme: Notion ======== */
-[data-bindle-theme="notion"] .prose.bindle-prose {
+[data-zell-theme="notion"] .prose.zell-prose {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #37352f;
   line-height: 1.7;
 }
-[data-bindle-theme="notion"] .prose.bindle-prose h1 { font-size: 1.875em; font-weight: 700; }
-[data-bindle-theme="notion"] .prose.bindle-prose h2 { font-size: 1.5em; font-weight: 600; }
-[data-bindle-theme="notion"] .prose.bindle-prose h3 { font-size: 1.25em; font-weight: 600; }
-[data-bindle-theme="notion"] .prose.bindle-prose pre { background: #f7f6f3; border: none; border-radius: 4px; }
-[data-bindle-theme="notion"] .prose.bindle-prose code:not(pre code) { color: #eb5757; background: #f7f6f3; }
-[data-bindle-theme="notion"] .prose.bindle-prose blockquote { border-left: 3px solid #2f80ed; background: #f9f9f9; border-radius: 0 4px 4px 0; }
+[data-zell-theme="notion"] .prose.zell-prose h1 { font-size: 1.875em; font-weight: 700; }
+[data-zell-theme="notion"] .prose.zell-prose h2 { font-size: 1.5em; font-weight: 600; }
+[data-zell-theme="notion"] .prose.zell-prose h3 { font-size: 1.25em; font-weight: 600; }
+[data-zell-theme="notion"] .prose.zell-prose pre { background: #f7f6f3; border: none; border-radius: 4px; }
+[data-zell-theme="notion"] .prose.zell-prose code:not(pre code) { color: #eb5757; background: #f7f6f3; }
+[data-zell-theme="notion"] .prose.zell-prose blockquote { border-left: 3px solid #2f80ed; background: #f9f9f9; border-radius: 0 4px 4px 0; }
 
 /* ======== Theme: Minimal ======== */
-[data-bindle-theme="minimal"] .prose.bindle-prose {
+[data-zell-theme="minimal"] .prose.zell-prose {
   color: #1a1a1a;
 }
-[data-bindle-theme="minimal"] .prose.bindle-prose h1 { font-size: 1.75em; font-weight: 600; color: #000; }
-[data-bindle-theme="minimal"] .prose.bindle-prose h2 { font-size: 1.4em; font-weight: 600; }
-[data-bindle-theme="minimal"] .prose.bindle-prose pre { background: #1e1e1e; color: #d4d4d4; border: none; }
-[data-bindle-theme="minimal"] .prose.bindle-prose pre code { color: #d4d4d4; }
-[data-bindle-theme="minimal"] .prose.bindle-prose code:not(pre code) { background: transparent; padding: 0; }
-[data-bindle-theme="minimal"] .prose.bindle-prose blockquote { border-left-width: 2px; }
+[data-zell-theme="minimal"] .prose.zell-prose h1 { font-size: 1.75em; font-weight: 600; color: #000; }
+[data-zell-theme="minimal"] .prose.zell-prose h2 { font-size: 1.4em; font-weight: 600; }
+[data-zell-theme="minimal"] .prose.zell-prose pre { background: #1e1e1e; color: #d4d4d4; border: none; }
+[data-zell-theme="minimal"] .prose.zell-prose pre code { color: #d4d4d4; }
+[data-zell-theme="minimal"] .prose.zell-prose code:not(pre code) { background: transparent; padding: 0; }
+[data-zell-theme="minimal"] .prose.zell-prose blockquote { border-left-width: 2px; }

@@ -25,7 +25,7 @@ pub fn run() {
                 .app_data_dir()
                 .expect("failed to resolve app data dir");
 
-            log::info!("Database path: {:?}", app_dir.join("bindle.db"));
+            log::info!("Database path: {:?}", app_dir.join("zell.db"));
 
             let database =
                 db::Database::new(app_dir.clone()).expect("failed to initialize database");

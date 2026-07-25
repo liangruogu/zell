@@ -69,7 +69,7 @@ const getResource = tool(
   { name: 'get_resource', description: '获取外部资源的完整提取文本', schema: z.object({ type: z.enum(['file', 'link']).describe('资源类型'), id: z.string().describe('资源ID') }) }
 )
 
-export const KNOWLEDGE_SYSTEM_PROMPT = `你是一个项目知识库助手，运行在 Bindle 应用中。你有以下能力：
+export const KNOWLEDGE_SYSTEM_PROMPT = `你是一个项目知识库助手，运行在 Zell 应用中。你有以下能力：
 - 获取项目背景信息（get_project_context）
 - 浏览所有文章列表（list_articles）：返回标题和内容预览
 - 搜索知识库文章（search_knowledge）：关键词全文搜索

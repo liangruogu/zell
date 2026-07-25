@@ -44,9 +44,8 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
             <div className="text-center text-gray-500">
               <Presentation size={48} strokeWidth={1} className="mx-auto mb-3" />
               <p className="text-lg mb-2">创建你的第一张幻灯片</p>
-              <button onClick={() => addSlide()} className="px-4 py-2 bg-bindle-500 text-white rounded-lg text-sm hover:bg-bindle-600">
-                <Plus size={14} className="inline mr-1" />新建幻灯片
-              </button>
+              <button onClick={() => addSlide()} className="px-4 py-2 bg-zell-500 text-white rounded-lg text-sm hover:bg-zell-600">
+                <Plus size={14} className="inline mr-1" />新建幻灯�?              </button>
             </div>
           )}
         </div>

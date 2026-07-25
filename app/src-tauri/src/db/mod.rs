@@ -12,7 +12,7 @@ pub struct Database {
 impl Database {
     pub fn new(app_dir: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
         std::fs::create_dir_all(&app_dir)?;
-        let db_path = app_dir.join("bindle.db");
+        let db_path = app_dir.join("zell.db");
         let conn = Connection::open(&db_path)?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA synchronous=NORMAL;")?;
         migrations::run_migrations(&conn)?;

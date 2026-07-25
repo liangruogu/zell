@@ -15,7 +15,7 @@ turndown.addRule('imageWithSize', {
     const el = node as HTMLImageElement
     const alt = el.getAttribute('alt') || ''
     const src = el.getAttribute('src') || ''
-    const bindleRef = el.getAttribute('data-bindle-ref')
+    const bindleRef = el.getAttribute('data-zell-ref')
     const width = el.getAttribute('width')
 
     // If resolved from bindle-img, use the original ref
@@ -37,7 +37,7 @@ turndown.addRule('imageWithSize', {
   },
 })
 
-// Preserve image-group: output <!-- bindle-group:captions --> marker before images
+// Preserve image-group: output <!-- zell-group:captions --> marker before images
 turndown.addRule('imageGroup', {
   filter: (node) => {
     const el = node as HTMLElement
@@ -46,7 +46,7 @@ turndown.addRule('imageGroup', {
   replacement: (content, node) => {
     const el = node as HTMLElement
     const captions = el.getAttribute('data-captions') || '[]'
-    return `\n<!-- bindle-group:${captions} -->\n${content.trim()}\n`
+    return `\n<!-- zell-group:${captions} -->\n${content.trim()}\n`
   },
 })
 
@@ -76,12 +76,12 @@ export function htmlToMarkdown(html: string): string {
 }
 
 /**
- * Parse bindle-group markers from Markdown and wrap images in group divs.
- * Format: <!-- bindle-group:[...] --> \n ![img1] \n ![img2]
+ * Parse zell-group markers from Markdown and wrap images in group divs.
+ * Format: <!-- zell-group:[...] --> \n ![img1] \n ![img2]
  */
 export function restoreImageGroups(md: string): string {
   return md.replace(
-    /<!-- bindle-group:(\[.*?\]) -->\s*\n((?:\s*!\[[^\]]*\]\([^)]+\)\s*\n?)+)/g,
+    /<!-- zell-group:(\[.*?\]) -->\s*\n((?:\s*!\[[^\]]*\]\([^)]+\)\s*\n?)+)/g,
     (_match, captions: string, imagesBlock: string) => {
       const imgTags = imagesBlock.trim().split('\n').map((line) => line.trim()).join('')
       return `\n<div data-image-group data-captions='${captions}'>${imgTags}</div>\n`

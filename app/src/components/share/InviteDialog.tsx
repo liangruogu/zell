@@ -90,7 +90,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
       } else {
         alert('邀请码无效或已过期')
       }
-    } catch { alert('无法连接服务器') }
+    } catch { alert('无法连接服务�?) }
   }, [joinCode, serverUrl, projectId])
 
   const handleCopy = useCallback((code: string) => {
@@ -100,13 +100,13 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
   }, [])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="团队协作" description="管理邀请码，邀请团队成员加入协作">
+    <Dialog open={open} onOpenChange={onOpenChange} title="团队协作" description="管理邀请码，邀请团队成员加入协�?>
       <div className="space-y-4 mt-2">
         {/* Join section */}
-        <div className="p-3 bg-bindle-50 rounded-lg border border-bindle-100">
+        <div className="p-3 bg-zell-50 rounded-lg border border-zell-100">
           <button
             onClick={() => setJoinVisible(!joinVisible)}
-            className="flex items-center gap-2 text-sm font-medium text-bindle-700"
+            className="flex items-center gap-2 text-sm font-medium text-zell-700"
           >
             <Users size={16} />
             加入已有项目
@@ -139,7 +139,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
               <Input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="协作者名称"
+                placeholder="协作者名�?
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               />
               <Button size="sm" onClick={handleCreate} disabled={!displayName.trim()}>

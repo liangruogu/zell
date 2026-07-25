@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Bindle",
+  "productName": "Zell",
   "version": "0.1.0",
-  "identifier": "com.bindle.app",
+  "identifier": "com.zell.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
        {
-        "title": "Bindle",
+        "title": "Zell",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -20,7 +20,8 @@
         "resizable": true,
         "fullscreen": false,
         "center": true,
-        "dragDropEnabled": true
+        "dragDropEnabled": true,
+        "decorations": false
       }
     ],
     "security": {

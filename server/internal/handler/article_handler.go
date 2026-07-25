@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"bindle-server/internal/model"
-	"bindle-server/internal/repository"
+	"zell-server/internal/model"
+	"zell-server/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

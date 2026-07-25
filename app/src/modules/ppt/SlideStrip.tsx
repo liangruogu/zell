@@ -149,7 +149,7 @@ export function SlideStrip() {
             const realTo = dropIdx - beforeCount
             const ns = [...rest]
             ns.splice(Math.max(0, realTo), 0, ...moving)
-            ns.forEach((s, i) => { s.name = `幻灯片 ${i + 1}` })
+            ns.forEach((s, i) => { s.name = `幻灯�?${i + 1}` })
             usePptStore.setState({ slides: ns })
           } else {
             const realTo = fromIdx < dropIdx ? dropIdx - 1 : dropIdx
@@ -317,7 +317,7 @@ export function SlideStrip() {
               {/^幻灯片\s*\d+$/.test(slides[dragIdx].name) ? dragIdx! + 1 : slides[dragIdx].name}
             </span>
             {selectedSlideIds.length > 1 && (
-              <div className="absolute top-0.5 right-0.5 bg-bindle-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              <div className="absolute top-0.5 right-0.5 bg-zell-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                 {selectedSlideIds.length}
               </div>
             )}
@@ -341,7 +341,7 @@ export function SlideStrip() {
               }}
             >
               <div className={cn(
-                'rounded-full bg-bindle-500 text-white flex items-center justify-center transition-all duration-200 ease-out',
+                'rounded-full bg-zell-500 text-white flex items-center justify-center transition-all duration-200 ease-out',
                 (hoverInsertIdx === i && dragIdx === null) ? 'w-5 h-5 scale-100' : 'w-5 h-5 scale-0',
               )}>
                 <Plus size={12} className="transition-transform duration-200 ease-out" />
@@ -382,7 +382,7 @@ export function SlideStrip() {
           }}
         >
           <div className={cn(
-            'rounded-full bg-bindle-500 text-white flex items-center justify-center transition-all duration-200 ease-out',
+            'rounded-full bg-zell-500 text-white flex items-center justify-center transition-all duration-200 ease-out',
             (hoverInsertIdx === slides.length && dragIdx === null) ? 'w-5 h-5 scale-100' : 'w-5 h-5 scale-0',
           )}>
             <Plus size={12} className="transition-transform duration-200 ease-out" />
@@ -396,7 +396,7 @@ export function SlideStrip() {
           }}
         />
       </div>
-      <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-bindle-400 hover:text-bindle-500 shrink-0 transition-colors">
+      <button onClick={() => addSlide()} className="w-20 h-[72px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-zell-400 hover:text-zell-500 shrink-0 transition-colors">
         <Plus size={20} />
       </button>
       {selectedSlideIds.length > 0 && (
@@ -422,7 +422,7 @@ function SlideThumb({ slide, index, isActive, isSelected, isDragging, renamingId
       onClick={e => onClick(e, slide.id, index)}
       onDoubleClick={e => onStartRename(e, slide.id, slide.name)}
       className={cn('group relative w-32 h-[72px] border rounded cursor-pointer shrink-0 transition-all select-none',
-        isActive ? 'border-bindle-400 ring-2 ring-bindle-200' : isSelected ? 'border-blue-300' : 'border-gray-300 hover:border-gray-400',
+        isActive ? 'border-zell-400 ring-2 ring-zell-200' : isSelected ? 'border-blue-300' : 'border-gray-300 hover:border-gray-400',
         isDragging && 'opacity-30')}
     >
       <div className="w-full h-full bg-white rounded overflow-hidden">

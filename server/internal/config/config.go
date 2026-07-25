@@ -23,7 +23,7 @@ func Load() *Config {
 		dataDir = filepath.Join(filepath.Dir(execPath), "data")
 	}
 
-	dbPath := filepath.Join(dataDir, "bindle.db")
+	dbPath := filepath.Join(dataDir, "zell.db")
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		panic("failed to create data directory: " + err.Error())
 	}

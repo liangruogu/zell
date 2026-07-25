@@ -12,7 +12,7 @@ export function Card({ children, className, onClick }: CardProps) {
       onClick={onClick}
       className={cn(
         'bg-white border border-gray-200 rounded-lg shadow-sm',
-        onClick && 'cursor-pointer hover:border-bindle-300 hover:shadow-md transition-all',
+        onClick && 'cursor-pointer hover:border-zell-300 hover:shadow-md transition-all',
         className
       )}
     >

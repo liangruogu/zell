@@ -34,7 +34,7 @@ export function Sidebar() {
   const projectNavItems = projectId
     ? [
         { to: `/project/${projectId}`, icon: LayoutDashboard, label: '概览', end: true },
-        { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '知识库' },
+        { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '知识�? },
         { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '设计画布' },
         { to: `/project/${projectId}/links`, icon: Link2, label: '外部资源' },
       ]
@@ -44,15 +44,15 @@ export function Sidebar() {
     <>
       <aside
         className={cn(
-          'bg-bindle-50 border-r border-bindle-100 flex flex-col shrink-0 transition-all duration-200',
+          'bg-zell-50 border-r border-zell-100 flex flex-col shrink-0 transition-all duration-200',
           collapsed ? 'w-14' : 'w-56'
         )}
       >
-        <div className="h-14 flex items-center px-3 border-b border-bindle-100">
+        <div className="h-14 flex items-center px-3 border-b border-zell-100">
           <button
             onClick={toggle}
-            className="p-1.5 rounded hover:bg-bindle-200 transition-colors text-bindle-500 shrink-0"
-            title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+            className="p-1.5 rounded hover:bg-zell-200 transition-colors text-zell-500 shrink-0"
+            title={collapsed ? '展开侧边�? : '收起侧边�?}
           >
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
@@ -69,8 +69,8 @@ export function Sidebar() {
                   'flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-colors whitespace-nowrap overflow-hidden',
                   collapsed && 'justify-center px-0',
                   isActive
-                    ? 'bg-bindle-200 text-bindle-800 font-medium'
-                    : 'text-gray-600 hover:bg-bindle-100'
+                    ? 'bg-zell-200 text-zell-800 font-medium'
+                    : 'text-gray-600 hover:bg-zell-100'
                 )
               }
               title={collapsed ? item.label : undefined}
@@ -100,8 +100,8 @@ export function Sidebar() {
                       'flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-colors whitespace-nowrap overflow-hidden',
                       collapsed && 'justify-center px-0',
                       isActive
-                        ? 'bg-bindle-200 text-bindle-800 font-medium'
-                        : 'text-gray-600 hover:bg-bindle-100'
+                        ? 'bg-zell-200 text-zell-800 font-medium'
+                        : 'text-gray-600 hover:bg-zell-100'
                     )
                   }
                   title={collapsed ? item.label : undefined}
@@ -114,11 +114,11 @@ export function Sidebar() {
           )}
         </nav>
 
-        <div className="p-2 border-t border-bindle-100 space-y-1">
+        <div className="p-2 border-t border-zell-100 space-y-1">
           <button
             onClick={() => setShowCreate(true)}
             className={cn(
-              'flex items-center gap-2 w-full px-2.5 py-2 text-sm font-medium text-white bg-bindle-600 hover:bg-bindle-700 rounded-md transition-colors whitespace-nowrap overflow-hidden',
+              'flex items-center gap-2 w-full px-2.5 py-2 text-sm font-medium text-white bg-zell-600 hover:bg-zell-700 rounded-md transition-colors whitespace-nowrap overflow-hidden',
               collapsed && 'justify-center px-0'
             )}
             title="新建项目"
@@ -131,7 +131,7 @@ export function Sidebar() {
             className={cn(
               'flex items-center gap-2 w-full px-2.5 py-2 rounded-md text-sm transition-colors whitespace-nowrap overflow-hidden',
               collapsed && 'justify-center px-0',
-              'text-gray-500 hover:bg-bindle-100'
+              'text-gray-500 hover:bg-zell-100'
             )}
             title="设置"
           >

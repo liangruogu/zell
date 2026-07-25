@@ -42,12 +42,12 @@ function renderMarkdown(content: string): string {
   const div = document.createElement('div')
   div.innerHTML = html
   div.querySelectorAll('pre code').forEach((block) => {
-    // Code fence content always ends with \n — trim it visually
+    // Code fence content always ends with \n �?trim it visually
     if (block.lastChild?.nodeType === Node.TEXT_NODE) {
       const t = block.lastChild as Text
       t.textContent = t.textContent?.replace(/\n+$/, '') ?? ''
     } else if (block.childNodes.length > 0) {
-      // hljs may have already run — check all text nodes
+      // hljs may have already run �?check all text nodes
       block.childNodes.forEach((child) => {
         if (child.nodeType === Node.TEXT_NODE) {
           const t = child as Text
@@ -193,13 +193,13 @@ export function AIPanel() {
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-gray-100 shrink-0 relative">
         <button
           onClick={() => setShowConvList(!showConvList)}
-          className="flex items-center gap-1 flex-1 text-xs text-gray-600 hover:text-bindle-600 py-1"
+          className="flex items-center gap-1 flex-1 text-xs text-gray-600 hover:text-zell-600 py-1"
         >
           <MessageSquare size={12} />
           <span className="truncate">
             {activeConversationId
               ? (conversations.find(c => c.id === activeConversationId)?.title || '对话')
-              : '新对话'}
+              : '新对�?}
           </span>
           <ChevronDown size={10} />
         </button>
@@ -209,7 +209,7 @@ export function AIPanel() {
               const srcType = useAIStore.getState().sourceType || 'knowledge'
               await createConversation(project.id, srcType)
             }}
-            className="p-1 text-gray-400 hover:text-bindle-600 rounded"
+            className="p-1 text-gray-400 hover:text-zell-600 rounded"
             title="新建对话"
           >
             <Plus size={14} />
@@ -252,7 +252,7 @@ export function AIPanel() {
                   key={c.id}
                   className={cn(
                     'flex items-center justify-between px-3 py-2 text-xs cursor-pointer hover:bg-gray-50',
-                    activeConversationId === c.id && 'bg-bindle-50',
+                    activeConversationId === c.id && 'bg-zell-50',
                   )}
                   onClick={() => { switchConversation(c.id); setShowConvList(false) }}
                 >
@@ -280,7 +280,7 @@ export function AIPanel() {
         {!hasAI && (
           <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg text-sm text-amber-700">
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
-            <span>请在设置中配置 AI 服务（API Key 或 Ollama）</span>
+            <span>请在设置中配�?AI 服务（API Key �?Ollama�?/span>
           </div>
         )}
 
@@ -290,8 +290,8 @@ export function AIPanel() {
             <p className="text-gray-500 font-medium mb-2">我能帮你做什么？</p>
             <div className="text-xs space-y-1 text-gray-400">
               <p>🔍 搜索知识库和外部资源</p>
-              <p>📖 读取文章和文件完整内容</p>
-              <p>💡 基于项目上下文回答问题</p>
+              <p>📖 读取文章和文件完整内�?/p>
+              <p>💡 基于项目上下文回答问�?/p>
             </div>
           </div>
         )}
@@ -303,11 +303,11 @@ export function AIPanel() {
                 <textarea
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
-                  className="w-full resize-none px-3 py-2 text-sm border border-bindle-300 rounded-lg focus:outline-none"
+                  className="w-full resize-none px-3 py-2 text-sm border border-zell-300 rounded-lg focus:outline-none"
                   rows={3}
                 />
                 <div className="flex gap-2">
-                  <button onClick={handleEditSend} className="px-3 py-1 text-xs bg-bindle-500 text-white rounded">发送</button>
+                  <button onClick={handleEditSend} className="px-3 py-1 text-xs bg-zell-500 text-white rounded">发�?/button>
                   <button onClick={() => setEditingIndex(null)} className="px-3 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded">取消</button>
                 </div>
               </div>
@@ -317,7 +317,7 @@ export function AIPanel() {
                   className={cn(
                     'text-sm leading-relaxed',
                     msg.role === 'user'
-                      ? 'bg-bindle-50 text-gray-800 rounded-lg px-3 py-2'
+                      ? 'bg-zell-50 text-gray-800 rounded-lg px-3 py-2'
                       : 'text-gray-700 px-1 prose prose-sm max-w-none',
                   )}
                 >
@@ -340,7 +340,7 @@ export function AIPanel() {
                   {msg.role === 'user' && (
                     deleteConfirmIdx === i ? (
                       <div className="absolute top-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg px-2 py-1.5 flex items-center gap-1.5 z-10">
-                        <span className="text-[10px] text-gray-500">删除这条对话？</span>
+                        <span className="text-[10px] text-gray-500">删除这条对话�?/span>
                         <button onClick={confirmDelete} className="px-2 py-0.5 text-[10px] bg-red-500 text-white rounded hover:bg-red-600">确认</button>
                         <button onClick={() => setDeleteConfirmIdx(null)} className="px-2 py-0.5 text-[10px] bg-gray-100 text-gray-600 rounded hover:bg-gray-200">取消</button>
                       </div>
@@ -358,7 +358,7 @@ export function AIPanel() {
 
         {streaming && (
           <div className="flex items-center gap-2 text-gray-400 text-sm px-1 py-1">
-            <Sparkles size={14} className="animate-pulse text-bindle-400" />
+            <Sparkles size={14} className="animate-pulse text-zell-400" />
             <span>AI 思考中...</span>
           </div>
         )}
@@ -367,7 +367,7 @@ export function AIPanel() {
       {/* Referenced text bar (WeChat-style, above input) */}
       {selectedText && (
         <div className="px-4 py-2 border-t border-gray-100 shrink-0 flex items-start gap-2">
-          <div className="w-0.5 self-stretch bg-bindle-400 rounded-full shrink-0" />
+          <div className="w-0.5 self-stretch bg-zell-400 rounded-full shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs text-gray-700 whitespace-pre-wrap line-clamp-2">{selectedText}</p>
           </div>
@@ -385,7 +385,7 @@ export function AIPanel() {
             <div className="relative shrink-0 self-center">
               <button
                 onClick={() => setShowProviders(!showProviders)}
-                className="p-1.5 text-gray-400 hover:text-bindle-600 border border-gray-200 rounded-lg hover:border-bindle-300 self-center"
+                className="p-1.5 text-gray-400 hover:text-zell-600 border border-gray-200 rounded-lg hover:border-zell-300 self-center"
                 title={activeProvider.name || activeProvider.model}
               >
                 <Sparkles size={14} />
@@ -398,13 +398,13 @@ export function AIPanel() {
                       onClick={() => handleSwitchProvider(p.id)}
                       className={cn(
                         'w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50',
-                        (activeId === p.id || (!activeId && p === providers[0])) && 'bg-bindle-50 text-bindle-700 font-medium',
+                        (activeId === p.id || (!activeId && p === providers[0])) && 'bg-zell-50 text-zell-700 font-medium',
                       )}
                     >
                       <span className="flex items-center justify-between">
                         {p.name || p.model}
                         {(activeId === p.id || (!activeId && p === providers[0])) && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-bindle-500" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-zell-500" />
                         )}
                       </span>
                     </button>
@@ -418,9 +418,9 @@ export function AIPanel() {
             value={pendingInput}
             onChange={(e) => setPendingInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入问题，Enter 发送..."
+            placeholder="输入问题，Enter 发�?.."
             rows={1}
-            className="flex-1 resize-none px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-bindle-400"
+            className="flex-1 resize-none px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-zell-400"
             disabled={streaming}
           />
           <button
@@ -431,7 +431,7 @@ export function AIPanel() {
               streaming
                 ? 'bg-red-500 text-white hover:bg-red-600'
                 : pendingInput.trim() && hasAI
-                  ? 'bg-bindle-500 text-white hover:bg-bindle-600'
+                  ? 'bg-zell-500 text-white hover:bg-zell-600'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed',
             )}
           >

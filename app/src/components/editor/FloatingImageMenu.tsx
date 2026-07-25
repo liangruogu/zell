@@ -8,9 +8,9 @@ interface FloatingImageMenuProps {
 }
 
 const SIZE_PRESETS = [
-  { label: '小', width: 200 },
-  { label: '中', width: 400 },
-  { label: '大', width: 600 },
+  { label: '�?, width: 200 },
+  { label: '�?, width: 400 },
+  { label: '�?, width: 600 },
   { label: '充满', width: 'full' as const },
 ]
 
@@ -46,8 +46,8 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
   }, [visible, editor])
 
   const clearHighlights = useCallback(() => {
-    document.querySelectorAll('.bindle-img-selected').forEach((el) => el.classList.remove('bindle-img-selected'))
-    document.querySelectorAll('.bindle-img-multi-selected').forEach((el) => el.classList.remove('bindle-img-multi-selected'))
+    document.querySelectorAll('.zell-img-selected').forEach((el) => el.classList.remove('zell-img-selected'))
+    document.querySelectorAll('.zell-img-multi-selected').forEach((el) => el.classList.remove('zell-img-multi-selected'))
     selectedImagesRef.current.clear()
   }, [])
 
@@ -57,7 +57,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
     positions.forEach((p) => {
       set.add(p)
       const img = editor.view.nodeDOM(p) as HTMLElement | null
-      img?.classList.add('bindle-img-multi-selected')
+      img?.classList.add('zell-img-multi-selected')
     })
     selectedImagesRef.current = set
   }, [editor, clearHighlights])
@@ -101,18 +101,18 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
       const view = editor.view
       const posNum = view.posAtDOM(target, 0)
 
-      // Check if inside an imageGroup — skip
+      // Check if inside an imageGroup �?skip
       const $pos = view.state.doc.resolve(posNum)
       if ($pos.parent.type.name === 'imageGroup') return
 
       if (selectedImagesRef.current.has(posNum)) {
         selectedImagesRef.current.delete(posNum)
         const el = view.nodeDOM(posNum) as HTMLElement | null
-        el?.classList.remove('bindle-img-multi-selected')
+        el?.classList.remove('zell-img-multi-selected')
       } else {
         selectedImagesRef.current.add(posNum)
         const el = view.nodeDOM(posNum) as HTMLElement | null
-        el?.classList.add('bindle-img-multi-selected')
+        el?.classList.add('zell-img-multi-selected')
       }
       if (selectedImagesRef.current.size >= 2) {
         setSavedPos(posNum)
@@ -248,19 +248,18 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
       {isMulti ? (
         <>
           <h4 className="text-xs font-semibold text-gray-700 mb-3">
-            已选择 {selectedImagesRef.current.size} 张图片
-          </h4>
+            已选择 {selectedImagesRef.current.size} 张图�?          </h4>
           <button
             type="button"
             onClick={handleGroupImages}
-            className="w-full px-3 py-2 text-sm font-medium text-white bg-bindle-600 hover:bg-bindle-700 rounded-md transition-colors"
+            className="w-full px-3 py-2 text-sm font-medium text-white bg-zell-600 hover:bg-zell-700 rounded-md transition-colors"
           >
             并排显示
           </button>
         </>
       ) : isGroup ? (
         <>
-          <h4 className="text-xs font-semibold text-gray-700 mb-3">图片组</h4>
+          <h4 className="text-xs font-semibold text-gray-700 mb-3">图片�?/h4>
           <button
             type="button"
             onClick={handleUngroup}
@@ -285,7 +284,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
               step={10}
               value={imgWidth}
               onChange={handleSliderChange}
-              className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-bindle-500"
+              className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-zell-500"
             />
           </div>
 
@@ -299,7 +298,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
                   'flex-1 py-1 text-xs rounded border transition-colors',
                   (p.width === 'full' && imgWidth === 100) ||
                     (p.width !== null && p.width !== 'full' && imgWidth === p.width)
-                    ? 'bg-bindle-50 border-bindle-300 text-bindle-700'
+                    ? 'bg-zell-50 border-zell-300 text-zell-700'
                     : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                 )}
               >

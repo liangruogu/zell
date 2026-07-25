@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"bindle-server/internal/model"
+	"zell-server/internal/model"
 )
 
 func generateCode(projectPrefix string) string {

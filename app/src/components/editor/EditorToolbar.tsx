@@ -25,7 +25,7 @@ function ToolbarButton({ onClick, isActive, title, children }: ToolbarButtonProp
       className={cn(
         'p-1.5 rounded transition-colors cursor-pointer',
         isActive
-          ? 'bg-bindle-100 text-bindle-700 ring-1 ring-bindle-300'
+          ? 'bg-zell-100 text-zell-700 ring-1 ring-zell-300'
           : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
       )}
     >
@@ -67,7 +67,7 @@ export function EditorToolbar({ editor, editorMode, onToggleMode }: EditorToolba
     [
       { action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive('bold'), title: '加粗 (Ctrl+B)', icon: <Bold size={16} /> },
       { action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive('italic'), title: '斜体 (Ctrl+I)', icon: <Italic size={16} /> },
-      { action: () => editor.chain().focus().toggleStrike().run(), active: editor.isActive('strike'), title: '删除线', icon: <Strikethrough size={16} /> },
+      { action: () => editor.chain().focus().toggleStrike().run(), active: editor.isActive('strike'), title: '删除�?, icon: <Strikethrough size={16} /> },
       { action: () => editor.chain().focus().toggleCode().run(), active: editor.isActive('code'), title: '行内代码', icon: <Code size={16} /> },
       { action: () => editor.chain().focus().toggleHighlight().run(), active: editor.isActive('highlight'), title: '高亮', icon: <Highlighter size={16} /> },
     ],
@@ -81,10 +81,10 @@ export function EditorToolbar({ editor, editorMode, onToggleMode }: EditorToolba
       { action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive('orderedList'), title: '有序列表', icon: <ListOrdered size={16} /> },
       { action: () => editor.chain().focus().toggleTaskList().run(), active: editor.isActive('taskList'), title: '任务列表', icon: <CheckSquare size={16} /> },
       { action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive('blockquote'), title: '引用', icon: <Quote size={16} /> },
-      { action: () => editor.chain().focus().toggleCodeBlock().run(), active: editor.isActive('codeBlock'), title: '代码块', icon: <Code2 size={16} /> },
+      { action: () => editor.chain().focus().toggleCodeBlock().run(), active: editor.isActive('codeBlock'), title: '代码�?, icon: <Code2 size={16} /> },
     ],
     [
-      { action: () => editor.chain().focus().setHorizontalRule().run(), active: false, title: '分隔线', icon: <Minus size={16} /> },
+      { action: () => editor.chain().focus().setHorizontalRule().run(), active: false, title: '分隔�?, icon: <Minus size={16} /> },
       { action: addImage, active: false, title: '插入图片', icon: <Image size={16} /> },
       { action: setLink, active: editor.isActive('link'), title: '插入链接', icon: <Link2 size={16} /> },
     ],
@@ -114,7 +114,7 @@ export function EditorToolbar({ editor, editorMode, onToggleMode }: EditorToolba
         <ToolbarButton
           onClick={onToggleMode}
           isActive={false}
-          title={isWysiwyg ? '切换到分屏模式' : '切换到所见即所得模式'}
+          title={isWysiwyg ? '切换到分屏模�? : '切换到所见即所得模�?}
         >
           {isWysiwyg ? <Columns2 size={16} /> : <Eye size={16} />}
         </ToolbarButton>

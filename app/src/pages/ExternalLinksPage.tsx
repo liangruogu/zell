@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
@@ -17,7 +17,7 @@ export default function WhiteboardPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const { fetchProject } = useProjectStore()
   const { whiteboards, currentWhiteboard, loading, fetchWhiteboards, createWhiteboard, deleteWhiteboard, renameWhiteboard, setCurrentWhiteboard } = useWhiteboardStore()
-  const panel = useResizablePanel(224, 120, 400, 80, 'bindle_panel_whiteboard')
+  const panel = useResizablePanel(224, 120, 400, 80, 'zell_panel_whiteboard')
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
@@ -87,11 +87,11 @@ export default function WhiteboardPage() {
               <div className="space-y-2">
                 <input autoFocus placeholder="Name" value={newName} onChange={e => setNewName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreate(false); setNewName(''); setNewType('ppt') } }}
-                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400" />
+                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-zell-400" />
                 <div className="flex gap-1">
                   {(['ppt', 'mood', 'figma'] as const).map(t => (
                     <button key={t} onClick={() => setNewType(t)} className={cn('flex-1 px-2 py-1 text-xs rounded border transition-colors',
-                      newType === t ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100')}>
+                      newType === t ? 'bg-zell-50 border-zell-300 text-zell-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100')}>
                       {{ ppt: 'PPT', mood: 'Mood', figma: 'UI' }[t]}
                     </button>
                   ))}
@@ -117,7 +117,7 @@ export default function WhiteboardPage() {
                   <div className="text-center">
                     <PenTool size={48} strokeWidth={1} className="mx-auto mb-3" />
                     <p className="text-lg">{currentWhiteboard.name}</p>
-                    <p className="text-sm mt-1">{currentWhiteboard.wb_type} canvas â€” coming soon</p>
+                    <p className="text-sm mt-1">{currentWhiteboard.wb_type} canvas ¡ª coming soon</p>
                   </div>
                 </div>
               )
@@ -150,11 +150,11 @@ function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete, onRename }: 
   const submit = () => { if (renameValue.trim() && renameValue !== whiteboard.name) onRename(whiteboard.id, renameValue.trim()); setRenaming(false) }
   return (
     <div className={cn('group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
-      isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50')}
+      isActive ? 'bg-zell-100 text-zell-700' : 'text-gray-600 hover:bg-gray-50')}
       onClick={() => onSelect(whiteboard)} onDoubleClick={() => { setRenaming(true); setRenameValue(whiteboard.name) }}>
       <PenTool size={14} className="shrink-0 text-gray-400" />
       {whiteboard.wb_type && <span className="text-[10px] text-gray-400 shrink-0">{{ ppt: 'PPT', mood: 'Mood', figma: 'UI' }[whiteboard.wb_type]}</span>}
-      {renaming ? <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={submit} onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setRenaming(false); setRenameValue(whiteboard.name) } }} onClick={e => e.stopPropagation()} className="flex-1 px-1 py-0.5 text-sm border border-bindle-300 rounded" />
+      {renaming ? <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={submit} onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setRenaming(false); setRenameValue(whiteboard.name) } }} onClick={e => e.stopPropagation()} className="flex-1 px-1 py-0.5 text-sm border border-zell-300 rounded" />
         : <span className="truncate flex-1">{whiteboard.name}</span>}
       <button onClick={e => { e.stopPropagation(); onDelete(whiteboard) }} className="p-0.5 rounded hover:bg-red-100 opacity-0 group-hover:opacity-100"><Trash2 size={13} className="text-gray-400 hover:text-red-500" /></button>
     </div>

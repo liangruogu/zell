@@ -16,14 +16,14 @@ interface SyncState {
 }
 
 export const useSyncStore = create<SyncState>((set) => ({
-  serverUrl: localStorage.getItem('bindle_server_url') || '',
+  serverUrl: localStorage.getItem('zell_server_url') || '',
   token: null,
   connected: false,
   serverRunning: false,
   displayName: '',
 
   setServerUrl: (url) => {
-    localStorage.setItem('bindle_server_url', url)
+    localStorage.setItem('zell_server_url', url)
     set({ serverUrl: url })
   },
   setToken: (token) => set({ token }),

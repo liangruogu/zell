@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 
-	"bindle-server/internal/config"
-	"bindle-server/internal/handler"
-	"bindle-server/internal/middleware"
-	"bindle-server/internal/repository"
+	"zell-server/internal/config"
+	"zell-server/internal/handler"
+	"zell-server/internal/middleware"
+	"zell-server/internal/repository"
 
 	"github.com/gin-gonic/gin"
 )

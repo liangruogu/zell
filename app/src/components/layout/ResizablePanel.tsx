@@ -30,7 +30,7 @@ export function useResizablePanel(
   minWidth = 120,
   maxWidth = 400,
   snapThreshold = 80,
-  storageKey = 'bindle_panel_collapsed',
+  storageKey = 'zell_panel_collapsed',
 ): ResizablePanelState {
   const [width, setWidth] = useState(defaultWidth)
   const [collapsed, setCollapsed] = useState(() => {
@@ -104,7 +104,7 @@ export function useResizablePanel(
         onMouseDown,
         className: cn(
           'w-1.5 shrink-0 cursor-col-resize transition-colors z-10',
-          dragging ? 'bg-bindle-400' : 'hover:bg-bindle-300'
+          dragging ? 'bg-zell-400' : 'hover:bg-zell-300'
         ),
       }
 
