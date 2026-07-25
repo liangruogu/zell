@@ -12,10 +12,14 @@ import { Link } from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { Collaboration } from '@tiptap/extension-collaboration'
+import * as Y from 'yjs'
+import { WebsocketProvider } from 'y-websocket'
 import { common, createLowlight } from 'lowlight'
 import hljs from 'highlight.js'
 import { EditorToolbar } from './EditorToolbar'
 import { FloatingImageMenu } from './FloatingImageMenu'
+import { ImageGroupNode } from './ImageGroupNode'
 import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
 import { useAIStore } from '@/stores/aiStore'
@@ -23,6 +27,7 @@ import { Sparkles, Download } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
+import { useSyncStore } from '@/stores/syncStore'
 import { format } from '@/lib/format'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { readFile } from '@tauri-apps/plugin-fs'
@@ -66,6 +71,103 @@ export function MarkdownEditor({
   // Load settings on mount to get toolbar preference
   const loadSettings = useSettingsStore((s) => s.loadSettings)
   useEffect(() => { loadSettings() }, [loadSettings])
+
+  // Inject custom CSS
+  const customCss = useSettingsStore((s) => s.settings['custom_css'])
+  useEffect(() => {
+    let styleEl = document.getElementById('bindle-custom-css') as HTMLStyleElement | null
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = 'bindle-custom-css'
+      document.head.appendChild(styleEl)
+    }
+    styleEl.textContent = customCss || ''
+    return () => {
+      if (styleEl) styleEl.textContent = ''
+    }
+  }, [customCss])
+
+  // Apply theme
+  const appearanceSettings = useSettingsStore((s) => s.settings['appearance'])
+  useEffect(() => {
+    try {
+      if (appearanceSettings) {
+        const parsed = JSON.parse(appearanceSettings)
+        if (parsed.theme) {
+          document.documentElement.setAttribute('data-bindle-theme', parsed.theme)
+        } else {
+          document.documentElement.removeAttribute('data-bindle-theme')
+        }
+      }
+    } catch { document.documentElement.removeAttribute('data-bindle-theme') }
+  }, [appearanceSettings])
+
+  // Collaboration mode
+  const collabConnected = useSyncStore((s) => s.connected)
+  const collabServerUrl = useSyncStore((s) => s.serverUrl)
+  const collabToken = useSyncStore((s) => s.token)
+  const collabYDocRef = useRef<Y.Doc | null>(null)
+  const collabProviderRef = useRef<WebsocketProvider | null>(null)
+  const collabEnabled = collabConnected && !!collabToken
+
+  useEffect(() => {
+    const article = useKnowledgeStore.getState().currentArticle
+    if (!collabEnabled || !collabServerUrl || !article) return
+
+    const ydoc = new Y.Doc()
+    collabYDocRef.current = ydoc
+
+    const wsBase = collabServerUrl.replace(/^http/, 'ws')
+    const projectId = useProjectStore.getState().currentProject?.id
+    if (!projectId) return
+
+    const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, ydoc, {
+      params: { token: collabToken },
+    })
+    collabProviderRef.current = provider
+
+    return () => {
+      provider.disconnect()
+      ydoc.destroy()
+      collabYDocRef.current = null
+      collabProviderRef.current = null
+    }
+  }, [collabEnabled, collabServerUrl, collabToken])
+
+  // Re-create when current article changes
+  const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
+  const [collabKey, setCollabKey] = useState(0)
+
+  useEffect(() => {
+    if (!collabYDocRef.current || !collabProviderRef.current) return
+
+    const article = useKnowledgeStore.getState().currentArticle
+    const projectId = useProjectStore.getState().currentProject?.id
+    if (!article || !projectId || !collabToken) return
+
+    // Disconnect old provider
+    collabProviderRef.current.disconnect()
+    collabYDocRef.current.destroy()
+
+    const ydoc = new Y.Doc()
+    collabYDocRef.current = ydoc
+
+    const wsBase = collabServerUrl.replace(/^http/, 'ws')
+    const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, ydoc, {
+      params: { token: collabToken },
+    })
+    collabProviderRef.current = provider
+
+    // Force editor re-creation with new ydoc
+    setCollabKey((k) => k + 1)
+  }, [currentArticleId])
+
+  // Also trigger when collab toggles
+  useEffect(() => {
+    if (collabEnabled) {
+      setCollabKey((k) => k + 1)
+    }
+  }, [collabEnabled])
 
   // Read toolbar visibility from settings
   const appearance = useSettingsStore((s) => s.settings['appearance'])
@@ -208,6 +310,9 @@ export function MarkdownEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ codeBlock: false }),
+      ...(collabYDocRef.current
+        ? [Collaboration.configure({ document: collabYDocRef.current, field: 'content' })]
+        : []),
       Image.configure({ allowBase64: true, inline: false }),
       Table.configure({ resizable: true }),
       TableRow, TableCell, TableHeader,
@@ -221,6 +326,7 @@ export function MarkdownEditor({
       Placeholder.configure({ placeholder }),
       CharacterCount,
       CodeBlockLowlight.configure({ lowlight }),
+      ImageGroupNode,
       // ProseMirror plugin: auto-trim trailing newlines from code blocks
       new Plugin({
         key: new PluginKey('trimCodeBlockTrailingNewline'),
@@ -242,7 +348,7 @@ export function MarkdownEditor({
         },
       }),
     ],
-    content: initialHtml,
+    content: collabYDocRef.current ? undefined : initialHtml,
     editable: editable,
     autofocus: autofocus ? 'end' : false,
     onUpdate: handleUpdate,
@@ -642,7 +748,7 @@ export function MarkdownEditor({
       {mode === 'wysiwyg' ? (
         <>
           <div className="flex-1 overflow-auto flex justify-center">
-            <div className="w-full max-w-3xl px-8 py-4">
+            <div className="w-full max-w-3xl px-8 py-4" key={collabKey}>
               <EditorContent editor={editor} />
             </div>
           </div>

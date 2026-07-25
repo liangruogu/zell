@@ -29,18 +29,19 @@ export function useResizablePanel(
   defaultWidth = 224,
   minWidth = 120,
   maxWidth = 400,
-  snapThreshold = 80
+  snapThreshold = 80,
+  storageKey = 'bindle_panel_collapsed',
 ): ResizablePanelState {
   const [width, setWidth] = useState(defaultWidth)
   const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem('bindle_panel_collapsed') === '1' } catch { return false }
+    try { return localStorage.getItem(storageKey) === '1' } catch { return false }
   })
   const [dragging, setDragging] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
   const effectiveWidth = collapsed ? 0 : width
 
-  const persistCollapsed = (v: boolean) => { try { localStorage.setItem('bindle_panel_collapsed', v ? '1' : '0') } catch { /* */ } }
+  const persistCollapsed = (v: boolean) => { try { localStorage.setItem(storageKey, v ? '1' : '0') } catch { /* */ } }
 
   const toggle = useCallback(() => {
     setCollapsed((c) => {

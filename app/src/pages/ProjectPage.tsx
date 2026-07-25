@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '@/stores/projectStore'
+import { useSyncStore } from '@/stores/syncStore'
 import { AppShell } from '@/components/layout/AppShell'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
@@ -8,7 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
 import { Textarea } from '@/components/ui/Textarea'
 import { format } from '@/lib/format'
-import { Trash2, Edit3 } from 'lucide-react'
+import { Trash2, Edit3, Users, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { EmojiPicker } from '@/components/project/EmojiPicker'
 import { PROJECT_STATUS, parseProjectSettings, stringifyProjectSettings, type ProjectStatus } from '@/types/project'
@@ -25,6 +26,13 @@ export default function ProjectPage() {
   const [editIcon, setEditIcon] = useState('')
   const [editStatus, setEditStatus] = useState<ProjectStatus>('seedling')
 
+  // Collab state
+  const { connected, serverUrl } = useSyncStore()
+  const [collabEnabled, setCollabEnabled] = useState(false)
+  const [inviteCode, setInviteCode] = useState('')
+  const [copied, setCopied] = useState(false)
+  const rotateTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
+
   useEffect(() => {
     if (id) fetchProject(id)
     return () => setCurrentProject(null)
@@ -40,6 +48,82 @@ export default function ProjectPage() {
       setEditStatus(ps.status || 'seedling')
     }
   }, [currentProject, showEdit])
+
+  // Fetch collab status
+  const fetchCollabStatus = useCallback(async () => {
+    if (!connected || !serverUrl || !id) return
+    try {
+      const res = await fetch(`${serverUrl}/api/v1/projects/${id}/invite`)
+      if (res.ok) {
+        const data = await res.json()
+        setCollabEnabled(true)
+        setInviteCode(data.invite_code)
+      } else {
+        setCollabEnabled(false)
+        setInviteCode('')
+      }
+    } catch {
+      setCollabEnabled(false)
+    }
+  }, [connected, serverUrl, id])
+
+  useEffect(() => { fetchCollabStatus() }, [fetchCollabStatus])
+
+  const handleToggleCollab = async (enable: boolean) => {
+    try {
+      const res = await fetch(`${serverUrl}/api/v1/projects/${id}/collab`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: enable }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setCollabEnabled(enable)
+        setInviteCode(data.invite_code || '')
+        if (enable) {
+          startRotateTimer()
+        } else {
+          stopRotateTimer()
+        }
+      }
+    } catch { /* */ }
+  }
+
+  const rotateInvite = useCallback(async () => {
+    if (!collabEnabled) return
+    try {
+      const res = await fetch(`${serverUrl}/api/v1/projects/${id}/invite/rotate`, {
+        method: 'POST',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setInviteCode(data.invite_code)
+      }
+    } catch { /* */ }
+  }, [collabEnabled, serverUrl, id])
+
+  const startRotateTimer = () => {
+    stopRotateTimer()
+    rotateTimerRef.current = setInterval(rotateInvite, 30 * 60 * 1000)
+  }
+
+  const stopRotateTimer = () => {
+    if (rotateTimerRef.current) {
+      clearInterval(rotateTimerRef.current)
+      rotateTimerRef.current = undefined
+    }
+  }
+
+  useEffect(() => {
+    if (collabEnabled) startRotateTimer()
+    return () => stopRotateTimer()
+  }, [collabEnabled])
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(inviteCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const handleDelete = async () => {
     if (!currentProject) return
@@ -132,6 +216,43 @@ export default function ProjectPage() {
             <p className="text-sm text-gray-400 italic">暂无背景信息，点击「编辑」添加</p>
           )}
         </Card>
+
+        {/* Team Collaboration */}
+        {connected && (
+          <Card className="p-5">
+            <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <Users size={18} /> 团队协作
+              {collabEnabled && (
+                <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">已开启</span>
+              )}
+            </h3>
+
+            {collabEnabled ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <code className="text-sm bg-gray-100 px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-700">
+                    {inviteCode}
+                  </code>
+                  <Button size="sm" variant="outline" onClick={handleCopyCode}>
+                    <Copy size={14} className="mr-1" />
+                    {copied ? '已复制' : '复制'}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-400">每 30 分钟自动更新，已连接的用户不受影响</p>
+                <Button size="sm" variant="destructive" onClick={() => handleToggleCollab(false)}>
+                  关闭协作
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-400">开启后将自动生成邀请码，其他人可凭码加入。</p>
+                <Button size="sm" onClick={() => handleToggleCollab(true)}>
+                  开启团队协作
+                </Button>
+              </div>
+            )}
+          </Card>
+        )}
       </div>
 
       {/* Edit Dialog */}

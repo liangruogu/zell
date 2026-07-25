@@ -1,27 +1,34 @@
 import { create } from 'zustand'
 
-type SyncStatus = 'idle' | 'syncing' | 'error' | 'offline'
-
 interface SyncState {
-  status: SyncStatus
-  pendingCount: number
-  lastSync: string | null
-  serverUrl: string | null
+  serverUrl: string
+  token: string | null
+  connected: boolean
+  serverRunning: boolean
+  displayName: string
 
-  setStatus: (status: SyncStatus) => void
-  setPendingCount: (count: number) => void
-  setLastSync: (time: string) => void
-  setServerUrl: (url: string | null) => void
+  setServerUrl: (url: string) => void
+  setToken: (token: string | null) => void
+  setConnected: (v: boolean) => void
+  setServerRunning: (v: boolean) => void
+  setDisplayName: (name: string) => void
+  disconnect: () => void
 }
 
 export const useSyncStore = create<SyncState>((set) => ({
-  status: 'idle',
-  pendingCount: 0,
-  lastSync: null,
-  serverUrl: null,
+  serverUrl: localStorage.getItem('bindle_server_url') || '',
+  token: null,
+  connected: false,
+  serverRunning: false,
+  displayName: '',
 
-  setStatus: (status) => set({ status }),
-  setPendingCount: (pendingCount) => set({ pendingCount }),
-  setLastSync: (lastSync) => set({ lastSync }),
-  setServerUrl: (serverUrl) => set({ serverUrl }),
+  setServerUrl: (url) => {
+    localStorage.setItem('bindle_server_url', url)
+    set({ serverUrl: url })
+  },
+  setToken: (token) => set({ token }),
+  setConnected: (v) => set({ connected: v }),
+  setServerRunning: (v) => set({ serverRunning: v }),
+  setDisplayName: (name) => set({ displayName: name }),
+  disconnect: () => set({ connected: false, token: null }),
 }))

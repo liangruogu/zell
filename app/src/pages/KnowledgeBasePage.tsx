@@ -47,7 +47,7 @@ export default function KnowledgeBasePage() {
     articles, currentArticle, loading,
     fetchArticles, createArticle, updateArticle, deleteArticle, setCurrentArticle,
   } = useKnowledgeStore()
-  const panel = useResizablePanel()
+  const panel = useResizablePanel(224, 120, 400, 80, 'bindle_panel_knowledge')
 
   const [showCreate, setShowCreate] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -383,7 +383,7 @@ export default function KnowledgeBasePage() {
                   新建文章
                 </button>
               )}
-              <p className="text-xs text-gray-400 px-2.5">{articles.length} 篇文章</p>
+              
             </div>
           )}
         </div>

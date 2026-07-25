@@ -35,7 +35,7 @@ export function Sidebar() {
     ? [
         { to: `/project/${projectId}`, icon: LayoutDashboard, label: '概览', end: true },
         { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '知识库' },
-        { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '创意白板' },
+        { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '设计画布' },
         { to: `/project/${projectId}/links`, icon: Link2, label: '外部资源' },
       ]
     : []

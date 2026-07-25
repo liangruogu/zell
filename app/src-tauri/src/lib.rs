@@ -2,6 +2,7 @@ mod commands;
 mod crypto;
 mod db;
 
+use crate::commands::server::ServerState;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -30,6 +31,7 @@ pub fn run() {
                 db::Database::new(app_dir.clone()).expect("failed to initialize database");
 
             app.manage(database);
+            app.manage(ServerState::new());
 
             Ok(())
         })
@@ -81,7 +83,11 @@ pub fn run() {
             commands::file::re_extract_file_text,
             commands::file::rename_project_file,
             commands::system::open_in_system,
+            commands::system::get_local_ip,
             commands::export::export_article,
+            commands::server::start_server,
+            commands::server::stop_server,
+            commands::server::get_server_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

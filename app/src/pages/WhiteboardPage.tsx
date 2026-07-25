@@ -36,7 +36,7 @@ export default function ExternalLinksPage() {
   const { fetchProject } = useProjectStore()
   const { links, currentLink, loading: linkLoading, fetchLinks, createLink, updateLink, deleteLink, setCurrentLink, syncLink } = useLinkStore()
   const { files, currentFile, loading: fileLoading, fetchFiles, importFile, deleteFile, updateFile, setCurrentFile, resolveFileUrl, getFilePath, reExtractText, renameFile } = useFileStore()
-  const panel = useResizablePanel()
+  const panel = useResizablePanel(224, 120, 400, 80, 'bindle_panel_links')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [tab, setTab] = useState<TabType>('links')
@@ -388,7 +388,7 @@ export default function ExternalLinksPage() {
                 <button onClick={handleNewLink} className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded transition-colors">
                   <Plus size={14} /> 添加链接
                 </button>
-                <p className="text-xs text-gray-400 px-2.5 mt-1">{links.length} 个链接</p>
+                
               </div>
             </>
           )}
@@ -453,7 +453,7 @@ export default function ExternalLinksPage() {
                 >
                   <Plus size={14} /> 添加文件
                 </button>
-                <p className="text-xs text-gray-400 px-2.5 mt-1">{files.length} 个文件</p>
+                
               </div>
             </>
           )}

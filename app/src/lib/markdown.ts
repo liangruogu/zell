@@ -37,6 +37,19 @@ turndown.addRule('imageWithSize', {
   },
 })
 
+// Preserve image-group: output <!-- bindle-group:captions --> marker before images
+turndown.addRule('imageGroup', {
+  filter: (node) => {
+    const el = node as HTMLElement
+    return el.nodeName === 'DIV' && el.hasAttribute('data-image-group')
+  },
+  replacement: (content, node) => {
+    const el = node as HTMLElement
+    const captions = el.getAttribute('data-captions') || '[]'
+    return `\n<!-- bindle-group:${captions} -->\n${content.trim()}\n`
+  },
+})
+
 // Custom image renderer: keep bindle-img refs as-is (resolved later)
 marked.use({
   renderer: {
@@ -62,10 +75,25 @@ export function htmlToMarkdown(html: string): string {
   }
 }
 
+/**
+ * Parse bindle-group markers from Markdown and wrap images in group divs.
+ * Format: <!-- bindle-group:[...] --> \n ![img1] \n ![img2]
+ */
+export function restoreImageGroups(md: string): string {
+  return md.replace(
+    /<!-- bindle-group:(\[.*?\]) -->\s*\n((?:\s*!\[[^\]]*\]\([^)]+\)\s*\n?)+)/g,
+    (_match, captions: string, imagesBlock: string) => {
+      const imgTags = imagesBlock.trim().split('\n').map((line) => line.trim()).join('')
+      return `\n<div data-image-group data-captions='${captions}'>${imgTags}</div>\n`
+    },
+  )
+}
+
 export function markdownToHtml(md: string): string {
   if (!md) return ''
   try {
-    const result = marked.parse(md, { async: false })
+    const restored = restoreImageGroups(md)
+    const result = marked.parse(restored, { async: false })
     return typeof result === 'string' ? result : ''
   } catch {
     return md

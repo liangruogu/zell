@@ -8,3 +8,4 @@ pub mod file;
 pub mod conversation;
 pub mod export;
 pub mod system;
+pub mod server;

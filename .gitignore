@@ -1,0 +1,11 @@
+# Build outputs
+bindle-server.exe
+server/bindle-server.exe
+server/tmp/
+server/data/
+
+# Rust
+app/src-tauri/target/
+
+# Dependencies
+node_modules/

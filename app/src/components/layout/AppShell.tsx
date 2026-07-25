@@ -2,7 +2,9 @@ import { type ReactNode, useEffect, useState, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { AIPanel } from '@/components/editor/AIPanel'
+import { useKeyboardShortcutDialog } from '@/components/share/KeyboardShortcutDialog'
 import { useAIStore } from '@/stores/aiStore'
+import { useSyncStore } from '@/stores/syncStore'
 
 interface AppShellProps {
   children: ReactNode
@@ -13,6 +15,25 @@ export function AppShell({ children }: AppShellProps) {
   const { isOpen: isAIOpen, openPanel, closePanel } = useAIStore()
   const [aiWidth, setAiWidth] = useState(320)
   const [aiDragging, setAiDragging] = useState(false)
+
+  const { dialog: shortcutDialog } = useKeyboardShortcutDialog()
+
+  // Auto-connect to saved server on startup
+  const serverUrl = useSyncStore((s) => s.serverUrl)
+  const setConnected = useSyncStore((s) => s.setConnected)
+  const setServerRunning = useSyncStore((s) => s.setServerRunning)
+
+  useEffect(() => {
+    if (!serverUrl) return
+    fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(2000) })
+      .then((res) => {
+        if (res.ok) {
+          setConnected(true)
+          setServerRunning(true)
+        }
+      })
+      .catch(() => {})
+  }, [serverUrl, setConnected, setServerRunning])
 
   const showAI = location.pathname.includes('/knowledge')
 
@@ -68,6 +89,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </>
       )}
+      {shortcutDialog}
     </div>
   )
 }

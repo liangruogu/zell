@@ -17,11 +17,11 @@ export default function WhiteboardPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const { fetchProject } = useProjectStore()
   const { whiteboards, currentWhiteboard, loading, fetchWhiteboards, createWhiteboard, deleteWhiteboard, renameWhiteboard, setCurrentWhiteboard } = useWhiteboardStore()
-  const panel = useResizablePanel()
+  const panel = useResizablePanel(224, 120, 400, 80, 'bindle_panel_whiteboard')
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
-  const [newType, setNewType] = useState('free')
+  const [newType, setNewType] = useState('ppt')
   const [deleteTarget, setDeleteTarget] = useState<Whiteboard | null>(null)
   const [pptData, setPptData] = useState<PptData | null>(null)
 
@@ -63,7 +63,7 @@ export default function WhiteboardPage() {
     const dup = whiteboards.find(w => w.name === newName.trim() && w.wb_type === newType)
     if (dup) { alert('same name and type already exists'); return }
     const wb = await createWhiteboard(projectId, newName.trim(), newType)
-    setNewName(''); setShowCreate(false); setNewType('free'); setCurrentWhiteboard(wb)
+    setNewName(''); setShowCreate(false); setNewType('ppt'); setCurrentWhiteboard(wb)
   }, [projectId, newName, newType, whiteboards, createWhiteboard, setCurrentWhiteboard])
 
   const handleDelete = useCallback(async () => {
@@ -86,13 +86,13 @@ export default function WhiteboardPage() {
             {showCreate ? (
               <div className="space-y-2">
                 <input autoFocus placeholder="Name" value={newName} onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreate(false); setNewName(''); setNewType('free') } }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreate(false); setNewName(''); setNewType('ppt') } }}
                   className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400" />
                 <div className="flex gap-1">
-                  {(['free', 'ppt', 'aigc', 'figma'] as const).map(t => (
+                  {(['ppt', 'mood', 'figma'] as const).map(t => (
                     <button key={t} onClick={() => setNewType(t)} className={cn('flex-1 px-2 py-1 text-xs rounded border transition-colors',
                       newType === t ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100')}>
-                      {{ free: 'Free', ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[t]}
+                      {{ ppt: 'PPT', mood: 'Mood', figma: 'UI' }[t]}
                     </button>
                   ))}
                 </div>
@@ -103,7 +103,7 @@ export default function WhiteboardPage() {
                 <Plus size={14} /> New Whiteboard
               </button>
             )}
-            <p className="text-xs text-gray-400 px-2.5">{whiteboards.length} whiteboards</p>
+            
           </div>
         </div>
 
@@ -153,7 +153,7 @@ function WhiteboardItem({ whiteboard, isActive, onSelect, onDelete, onRename }: 
       isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50')}
       onClick={() => onSelect(whiteboard)} onDoubleClick={() => { setRenaming(true); setRenameValue(whiteboard.name) }}>
       <PenTool size={14} className="shrink-0 text-gray-400" />
-      {whiteboard.wb_type && whiteboard.wb_type !== 'free' && <span className="text-[10px] text-gray-400 shrink-0">{{ ppt: 'PPT', aigc: 'AIGC', figma: 'UI' }[whiteboard.wb_type]}</span>}
+      {whiteboard.wb_type && <span className="text-[10px] text-gray-400 shrink-0">{{ ppt: 'PPT', mood: 'Mood', figma: 'UI' }[whiteboard.wb_type]}</span>}
       {renaming ? <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={submit} onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setRenaming(false); setRenameValue(whiteboard.name) } }} onClick={e => e.stopPropagation()} className="flex-1 px-1 py-0.5 text-sm border border-bindle-300 rounded" />
         : <span className="truncate flex-1">{whiteboard.name}</span>}
       <button onClick={e => { e.stopPropagation(); onDelete(whiteboard) }} className="p-0.5 rounded hover:bg-red-100 opacity-0 group-hover:opacity-100"><Trash2 size={13} className="text-gray-400 hover:text-red-500" /></button>

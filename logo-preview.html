@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zell Logo 概念</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1a2e; color:#e0e0e0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:40px; }
+h1 { text-align:center; font-size:32px; margin-bottom:4px; letter-spacing:2px; }
+.sub { text-align:center; color:#888; font-size:14px; margin-bottom:48px; }
+.grid { display:flex; gap:32px; justify-content:center; flex-wrap:wrap; }
+.card { background:#16213e; border-radius:16px; padding:32px; width:360px; text-align:center; border:1px solid #0f3460; }
+.card h2 { font-size:18px; margin-bottom:12px; color:#ccc; }
+.canvas { width:200px; height:200px; margin:0 auto 20px; display:flex; align-items:center; justify-content:center; border-radius:12px; }
+.v1 { background:radial-gradient(circle at 40% 60%, #2d2d5e, #0d0d1a); }
+.v2 { background:linear-gradient(135deg, #1a1a2e, #16213e); }
+.v3 { background:#111; }
+.tag { font-size:11px; color:#666; margin-top:8px; }
+svg { overflow:visible; }
+</style>
+</head>
+<body>
+
+<h1>ZELL</h1>
+<p class="sub">创意设计工作台 · Logo 概念方案</p>
+
+<div class="grid">
+
+<!-- V1: Cell division -->
+<div class="card">
+ <h2>方案 A — 细胞分裂</h2>
+ <div class="canvas v1">
+  <svg width="160" height="160" viewBox="0 0 160 160">
+   <defs>
+    <linearGradient id="g1" x1="0" y1="1" x2="1" y2="0">
+     <stop offset="0%" stop-color="#7c3aed"/>
+     <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+     <stop offset="0%" stop-color="#3b82f6"/>
+     <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+   </defs>
+   <!-- outer hex -->
+   <polygon points="80,12 139,46 139,114 80,148 21,114 21,46" fill="none" stroke="url(#g2)" stroke-width="2.5" rx="none"/>
+   <!-- dividing line = Z diagonal -->
+   <line x1="21" y1="46" x2="139" y2="114" stroke="url(#g1)" stroke-width="2" opacity="0.6"/>
+   <!-- inner cells -->
+   <polygon points="80,12 139,46 80,80" fill="url(#g2)" opacity="0.15"/>
+   <polygon points="21,46 80,80 21,114" fill="url(#g1)" opacity="0.1"/>
+   <!-- central dot -->
+   <circle cx="80" cy="80" r="4" fill="#a78bfa"/>
+   <!-- accent dots -->
+   <circle cx="110" cy="50" r="2.5" fill="#3b82f6" opacity="0.6"/>
+   <circle cx="50" cy="110" r="2.5" fill="#7c3aed" opacity="0.6"/>
+  </svg>
+ </div>
+ <p style="color:#888;font-size:13px;">六边形蜂窝细胞 · Z 斜线分割 · 两色微光</p>
+ <p class="tag">PPT蓝 ← 斜线 → AIGC紫</p>
+</div>
+
+<!-- V2: Minimal Z -->
+<div class="card">
+ <h2>方案 B — 极简 Z 折线</h2>
+ <div class="canvas v2">
+  <svg width="160" height="160" viewBox="0 0 160 160">
+   <defs>
+    <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
+     <stop offset="0%" stop-color="#3b82f6"/>
+     <stop offset="50%" stop-color="#7c3aed"/>
+     <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+   </defs>
+   <!-- Z stroke with varied thickness -->
+   <polyline points="40,30 120,30 40,130 120,130" fill="none" stroke="url(#g3)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+   <!-- dot at each corner -->
+   <circle cx="40" cy="30" r="4" fill="#3b82f6"/>
+   <circle cx="120" cy="30" r="3" fill="#7c3aed"/>
+   <circle cx="40" cy="130" r="3" fill="#7c3aed"/>
+   <circle cx="120" cy="130" r="4" fill="#10b981"/>
+  </svg>
+ </div>
+ <p style="color:#888;font-size:13px;">Z 字母粗线折角 · 四端点渐变色</p>
+ <p class="tag">蓝(PPT) → 紫(AIGC) → 绿(UI)</p>
+</div>
+
+<!-- V3: Hex + Z fusion -->
+<div class="card">
+ <h2>方案 C — 六边 Z 融合</h2>
+ <div class="canvas v3">
+  <svg width="160" height="160" viewBox="0 0 160 160">
+   <defs>
+    <linearGradient id="g4" x1="0.2" y1="0" x2="0.8" y2="1">
+     <stop offset="0%" stop-color="#3b82f6"/>
+     <stop offset="50%" stop-color="#7c3aed"/>
+     <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+   </defs>
+   <!-- hex background -->
+   <polygon points="80,16 132,46 132,114 80,144 28,114 28,46" fill="#1a1a2e" stroke="#2d2d5e" stroke-width="1"/>
+   <!-- bold Z path -->
+   <polyline points="36,56 124,56 36,104 124,104" fill="none" stroke="url(#g4)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+   <!-- node indicators -->
+   <circle cx="36" cy="56" r="6" fill="#3b82f6"/>
+   <circle cx="124" cy="56" r="5" fill="#7c3aed"/>
+   <circle cx="36" cy="104" r="5" fill="#7c3aed"/>
+   <circle cx="124" cy="104" r="6" fill="#10b981"/>
+  </svg>
+ </div>
+ <p style="color:#888;font-size:13px;">六边形外框 + Z 核心 · 四节点代表四种白板类型</p>
+ <p class="tag">蓝/紫/绿渐变 · 工业感</p>
+</div>
+
+</div>
+
+<div style="text-align:center; margin-top:48px; color:#555; font-size:12px;">
+点击浏览器里的方案告诉我偏好，或在本页选择后告诉我方案字母。
+</div>
+
+</body>
+</html>
