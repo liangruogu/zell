@@ -48,20 +48,19 @@ export function CanvasViewport() {
     const el = containerRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        e.preventDefault(); e.stopPropagation()
-        const rect = el.getBoundingClientRect()
-        const mx = e.clientX - rect.left - rect.width / 2 - panRef.current.x
-        const my = e.clientY - rect.top - rect.height / 2 - panRef.current.y
-        const oldZoom = usePptStore.getState().zoom
-        const newZoom = Math.max(0.25, Math.min(3, oldZoom + (e.deltaY > 0 ? -0.1 : 0.1)))
+      if (!e.ctrlKey) return
+      e.preventDefault(); e.stopPropagation()
+      const rect = el.getBoundingClientRect()
+      const mx = e.clientX - rect.left - rect.width / 2 - panRef.current.x
+      const my = e.clientY - rect.top - rect.height / 2 - panRef.current.y
+      const oldZoom = usePptStore.getState().zoom
+      const newZoom = Math.max(0.25, Math.min(3, oldZoom - e.deltaY * 0.01))
         usePptStore.getState().setZoom(newZoom)
       const scale = newZoom / oldZoom
       const nx = mx - scale * mx + panRef.current.x
       const ny = my - scale * my + panRef.current.y
       setPan(nx, ny)
       storeSetPan(nx, ny)
-      }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)

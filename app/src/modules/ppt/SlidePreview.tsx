@@ -117,16 +117,24 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       <div className="absolute left-0 top-0 bottom-0 w-1/2 z-10" onClick={goPrev} style={{ cursor: 'default' }} />
       {/* Right click zone */}
       <div className="absolute right-0 top-0 bottom-0 w-1/2 z-10" onClick={goNext} style={{ cursor: 'default' }} />
-      {/* Slide content —fills viewport height, 16:9 aspect */}
+      {/* Slide content — fills viewport, 16:9 aspect */}
       <div
         className="relative shadow-2xl flex-shrink-0"
         style={{
-          width: `calc(100vh * ${SLIDE_W / SLIDE_H})`,
-          maxWidth: '100vw',
-          height: `min(100vh, calc(100vw * ${SLIDE_H / SLIDE_W}))`,
-          background: slide.background || '#ffffff',
+          width: '100vw',
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
+        <div style={{
+          width: '100vw',
+          height: `calc(100vw * ${SLIDE_H / SLIDE_W})`,
+          maxHeight: '100vh',
+          background: slide.background || '#ffffff',
+          position: 'relative',
+        }}>
         {/* Background with opacity */}
         <div style={{
           position: 'absolute', inset: 0,
@@ -154,15 +162,13 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
         <ChevronRight size={48} className="text-white/50" />
       </div>
 
-      {/* Bottom bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/15">
+      {/* Bottom progress bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/10">
         <div
           className="h-full bg-zell-500 transition-all duration-300"
           style={{ width: `${((idx + 1) / visible.length) * 100}%` }}
         />
       </div>
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white/40 text-xs">
-        {idx + 1} / {visible.length}
       </div>
     </div>
   )
