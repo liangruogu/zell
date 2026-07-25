@@ -6,10 +6,18 @@ import { SLIDE_W, SLIDE_H, type CanvasElement } from './types'
 
 export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { slides, currentSlideId, selectedIds, zoom, guideLines, setZoom, deleteElements } = usePptStore()
+  const { slides, currentSlideId, selectedIds, zoom, panX, panY, transitioning, guideLines, setZoom, setPan: storeSetPan, deleteElements } = usePptStore()
   const slide = slides.find(s => s.id === currentSlideId)
   const [, forceUpdate] = useState(0)
-  const panRef = useRef({ x: 0, y: 0 })
+  const panRef = useRef({ x: panX, y: panY })
+
+  // Sync store pan -> ref when transitioning (for resetView)
+  useEffect(() => {
+    if (transitioning) {
+      panRef.current = { x: panX, y: panY }
+      forceUpdate(n => n + 1)
+    }
+  }, [transitioning, panX, panY])
   const marqueeRef = useRef<{ sx: number; sy: number; ex: number; ey: number } | null>(null)
   const [, setMarqueeTick] = useState(0)
 
@@ -49,7 +57,10 @@ export function CanvasViewport() {
         const newZoom = Math.max(0.25, Math.min(3, oldZoom + (e.deltaY > 0 ? -0.1 : 0.1)))
         usePptStore.getState().setZoom(newZoom)
       const scale = newZoom / oldZoom
-      setPan(mx - scale * mx + panRef.current.x, my - scale * my + panRef.current.y)
+      const nx = mx - scale * mx + panRef.current.x
+      const ny = my - scale * my + panRef.current.y
+      setPan(nx, ny)
+      storeSetPan(nx, ny)
       }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -62,7 +73,7 @@ export function CanvasViewport() {
       if (!e.ctrlKey) return
       if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom(zoom + 0.1) }
       if (e.key === '-') { e.preventDefault(); setZoom(zoom - 0.1) }
-      if (e.key === '0') { e.preventDefault(); setZoom(1); setPan(0, 0) }
+      if (e.key === '0') { e.preventDefault(); setZoom(1); setPan(0, 0); storeSetPan(0, 0) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -84,7 +95,7 @@ export function CanvasViewport() {
       if (!panning) return
       setPan(spx + e.clientX - sx, spy + e.clientY - sy)
     }
-    const onUp = () => { panning = false; el.style.cursor = '' }
+    const onUp = () => { panning = false; el.style.cursor = ''; storeSetPan(panRef.current.x, panRef.current.y) }
     el.addEventListener('mousedown', onDown)
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
@@ -95,21 +106,22 @@ export function CanvasViewport() {
     }
   }, []) // no deps — uses refs
 
-  // Click outside canvas → deselect (but not on properties panel)
+  // Click on empty canvas area → deselect (but not on panels / popovers / slide)
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      const cEl = containerRef.current
-      if (!cEl) return
-      if (cEl.contains(e.target as Node)) return
-      // don't deselect when clicking on properties panel
       const target = e.target as HTMLElement
+      if (target.closest('[data-canvas="bg"]')) return
+      if (target.closest('[data-no-deselect]')) return
       if (target.closest('[data-panel="props"]')) return
+      if (target.closest('[type="color"]')) return
+      if (target.closest('[role="dialog"]')) return
+      if (target.closest('[data-radix-popper-content-wrapper]')) return
       const st = usePptStore.getState()
       if (st.selectedIds.length > 0) st.setSelectedIds([])
       if (st.selectedSlideIds.length > 0) usePptStore.setState({ selectedSlideIds: [] })
     }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    window.addEventListener('mousedown', onDown)
+    return () => window.removeEventListener('mousedown', onDown)
   }, [])
 
   // Marquee selection
@@ -275,6 +287,7 @@ export function CanvasViewport() {
           background: '#ffffff',
           transform: `translate(${panRef.current.x}px, ${panRef.current.y}px) scale(${zoom})`,
           transformOrigin: 'center center',
+          transition: transitioning ? 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
         }}
       >
         <div style={{

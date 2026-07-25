@@ -13,6 +13,9 @@ interface PptState {
   selectedIds: string[]
   selectedSlideIds: string[]
   zoom: number
+  panX: number
+  panY: number
+  transitioning: boolean
   guideLines: GuideLine[]
   clipboardSlide: Slide | null
   clipboardSlides: Slide[] | null
@@ -39,6 +42,7 @@ interface PptState {
   deleteElements: (slideId: string, elementIds: string[]) => void
   setSelectedIds: (ids: string[]) => void
   setZoom: (z: number) => void
+  setPan: (x: number, y: number) => void
   resetView: () => void
   _previewing: boolean
   setPreviewing: (v: boolean) => void
@@ -97,6 +101,9 @@ export const usePptStore = create<PptState>((set, get) => ({
   selectedIds: [],
   selectedSlideIds: [],
   zoom: 1,
+  panX: 0,
+  panY: 0,
+  transitioning: false,
   guideLines: [],
   clipboardSlide: null,
   clipboardSlides: null,
@@ -225,9 +232,16 @@ export const usePptStore = create<PptState>((set, get) => ({
 
   setSelectedIds: (ids) => set({ selectedIds: ids }),
   setZoom: (z) => set({ zoom: Math.max(0.25, Math.min(3, z)) }),
+  setPan: (x, y) => set({ panX: x, panY: y }),
   setGuideLines: (lines) => set({ guideLines: lines }),
   setResizing: (v: boolean) => set({ _resizing: v }),
-  resetView: () => set({ zoom: 1 }),
+  resetView: () => {
+    set({ zoom: 1, transitioning: true })
+    requestAnimationFrame(() => {
+      set({ panX: 0, panY: 0 })
+      setTimeout(() => set({ transitioning: false }), 350)
+    })
+  },
   setPreviewing: (v) => set({ _previewing: v }),
 
   undo: () => {

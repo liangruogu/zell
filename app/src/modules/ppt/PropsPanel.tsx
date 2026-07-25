@@ -229,7 +229,7 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
             <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: color }} />
           </button>
           {showPicker && createPortal(
-            <div ref={pickerRef} className="fixed p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[99999] space-y-1.5" style={{ width: 160, top: pickerPos.y, left: pickerPos.x }}>
+            <div ref={pickerRef} data-no-deselect className="fixed p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[99999] space-y-1.5" style={{ width: 160, top: pickerPos.y, left: pickerPos.x }}>
               <span className="text-[10px] text-gray-400">取色器</span>
               <div className="flex items-center gap-1">
                 <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
@@ -551,7 +551,7 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
               <div className="rounded-sm border border-gray-300" style={{ width: 16, height: 16, background: el.props.stroke || '#cbd5e1' }} />
             </button>
             {showStrokePicker && createPortal(
-               <div ref={strokePickerRef} className="fixed p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[99999] space-y-1.5" style={{ width: 160, top: strokePickerPos.y, left: strokePickerPos.x }}>
+                <div ref={strokePickerRef} data-no-deselect className="fixed p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[99999] space-y-1.5" style={{ width: 160, top: strokePickerPos.y, left: strokePickerPos.x }}>
                 <span className="text-[10px] text-gray-400">取色器</span>
                 <div className="flex items-center gap-1">
                   <input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => { addRecentColor(e.target.value); updateProps({ stroke: e.target.value }) }} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
