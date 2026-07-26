@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { PptToolbar } from './PptToolbar'
 import { SlideStrip } from './SlideStrip'
 import { CanvasViewport } from './CanvasViewport'
@@ -42,6 +43,10 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
             w: Math.round(w), h: Math.round(h), opacity: 1,
             props: { src, origW: ow, origH: oh, imgScale: w / ow },
           })
+          // Re-enter fullscreen if previewing (focus was stolen by paste)
+          if (st._previewing) {
+            getCurrentWindow().setFullscreen(true)
+          }
         }
       }
       img.src = src
