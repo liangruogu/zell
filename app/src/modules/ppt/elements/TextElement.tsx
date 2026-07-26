@@ -7,9 +7,37 @@ function defaultContent(text: string): any {
   return { type: 'doc', content: text ? [{ type: 'paragraph', content: [{ type: 'text', text }] }] : [{ type: 'paragraph' }] }
 }
 
-const TextHTML = memo(function TextHTML({ html }: { html: string }) {
-  return <div className="tl-rich-text" dangerouslySetInnerHTML={{ __html: html }} style={{ padding: 0, margin: 0, overflow: 'hidden' }} />
-}, (prev, next) => prev.html === next.html)
+const TextHTML = memo(function TextHTML({ html, elW, elH }: { html: string; elW: number; elH: number }) {
+  return (
+    <div
+      className="tl-rich-text"
+      dangerouslySetInnerHTML={{ __html: html }}
+      style={{ padding: 0, margin: 0, width: elW - 8, minHeight: 0 }}
+    />
+  )
+}, (prev, next) => prev.html === next.html && prev.elW === next.elW && prev.elH === next.elH)
+
+function measureContentHeight(html: string, w: number, fontSize: number, fontFamily: string, lineHeight: number): number {
+  const div = document.createElement('div')
+  div.className = 'tl-rich-text'
+  div.innerHTML = html
+  div.style.cssText = [
+    `position:absolute`,
+    `visibility:hidden`,
+    `width:${w - 8}px`,
+    `font-size:${fontSize}px`,
+    `font-family:${fontFamily === 'inherit' ? 'inherit' : fontFamily}`,
+    `line-height:${lineHeight}`,
+    `overflow-wrap:break-word`,
+    `word-break:break-word`,
+    `padding:0`,
+    `margin:0`,
+  ].join(';')
+  document.body.appendChild(div)
+  const h = div.scrollHeight
+  document.body.removeChild(div)
+  return h
+}
 
 export function TextEl({ el, isSelected }: EP) {
   const { onMouseDown, dragging } = useDrag(el.id)
@@ -34,9 +62,18 @@ export function TextEl({ el, isSelected }: EP) {
     if (isEmpty) {
       s.deleteElements(s.currentSlideId, [el.id])
     } else {
-      s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, content: json } })
+      const measureHtml = renderRichTextHTML(json)
+      const measured = measureContentHeight(
+        measureHtml,
+        el.w,
+        fontSize,
+        p.fontFamily || 'inherit',
+        p.lineHeight || 1.5
+      )
+      const newH = Math.max(el.h, measured + 4)
+      s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, content: json }, h: newH })
     }
-  }, [el.id, el.props])
+  }, [el.id, el.props, el.w, el.h, fontSize, p.fontFamily, p.lineHeight])
 
   const boxStyle: React.CSSProperties = {
     position: 'absolute',
@@ -52,7 +89,7 @@ export function TextEl({ el, isSelected }: EP) {
     lineHeight: p.lineHeight || 1.5,
     textAlign: (p.textAlign || 'left') as any,
     letterSpacing: (p.letterSpacing || 0) + 'px',
-    overflow: 'hidden',
+    overflow: editing ? 'visible' : 'hidden',
     overflowWrap: 'break-word', wordBreak: 'break-word' as any,
     padding: '2px 4px',
     boxShadow: ss,
@@ -64,7 +101,7 @@ export function TextEl({ el, isSelected }: EP) {
 
   return (
     <div data-el-id={el.id} style={boxStyle} onClick={handleClick} onMouseDown={editing ? (e) => e.stopPropagation() : onMouseDown}>
-      {!editing && <TextHTML html={html} />}
+      {!editing && <TextHTML html={html} elW={el.w} elH={el.h} />}
       {editing && (
         <RichTextEditor
           content={content}
@@ -96,7 +133,7 @@ export function ReadOnlyTextEl({ el }: EP) {
   const html = useMemo(() => renderRichTextHTML(content), [content])
   return (
     <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: p.fontSize || 16, color: p.fontColor || '#333', fontFamily: p.fontFamily || 'inherit', fontWeight: p.fontWeight || 'normal', fontStyle: p.fontStyle || 'normal', textDecoration: p.textDecoration || 'none', lineHeight: p.lineHeight || 1.5, textAlign: (p.textAlign || 'left') as any, letterSpacing: (p.letterSpacing || 0) + 'px', overflow: 'hidden', padding: '2px 4px', overflowWrap: 'break-word', wordBreak: 'break-word' as any, boxShadow: ss, pointerEvents: 'none', userSelect: 'none' }}>
-      <TextHTML html={html} />
+      <TextHTML html={html} elW={el.w} elH={el.h} />
     </div>
   )
 }
