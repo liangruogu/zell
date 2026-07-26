@@ -99,11 +99,9 @@ export function ElementHandles({ element, zoom }: Props) {
         if (textDiv) {
           const rect = textDiv.getBoundingClientRect()
           const naturalH = Math.ceil(rect.height) + 4
-          if (Math.abs(naturalH - (updates.h ?? element.h)) > 1) {
-            updates = { ...updates, h: naturalH }
-            boxEl.style.height = naturalH + 'px'
-            if (hEl) hEl.style.height = naturalH + 'px'
-          }
+          updates = { ...updates, h: naturalH }
+          boxEl.style.height = naturalH + 'px'
+          if (hEl) hEl.style.height = naturalH + 'px'
         }
       }
 
