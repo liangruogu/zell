@@ -54,7 +54,7 @@ interface MarkdownEditorProps {
 export function MarkdownEditor({
   content = '',
   editable = true,
-  placeholder = '开始写作...',
+  placeholder = '开始写�?..',
   onChange,
   onSave,
   className,
@@ -73,7 +73,7 @@ export function MarkdownEditor({
   useEffect(() => { loadSettings() }, [loadSettings])
 
   // Inject custom CSS (now handled by theme system)
-  // Legacy custom_css setting support removed — use custom themes instead
+  // Legacy custom_css setting support removed �?use custom themes instead
 
   // Apply theme (default + custom)
   const appearanceSettings = useSettingsStore((s) => s.settings['appearance'])
@@ -86,7 +86,7 @@ export function MarkdownEditor({
         }
         const parsed = JSON.parse(appearanceSettings)
         const theme = parsed.theme || ''
-        const DEFAULT_THEME_KEYS = ['bindle', 'github', 'notion', 'minimal']
+        const DEFAULT_THEME_KEYS = ['zell', 'github', 'notion', 'minimal']
         if (DEFAULT_THEME_KEYS.includes(theme) || !theme) {
           document.documentElement.removeAttribute('data-zell-custom-theme')
           if (theme) {
@@ -209,7 +209,7 @@ export function MarkdownEditor({
   } catch { /* use default */ }
 
   const [justSaved, setJustSaved] = useState(false)
-  const [saveMessage, setSaveMessage] = useState('✓ 已保存')
+  const [saveMessage, setSaveMessage] = useState('�?已保�?)
   const [showExport, setShowExport] = useState(false)
 
   const handleExport = useCallback(async (format: 'pdf' | 'docx') => {
@@ -227,7 +227,7 @@ export function MarkdownEditor({
     const markdown = htmlToMarkdown(editorRef.current?.getHTML() || content)
     try {
       await invoke('export_article', { markdown, outputPath, format })
-      setSaveMessage('✓ 导出成功')
+      setSaveMessage('�?导出成功')
       setJustSaved(true)
       setTimeout(() => setJustSaved(false), 2000)
     } catch (e: any) {
@@ -245,14 +245,14 @@ export function MarkdownEditor({
       try {
         if (sourcePath) {
           const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
-          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
+          ed.chain().focus().setImage({ src: `zell-img:${projectId}/${saved.file_name}` }).run()
         } else {
           const resp = await fetch(dataUrl)
           const blob = await resp.blob()
           const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
           const ext = blob.type.split('/')[1] || 'png'
           const saved = await invoke<{ file_name: string }>('save_project_image_bytes', { projectId, bytes, extension: ext })
-          ed.chain().focus().setImage({ src: `bindle-img:${projectId}/${saved.file_name}` }).run()
+          ed.chain().focus().setImage({ src: `zell-img:${projectId}/${saved.file_name}` }).run()
         }
         return
       } catch { /* fall through to base64 */ }
@@ -338,7 +338,7 @@ export function MarkdownEditor({
       Highlight,
       Link.configure({
         openOnClick: true,
-        HTMLAttributes: { class: 'text-bindle-600 underline cursor-pointer' },
+        HTMLAttributes: { class: 'text-zell-600 underline cursor-pointer' },
       }),
       Placeholder.configure({ placeholder }),
       CharacterCount,
@@ -446,8 +446,8 @@ export function MarkdownEditor({
       const cleaned = html.replace(/(<code[^>]*>)([\s\S]*?)(\n*)(<\/code>)/gi, (_, open, body, trail, close) => {
         return open + body.replace(/\n+$/, '') + close
       })
-      // Pre-resolve bindle-img refs before rendering to avoid broken image flash
-      const refs = [...cleaned.matchAll(/bindle-img:([^\s")<]+)/g)].map(m => m[1])
+      // Pre-resolve zell-img refs before rendering to avoid broken image flash
+      const refs = [...cleaned.matchAll(/zell-img:([^\s")<]+)/g)].map(m => m[1])
       if (refs.length === 0) {
         editor.commands.setContent(cleaned)
         return
@@ -463,12 +463,12 @@ export function MarkdownEditor({
         let resolved = cleaned
         for (const { ref, dataUrl } of results) {
           if (dataUrl) {
-            const bindleRef = `bindle-img:${ref}`
-            // Replace bindle-img src with resolved data URL, but keep bindle ref as attribute
-            const escapedRef = bindleRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const imgRef = `zell-img:${ref}`
+            // Replace zell-img src with resolved data URL, but keep img ref as attribute
+            const escapedRef = imgRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             resolved = resolved.replace(
               new RegExp(`src="${escapedRef}"`, 'g'),
-              `src="${dataUrl}" data-bindle-ref="${bindleRef}" data-bindle-resolved="${dataUrl}"`
+              `src="${dataUrl}" data-zell-ref="${imgRef}" data-zell-resolved="${dataUrl}"`
             )
           }
         }
@@ -477,29 +477,29 @@ export function MarkdownEditor({
     }
   }, [content, editor, mode])
 
-  // Resolve bindle-img refs for display without corrupting the src attribute.
-  // We store the resolved URL in a data- attribute so turndown preserves bindle-img: refs.
+  // Resolve zell-img refs for display without corrupting the src attribute.
+  // We store the resolved URL in a data- attribute so turndown preserves zell-img: refs.
   useEffect(() => {
     if (!editor || mode !== 'wysiwyg') return
     const resolve = () => {
-      const imgs = editor.view.dom.querySelectorAll('img[src^="bindle-img:"]')
+      const imgs = editor.view.dom.querySelectorAll('img[src^="zell-img:"]')
       imgs.forEach(async (img) => {
         const src = img.getAttribute('src') || ''
-        const match = src.match(/^bindle-img:(.+?)\/([^/]+)$/)
+        const match = src.match(/^zell-img:(.+?)\/([^/]+)$/)
         if (!match) return
         const [, projectId, fileName] = match
-        const cached = img.getAttribute('data-bindle-resolved')
+        const cached = img.getAttribute('data-zell-resolved')
         if (cached) {
-          if (img.getAttribute('src')?.startsWith('bindle-img:')) {
+          if (img.getAttribute('src')?.startsWith('zell-img:')) {
             img.setAttribute('src', cached)
           }
           return
         }
         try {
           const dataUrl = await invoke<string>('resolve_project_image', { projectId, fileName })
-          img.setAttribute('data-bindle-ref', src)
-          img.setAttribute('data-bindle-resolved', dataUrl)
-          if (img.getAttribute('src')?.startsWith('bindle-img:')) {
+          img.setAttribute('data-zell-ref', src)
+          img.setAttribute('data-zell-resolved', dataUrl)
+          if (img.getAttribute('src')?.startsWith('zell-img:')) {
             img.setAttribute('src', dataUrl)
           }
         } catch { /* keep */ }
@@ -507,7 +507,7 @@ export function MarkdownEditor({
     }
     editor.on('create', resolve)
     const onUpdate = () => {
-      const imgs = editor.view.dom.querySelectorAll('img[src^="bindle-img:"]:not([data-bindle-resolved])')
+      const imgs = editor.view.dom.querySelectorAll('img[src^="zell-img:"]:not([data-zell-resolved])')
       if (imgs.length > 0) resolve()
     }
     editor.on('update', onUpdate)
@@ -584,7 +584,7 @@ export function MarkdownEditor({
     const html = ed.getHTML()
     const md = htmlToMarkdown(html)
     onSave?.(html, md)
-    setSaveMessage('✓ 已保存')
+    setSaveMessage('�?已保�?)
     setJustSaved(true)
     setTimeout(() => setJustSaved(false), 2000)
   }, [onSave])
@@ -694,7 +694,7 @@ export function MarkdownEditor({
       return
     }
     const raw = markdownToHtml(splitSource)
-    const refs = [...raw.matchAll(/bindle-img:([^\s")<]+)/g)].map(m => m[0])
+    const refs = [...raw.matchAll(/zell-img:([^\s")<]+)/g)].map(m => m[0])
     if (refs.length === 0) {
       // Process code highlighting
       const div = document.createElement('div')
@@ -714,7 +714,7 @@ export function MarkdownEditor({
     }
     const uniqueRefs = [...new Set(refs)]
     Promise.all(uniqueRefs.map(async (ref) => {
-      const parts = ref.replace('bindle-img:', '').split('/')
+      const parts = ref.replace('zell-img:', '').split('/')
       const [, ...rest] = parts
       const fileName = rest.join('/')
       try {
@@ -791,7 +791,7 @@ export function MarkdownEditor({
             onMouseDown={handleSplitResizeStart}
             className={cn(
               'w-1.5 shrink-0 cursor-col-resize transition-colors z-10',
-              splitDragging ? 'bg-bindle-400' : 'hover:bg-bindle-300'
+              splitDragging ? 'bg-zell-400' : 'hover:bg-zell-300'
             )}
           />
 
@@ -816,13 +816,13 @@ export function MarkdownEditor({
             ? `${editor.storage.characterCount?.characters?.() ?? 0} 字符`
             : `${splitSource.length} 字符`}
           {codeBlockLang && (
-            <span className="ml-3 text-bindle-500 font-medium">{codeBlockLang}</span>
+            <span className="ml-3 text-zell-500 font-medium">{codeBlockLang}</span>
           )}
           {justSaved && (
             <span className="ml-3 text-green-500">{saveMessage}</span>
           )}
           {updatedAt && !justSaved && (
-            <span className="ml-3">· 更新于 {format.relativeTime(updatedAt)}</span>
+            <span className="ml-3">· 更新�?{format.relativeTime(updatedAt)}</span>
           )}
         </span>
         <span className="flex items-center gap-1">
@@ -859,7 +859,7 @@ export function MarkdownEditor({
             className="hover:text-gray-600 transition-colors cursor-pointer"
             title="点击切换视图"
           >
-            {mode === 'wysiwyg' ? '所见即所得' : '分屏模式'}
+            {mode === 'wysiwyg' ? '所见即所�? : '分屏模式'}
           </button>
         </span>
       </div>
@@ -868,7 +868,7 @@ export function MarkdownEditor({
       {!isAIOpen && (
         <button
           onClick={() => openPanel('knowledge')}
-          className="absolute bottom-14 right-4 z-10 p-2 bg-bindle-500 text-white rounded-full shadow-lg hover:bg-bindle-600 transition-all hover:scale-110"
+          className="absolute bottom-14 right-4 z-10 p-2 bg-zell-500 text-white rounded-full shadow-lg hover:bg-zell-600 transition-all hover:scale-110"
           title="AI 助手"
         >
           <Sparkles size={16} />

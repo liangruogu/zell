@@ -16,8 +16,8 @@ type SettingsCategory = 'appearance' | 'ai' | 'editor' | 'server' | 'sync'
 const CATEGORIES: { key: SettingsCategory; label: string; icon: React.ReactNode }[] = [
   { key: 'appearance', label: '外观', icon: <Palette size={16} /> },
   { key: 'ai', label: 'AI 服务', icon: <Bot size={16} /> },
-  { key: 'editor', label: '编辑器', icon: <FileText size={16} /> },
-  { key: 'server', label: '服务器', icon: <Server size={16} /> },
+  { key: 'editor', label: '编辑�?, icon: <FileText size={16} /> },
+  { key: 'server', label: '服务�?, icon: <Server size={16} /> },
   { key: 'sync', label: '资源同步', icon: <Link2 size={16} /> },
 ]
 
@@ -29,12 +29,12 @@ const FONT_SIZE_OPTIONS = [
 ]
 
 const EDITOR_MODE_OPTIONS = [
-  { value: 'wysiwyg', label: '所见即所得' },
+  { value: 'wysiwyg', label: '所见即所�? },
   { value: 'split', label: '分屏模式' },
 ]
 
 const IMAGE_STORAGE_OPTIONS = [
-  { value: 'base64', label: 'Base64 内嵌（Markdown 源码较长）' },
+  { value: 'base64', label: 'Base64 内嵌（Markdown 源码较长�? },
   { value: 'file', label: '文件路径（保存在项目目录，简洁可读）' },
 ]
 
@@ -102,7 +102,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 text-sm text-left transition-colors',
                 category === cat.key
-                  ? 'bg-white text-bindle-700 font-medium border-r-2 border-bindle-500 -mr-px'
+                  ? 'bg-white text-zell-700 font-medium border-r-2 border-zell-500 -mr-px'
                   : 'text-gray-600 hover:bg-gray-100'
               )}
             >
@@ -151,7 +151,7 @@ function parseSettings(settings: Record<string, string>) {
 
 // ---- Appearance Settings ----
 const DEFAULT_THEMES = [
-  { value: 'bindle', label: 'Zell 默认' },
+  { value: 'zell', label: 'Zell 默认' },
   { value: 'github', label: 'GitHub' },
   { value: 'notion', label: 'Notion' },
   { value: 'minimal', label: '报告' },
@@ -166,7 +166,7 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
   showToast: (msg: string) => void
 }) {
   const showToolbarVal = parsed.appearance.showToolbar !== false
-  const currentTheme = String(parsed.appearance.theme || 'bindle')
+  const currentTheme = String(parsed.appearance.theme || 'zell')
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>([])
   const [newName, setNewName] = useState('')
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
@@ -206,18 +206,18 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
 
   const createTheme = useCallback(async () => {
     const name = newName.trim()
-    if (!name) { showToast('请输入主题名称'); return }
+    if (!name) { showToast('请输入主题名�?); return }
     if (DEFAULT_THEME_KEYS.has(name)) { showToast('不能使用默认主题名称'); return }
-    if (customThemes.some(t => t.name === name)) { showToast('主题名称已存在'); return }
+    if (customThemes.some(t => t.name === name)) { showToast('主题名称已存�?); return }
     try {
       await ensureThemesDir()
       const dir = await themesDir()
       const filePath = await join(dir, `${name}.css`)
-      await writeTextFile(filePath, `/* ${name} 自定义主题 */\n.zell-prose {\n  \n}\n`)
+      await writeTextFile(filePath, `/* ${name} 自定义主�?*/\n.zell-prose {\n  \n}\n`)
       await invoke('open_in_system', { filePath })
       setNewName('')
       await loadCustomThemes()
-      showToast(`已创建主题 "${name}"`)
+      showToast(`已创建主�?"${name}"`)
     } catch (e) { showToast(`创建失败: ${e}`) }
   }, [newName, customThemes, themesDir, showToast, loadCustomThemes])
 
@@ -236,12 +236,12 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
       const filePath = await join(dir, `${name}.css`)
       await remove(filePath)
       if (currentTheme === name) {
-        await setSetting('appearance', JSON.stringify({ ...parsed.appearance, theme: 'bindle' }))
+        await setSetting('appearance', JSON.stringify({ ...parsed.appearance, theme: 'zell' }))
         document.documentElement.removeAttribute('data-zell-custom-theme')
-        document.documentElement.setAttribute('data-zell-theme', 'bindle')
+        document.documentElement.setAttribute('data-zell-theme', 'zell')
       }
       await loadCustomThemes()
-      showToast('主题已删除')
+      showToast('主题已删�?)
     } catch (e) { showToast(`删除失败: ${e}`) }
   }, [themesDir, currentTheme, parsed.appearance, setSetting, showToast, loadCustomThemes])
 
@@ -257,8 +257,8 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
       }
       setRenameTarget(null)
       await loadCustomThemes()
-      showToast(`已重命名为 "${newNameVal}"`)
-    } catch (e) { showToast(`重命名失败: ${e}`) }
+      showToast(`已重命名�?"${newNameVal}"`)
+    } catch (e) { showToast(`重命名失�? ${e}`) }
   }, [renameValue, themesDir, currentTheme, parsed.appearance, setSetting, showToast, loadCustomThemes])
 
   const { register, handleSubmit, reset } = useForm({
@@ -282,7 +282,7 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
       showToolbar: data.showToolbar,
       theme: currentTheme,
     }))
-    showToast('外观设置已保存')
+    showToast('外观设置已保�?)
   }, [setSetting, showToast, parsed.appearance, currentTheme])
 
   const handleThemeChange = useCallback(async (theme: string) => {
@@ -309,7 +309,7 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
         document.documentElement.removeAttribute('data-zell-custom-theme')
       }
     }
-    showToast('主题已切换')
+    showToast('主题已切�?)
   }, [parsed.appearance, setSetting, showToast, themesDir])
 
   const allThemes = [...DEFAULT_THEMES, ...customThemes]
@@ -333,7 +333,7 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
               ))}
             </optgroup>
             {customThemes.length > 0 && (
-              <optgroup label="自定义主题">
+              <optgroup label="自定义主�?>
                 {customThemes.map(t => (
                   <option key={t.name} value={t.name}>{t.label}</option>
                 ))}
@@ -384,7 +384,7 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
                       onKeyDown={(e) => { if (e.key === 'Enter') renameTheme(t.name); if (e.key === 'Escape') setRenameTarget(null) }}
                       className="flex-1 px-2 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-zell-400"
                       autoFocus
-                      placeholder="新名称"
+                      placeholder="新名�?
                     />
                     <button type="button" onClick={() => renameTheme(t.name)} className="px-2 py-0.5 text-xs text-zell-600 hover:bg-zell-50 rounded">确定</button>
                     <button type="button" onClick={() => setRenameTarget(null)} className="px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-50 rounded">取消</button>
@@ -395,7 +395,7 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
                     <button type="button" onClick={() => editTheme(t.name)} className="p-0.5 text-gray-400 hover:text-zell-600 rounded" title="编辑CSS">
                       <ExternalLink size={13} />
                     </button>
-                    <button type="button" onClick={() => { setRenameTarget(t.name); setRenameValue(t.name) }} className="p-0.5 text-gray-400 hover:text-zell-600 rounded" title="重命名">
+                    <button type="button" onClick={() => { setRenameTarget(t.name); setRenameValue(t.name) }} className="p-0.5 text-gray-400 hover:text-zell-600 rounded" title="重命�?>
                       <Pencil size={13} />
                     </button>
                     <button type="button" onClick={() => deleteTheme(t.name)} className="p-0.5 text-gray-400 hover:text-red-500 rounded" title="删除">
@@ -412,7 +412,7 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
       {/* Font size + toolbar */}
       <div className="space-y-4">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">编辑器字号</label>
+          <label className="block text-sm font-medium text-gray-700">编辑器字�?/label>
           <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400 appearance-none bg-white" {...register('fontSize')}>
             {FONT_SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -454,7 +454,7 @@ function AISettings({ parsed, setSetting, showToast }: {
   const save = useCallback(async (list: AIProvider[], active: string) => {
     await setSetting('ai_providers', JSON.stringify(list))
     await setSetting('ai_active_provider', active)
-    showToast('AI 配置已保存')
+    showToast('AI 配置已保�?)
   }, [setSetting, showToast])
 
   const addProvider = useCallback(() => {
@@ -491,10 +491,10 @@ function AISettings({ parsed, setSetting, showToast }: {
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-gray-800">AI 服务</h3>
-      <p className="text-xs text-gray-400">支持任意兼容 OpenAI API 的服务（DeepSeek、Ollama、Groq 等），填写 Base URL 和 API Key 即可。</p>
+      <p className="text-xs text-gray-400">支持任意兼容 OpenAI API 的服务（DeepSeek、Ollama、Groq 等），填�?Base URL �?API Key 即可�?/p>
 
       {providers.length === 0 && (
-        <p className="text-sm text-gray-400 py-4 text-center">暂无 AI 服务，点击添加</p>
+        <p className="text-sm text-gray-400 py-4 text-center">暂无 AI 服务，点击添�?/p>
       )}
 
       {providers.map((p) => (
@@ -505,12 +505,12 @@ function AISettings({ parsed, setSetting, showToast }: {
               name="activeProvider"
               checked={activeId === p.id || (providers.length === 1 && !activeId)}
               onChange={() => { setActiveId(p.id); save(providers, p.id) }}
-              className="text-bindle-500"
+              className="text-zell-500"
             />
             <input
               value={p.name}
               onChange={(e) => updateProvider(p.id, 'name', e.target.value)}
-              placeholder="Provider 名称（如 DeepSeek）"
+              placeholder="Provider 名称（如 DeepSeek�?
               className="flex-1 text-sm font-medium bg-transparent border-none outline-none"
             />
             <button onClick={() => removeProvider(p.id)} className="p-1 text-gray-400 hover:text-red-500" title="删除">
@@ -524,7 +524,7 @@ function AISettings({ parsed, setSetting, showToast }: {
                 value={p.baseUrl}
                 onChange={(e) => updateProvider(p.id, 'baseUrl', e.target.value)}
                 placeholder="https://api.deepseek.com"
-                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-zell-400"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -535,7 +535,7 @@ function AISettings({ parsed, setSetting, showToast }: {
                   value={p.apiKey}
                   onChange={(e) => updateProvider(p.id, 'apiKey', e.target.value)}
                   placeholder="sk-..."
-                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-zell-400"
                 />
               </div>
               <div>
@@ -544,7 +544,7 @@ function AISettings({ parsed, setSetting, showToast }: {
                   value={p.model}
                   onChange={(e) => updateProvider(p.id, 'model', e.target.value)}
                   placeholder="deepseek-chat"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-zell-400"
                 />
               </div>
             </div>
@@ -602,19 +602,19 @@ function EditorSettings({ parsed, setSetting, showToast }: {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <h3 className="font-semibold text-gray-800">编辑器偏好</h3>
+      <h3 className="font-semibold text-gray-800">编辑器偏�?/h3>
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">默认编辑模式</label>
-        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('defaultMode')}>
+        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400" {...register('defaultMode')}>
           {EDITOR_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">图片存储方式</label>
-        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('imageStorage')}>
+        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400" {...register('imageStorage')}>
           {IMAGE_STORAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <p className="text-xs text-gray-400 mt-1">Base64 模式：图片直接嵌入 Markdown<br />文件模式：图片保存为独立文件，Markdown 仅存引用</p>
+        <p className="text-xs text-gray-400 mt-1">Base64 模式：图片直接嵌�?Markdown<br />文件模式：图片保存为独立文件，Markdown 仅存引用</p>
       </div>
       <Button type="submit" size="sm">保存偏好</Button>
     </form>
@@ -643,30 +643,30 @@ function ResourceSyncSettings({ parsed, setSetting, showToast }: {
   const handleSave = useCallback(async () => {
     const value = policy === 'scheduled' ? `scheduled:${intervalHours}` : policy
     await setSetting('link_sync_policy', value)
-    showToast('同步策略已保存')
+    showToast('同步策略已保�?)
   }, [policy, intervalHours, setSetting, showToast])
 
   return (
     <div className="space-y-5">
       <h3 className="font-semibold text-gray-800">外部链接同步策略</h3>
-      <p className="text-xs text-gray-400">控制外部链接何时自动抓取网页内容并生成 Markdown 快照。</p>
+      <p className="text-xs text-gray-400">控制外部链接何时自动抓取网页内容并生�?Markdown 快照�?/p>
 
       <div className="space-y-3">
         {[
-          { value: 'manual', label: '手动同步', desc: '仅在点击"同步"按钮时更新链接内容' },
-          { value: 'on_open', label: '打开项目时', desc: '每次进入项目时自动同步所有链接' },
-          { value: 'scheduled', label: '定时同步', desc: '按固定间隔自动刷新所有链接' },
+          { value: 'manual', label: '手动同步', desc: '仅在点击"同步"按钮时更新链接内�? },
+          { value: 'on_open', label: '打开项目�?, desc: '每次进入项目时自动同步所有链�? },
+          { value: 'scheduled', label: '定时同步', desc: '按固定间隔自动刷新所有链�? },
         ].map((opt) => (
           <label key={opt.value} className={cn(
             'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-            policy === opt.value ? 'border-bindle-300 bg-bindle-50' : 'border-gray-200 hover:bg-gray-50'
+            policy === opt.value ? 'border-zell-300 bg-zell-50' : 'border-gray-200 hover:bg-gray-50'
           )}>
             <input
               type="radio"
               name="syncPolicy"
               checked={policy === opt.value}
               onChange={() => setPolicy(opt.value)}
-              className="mt-0.5 text-bindle-500"
+              className="mt-0.5 text-zell-500"
             />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-700">{opt.label}</p>
@@ -677,7 +677,7 @@ function ResourceSyncSettings({ parsed, setSetting, showToast }: {
                   <input
                     value={intervalHours}
                     onChange={(e) => setIntervalHours(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                    className="w-16 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                    className="w-16 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-zell-400"
                   />
                   <span className="text-xs text-gray-500">小时</span>
                 </div>

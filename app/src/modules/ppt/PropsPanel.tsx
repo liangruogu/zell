@@ -8,8 +8,8 @@ import { toggleListInJSON, hasListInJSON, removeListFromJSON } from './elements/
 
 const SCRUB = { threshold: 3, speed: 1 }
 
-// recent color palette — persisted to localStorage
-const STORAGE_KEY = 'bindle_recent_colors'
+// recent color palette �?persisted to localStorage
+const STORAGE_KEY = 'zell_recent_colors'
 function loadRecentColors(): string[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch { return [] }
 }
@@ -232,14 +232,14 @@ function ColorChip({ label, color, onChange, opacity, onOpacityChange }: {
           </button>
           {showPicker && createPortal(
             <div ref={pickerRef} data-no-deselect className="fixed p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[99999] space-y-1.5" style={{ width: 160, top: pickerPos.y, left: pickerPos.x }}>
-              <span className="text-[10px] text-gray-400">取色器</span>
+              <span className="text-[10px] text-gray-400">取色�?/span>
               <div className="flex items-center gap-1">
                 <input type="color" value={color} onChange={e => handleColorChange(e.target.value)} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
                 <span className="text-[12px] text-gray-600 font-mono">{color}</span>
               </div>
               {recentColors.length > 0 && (
                 <>
-                  <span className="text-[10px] text-gray-400">最近使用</span>
+                  <span className="text-[10px] text-gray-400">最近使�?/span>
                   <div className="flex gap-0.5 flex-wrap">
                     {recentColors.slice(0, 16).map(c => (
                       <button key={c} onClick={() => handleColorChange(c)}
@@ -297,7 +297,7 @@ export function PropsPanel() {
 
   useEffect(() => { syncRecentColors(slides) }, [slides])
 
-  const typeLabels: Record<string, string> = { text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片', group: '组' }
+  const typeLabels: Record<string, string> = { text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片', group: '�? }
   const elDisplayName = el ? (el.name || typeLabels[el.type] || el.type) : ''
 
   const submitElRename = () => {
@@ -312,8 +312,8 @@ export function PropsPanel() {
   return (
     <div data-panel="props" className="w-52 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none relative z-10">
       <div className="flex border-b border-gray-200">
-        <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
-        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
+        <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'props' ? 'text-zell-600 border-b-2 border-zell-500' : 'text-gray-500 hover:text-gray-700'}`}>属�?/button>
+        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'layers' ? 'text-zell-600 border-b-2 border-zell-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
       </div>
       <div className="p-3">
         {activeTab === 'props' ? (
@@ -321,7 +321,7 @@ export function PropsPanel() {
             <div className="space-y-3">
               <span className="text-[13px] font-medium text-gray-700">画板</span>
               {slide && <SlideBackground slide={slide} />}
-              <p className="text-xs text-gray-400 text-center pt-2">选择元素后可编辑属性</p>
+              <p className="text-xs text-gray-400 text-center pt-2">选择元素后可编辑属�?/p>
             </div>
           ) : (
             <>
@@ -366,7 +366,7 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
           </div>
           {el.type !== 'rect' && el.type !== 'ellipse' && (
             <div>
-              <label className="text-[10px] text-gray-500">透明度</label>
+              <label className="text-[10px] text-gray-500">透明�?/label>
               <input type="range" min={0} max={1} step={0.1} value={el.opacity} onChange={e => update({ opacity: +e.target.value })} className="w-full" />
             </div>
           )}
@@ -416,16 +416,16 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
           <div>
             <label className="text-[10px] text-gray-500">起点</label>
             <div className="flex gap-1 mt-0.5">
-              {[{ v: 'none', s: '—' }, { v: 'arrow', s: '▶' }, { v: 'circle', s: '●' }, { v: 'square', s: '■' }].map(opt => (
-                <button key={opt.v} onClick={() => updateProps({ startShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.startShape || 'none') === opt.v ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
+              {[{ v: 'none', s: '�? }, { v: 'arrow', s: '�? }, { v: 'circle', s: '�? }, { v: 'square', s: '�? }].map(opt => (
+                <button key={opt.v} onClick={() => updateProps({ startShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.startShape || 'none') === opt.v ? 'bg-zell-50 border-zell-300 text-zell-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
               ))}
             </div>
           </div>
           <div>
             <label className="text-[10px] text-gray-500">终点</label>
             <div className="flex gap-1 mt-0.5">
-              {[{ v: 'none', s: '—' }, { v: 'arrow', s: '▶' }, { v: 'circle', s: '●' }, { v: 'square', s: '■' }].map(opt => (
-                <button key={opt.v} onClick={() => updateProps({ endShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.endShape || 'arrow') === opt.v ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
+              {[{ v: 'none', s: '�? }, { v: 'arrow', s: '�? }, { v: 'circle', s: '�? }, { v: 'square', s: '�? }].map(opt => (
+                <button key={opt.v} onClick={() => updateProps({ endShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.endShape || 'arrow') === opt.v ? 'bg-zell-50 border-zell-300 text-zell-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
               ))}
             </div>
           </div>
@@ -492,7 +492,7 @@ function SlideBackground({ slide }: { slide: import('./types').Slide }) {
 
   return (
     <div>
-      <label className="text-[12px] text-gray-500">背景色</label>
+      <label className="text-[12px] text-gray-500">背景�?/label>
       <div className="flex items-center gap-1 mt-0.5 bg-gray-100 rounded h-[26px] px-1">
         <div className="relative shrink-0">
           <input type="color" value={slide.background || '#ffffff'} onChange={e => changeBg(e.target.value)}
@@ -594,14 +594,14 @@ function StrokeSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
             </button>
             {showStrokePicker && createPortal(
                 <div ref={strokePickerRef} data-no-deselect className="fixed p-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[99999] space-y-1.5" style={{ width: 160, top: strokePickerPos.y, left: strokePickerPos.x }}>
-                <span className="text-[10px] text-gray-400">取色器</span>
+                <span className="text-[10px] text-gray-400">取色�?/span>
                 <div className="flex items-center gap-1">
                   <input type="color" value={el.props.stroke || '#cbd5e1'} onChange={e => { addRecentColor(e.target.value); updateProps({ stroke: e.target.value }) }} className="w-6 h-6 cursor-pointer border-0 p-0 bg-transparent shrink-0" />
                   <span className="text-[12px] text-gray-600 font-mono">{el.props.stroke || '#cbd5e1'}</span>
                 </div>
                 {recentColors.length > 0 && (
                   <>
-                    <span className="text-[10px] text-gray-400">最近使用</span>
+                    <span className="text-[10px] text-gray-400">最近使�?/span>
                     <div className="flex gap-0.5 flex-wrap">
                       {recentColors.slice(0, 16).map(c => (
                         <button key={c} onClick={() => { addRecentColor(c); updateProps({ stroke: c }) }}
@@ -716,7 +716,7 @@ function ShadowSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
               </div>
               {recentColors.length > 0 && (
                 <div className="space-y-0.5">
-                  <span className="text-[10px] text-gray-400">最近使用</span>
+                  <span className="text-[10px] text-gray-400">最近使�?/span>
                   <div className="flex gap-0.5 flex-wrap">
                     {recentColors.slice(0, 16).map(c => (
                       <button key={c} onClick={() => updateShadow(i, { color: c })}
@@ -803,7 +803,7 @@ function FontSelect({ value, onChange }: { value: string; onChange: (v: string) 
       <label className="text-[12px] text-gray-500">字体</label>
       <button onClick={() => setOpen(!open)} className="w-full h-[26px] mt-0.5 bg-gray-100 rounded flex items-center justify-between px-2 text-[12px] text-gray-700 hover:bg-gray-200">
         <span className="truncate" style={{ fontFamily: value === 'inherit' ? undefined : value }}>{label}</span>
-        <span className="text-gray-400 ml-1">▾</span>
+        <span className="text-gray-400 ml-1">�?/span>
       </button>
       {open && (
         <div className="absolute top-full left-0 z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
@@ -1007,7 +1007,7 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
   }
 
   const isSelected = (el: CanvasElement) => selectedIds.includes(el.id)
-  const typeLabel = (el: CanvasElement) => el.name || ({ text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片', group: '组' } as Record<string,string>)[el.type]
+  const typeLabel = (el: CanvasElement) => el.name || ({ text: '文本', rect: '矩形', ellipse: '圆形', line: '线条', arrow: '箭头', image: '图片', group: '�? } as Record<string,string>)[el.type]
 
   return (
     <div className="space-y-0 select-none">
@@ -1019,7 +1019,7 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
           <div
             data-layer-idx={i}
             onPointerDown={e => onPointerDown(e, i)}
-            className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-xs transition-colors ${isSelected(el) ? 'bg-bindle-50' : 'hover:bg-gray-50'} ${dragIdx === i ? 'opacity-40' : ''}`}
+            className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-xs transition-colors ${isSelected(el) ? 'bg-zell-50' : 'hover:bg-gray-50'} ${dragIdx === i ? 'opacity-40' : ''}`}
             style={{ cursor: dragIdx !== null ? 'grabbing' : 'grab' }}
           >
             <GripVertical size={10} className="text-gray-300 shrink-0" />

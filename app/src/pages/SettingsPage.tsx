@@ -28,7 +28,7 @@ const FONT_SIZE_OPTIONS = [
 ]
 
 const EDITOR_MODE_OPTIONS = [
-  { value: 'wysiwyg', label: '所见即所得' },
+  { value: 'wysiwyg', label: '所见即所�? },
   { value: 'split', label: '分屏模式' },
 ]
 
@@ -91,7 +91,7 @@ export default function SettingsPage() {
     await setSetting('ai_config', JSON.stringify(aiConfig))
     await setSetting('server_url', data.serverUrl)
     await setSetting('editor_prefs', JSON.stringify(editorPrefs))
-    alert('设置已保存')
+    alert('设置已保�?)
   }
 
   return (
@@ -104,7 +104,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-4">
               <Input
                 id="textProvider"
-                label="文本生成服务商"
+                label="文本生成服务�?
                 {...register('textProvider')}
               />
               <Input
@@ -124,7 +124,7 @@ export default function SettingsPage() {
               </div>
               <Input
                 id="imageProvider"
-                label="图片生成服务商"
+                label="图片生成服务�?
                 {...register('imageProvider')}
               />
               <Input
@@ -147,7 +147,7 @@ export default function SettingsPage() {
               />
               <Input
                 id="ollamaModel"
-                label="本地模型名"
+                label="本地模型�?
                 placeholder="llama3:8b"
                 {...register('ollamaModel')}
               />
@@ -155,25 +155,24 @@ export default function SettingsPage() {
           </Card>
 
           <Card className="p-5">
-            <h3 className="font-semibold text-gray-800 mb-4">团队服务器</h3>
+            <h3 className="font-semibold text-gray-800 mb-4">团队服务�?/h3>
             <Input
               id="serverUrl"
               label="服务器地址"
-              placeholder="https://bindle.example.com"
+              placeholder="https://zell.example.com"
               {...register('serverUrl')}
             />
             <p className="text-xs text-gray-400 mt-1">
-              留空使用本地模式；填写后连接自托管后端实现团队协作
-            </p>
+              留空使用本地模式；填写后连接自托管后端实现团队协�?            </p>
           </Card>
 
           <Card className="p-5">
-            <h3 className="font-semibold text-gray-800 mb-4">编辑器偏好</h3>
+            <h3 className="font-semibold text-gray-800 mb-4">编辑器偏�?/h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">默认字号</label>
                 <select
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-bindle-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-zell-400"
                   {...register('editorFontSize')}
                 >
                   {FONT_SIZE_OPTIONS.map((opt) => (
@@ -184,7 +183,7 @@ export default function SettingsPage() {
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">默认编辑模式</label>
                 <select
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-bindle-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-zell-400"
                   {...register('editorDefaultMode')}
                 >
                   {EDITOR_MODE_OPTIONS.map((opt) => (

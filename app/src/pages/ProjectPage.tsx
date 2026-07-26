@@ -146,8 +146,8 @@ export default function ProjectPage() {
   if (!currentProject) {
     return (
       <AppShell>
-        <Header title="加载中..." backTo="/" />
-        <div className="flex-1 flex items-center justify-center text-gray-400">加载中...</div>
+        <Header title="加载�?.." backTo="/" />
+        <div className="flex-1 flex items-center justify-center text-gray-400">加载�?..</div>
       </AppShell>
     )
   }
@@ -184,7 +184,7 @@ export default function ProjectPage() {
               <p className="text-2xl mt-1">{currentProject.icon || '📁'}</p>
             </div>
             <div>
-              <span className="text-gray-400">状态</span>
+              <span className="text-gray-400">状�?/span>
               <p className="mt-1">
                 <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border', statusInfo?.color)}>
                   {statusInfo?.label}
@@ -193,7 +193,7 @@ export default function ProjectPage() {
             </div>
             <div>
               <span className="text-gray-400">描述</span>
-              <p className="text-gray-700 mt-1">{currentProject.description || '无'}</p>
+              <p className="text-gray-700 mt-1">{currentProject.description || '�?}</p>
             </div>
             <div className="col-span-2 grid grid-cols-2 gap-4">
               <div>
@@ -201,7 +201,7 @@ export default function ProjectPage() {
                 <p className="text-gray-700 mt-1">{format.dateTime(currentProject.created_at)}</p>
               </div>
               <div>
-                <span className="text-gray-400">最后更新</span>
+                <span className="text-gray-400">最后更�?/span>
                 <p className="text-gray-700 mt-1">{format.dateTime(currentProject.updated_at)}</p>
               </div>
             </div>
@@ -213,7 +213,7 @@ export default function ProjectPage() {
           {currentProject.background ? (
             <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentProject.background}</p>
           ) : (
-            <p className="text-sm text-gray-400 italic">暂无背景信息，点击「编辑」添加</p>
+            <p className="text-sm text-gray-400 italic">暂无背景信息，点击「编辑」添�?/p>
           )}
         </Card>
 
@@ -223,7 +223,7 @@ export default function ProjectPage() {
             <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
               <Users size={18} /> 团队协作
               {collabEnabled && (
-                <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">已开启</span>
+                <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">已开�?/span>
               )}
             </h3>
 
@@ -235,20 +235,19 @@ export default function ProjectPage() {
                   </code>
                   <Button size="sm" variant="outline" onClick={handleCopyCode}>
                     <Copy size={14} className="mr-1" />
-                    {copied ? '已复制' : '复制'}
+                    {copied ? '已复�? : '复制'}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-400">每 30 分钟自动更新，已连接的用户不受影响</p>
+                <p className="text-xs text-gray-400">�?30 分钟自动更新，已连接的用户不受影�?/p>
                 <Button size="sm" variant="destructive" onClick={() => handleToggleCollab(false)}>
                   关闭协作
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-gray-400">开启后将自动生成邀请码，其他人可凭码加入。</p>
+                <p className="text-sm text-gray-400">开启后将自动生成邀请码，其他人可凭码加入�?/p>
                 <Button size="sm" onClick={() => handleToggleCollab(true)}>
-                  开启团队协作
-                </Button>
+                  开启团队协�?                </Button>
               </div>
             )}
           </Card>
@@ -263,7 +262,7 @@ export default function ProjectPage() {
             <EmojiPicker value={editIcon} onChange={setEditIcon} />
           </div>
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">项目状态</label>
+            <label className="block text-sm font-medium text-gray-700">项目状�?/label>
             <div className="flex gap-2 flex-wrap">
               {PROJECT_STATUS.map((s) => (
                 <button
@@ -282,7 +281,7 @@ export default function ProjectPage() {
           </div>
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700">项目名称 *</label>
-            <input className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400"
+            <input className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
               value={editName} onChange={(e) => setEditName(e.target.value)} />
           </div>
           <div className="space-y-1">
@@ -292,7 +291,7 @@ export default function ProjectPage() {
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700">项目背景</label>
             <Textarea rows={5} value={editBg} onChange={(e) => setEditBg(e.target.value)}
-              placeholder="详细描述项目背景信息，将作为 AI 上下文自动注入" />
+              placeholder="详细描述项目背景信息，将作为 AI 上下文自动注�? />
           </div>
           <div className="flex justify-end pt-2">
             <Button onClick={handleSave} disabled={!editName.trim()}>保存修改</Button>
@@ -301,7 +300,7 @@ export default function ProjectPage() {
       </Dialog>
 
       <Dialog open={showDelete} onOpenChange={setShowDelete} title="删除项目"
-        description="确定要删除这个项目吗？此操作不可撤销，所有关联的数据都将被软删除。">
+        description="确定要删除这个项目吗？此操作不可撤销，所有关联的数据都将被软删除�?>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setShowDelete(false)}>取消</Button>
           <Button variant="destructive" onClick={handleDelete}>确认删除</Button>

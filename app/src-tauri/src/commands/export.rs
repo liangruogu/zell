@@ -44,7 +44,7 @@ pub fn export_article(
     }
 
     // Resolve zell-img references
-    let re = Regex::new(r#"bindle-img:([^/\s]+)/([^\s)"\]]+)"#).map_err(|e| e.to_string())?;
+    let re = Regex::new(r#"zell-img:([^/\s]+)/([^\s)"\]]+)"#).map_err(|e| e.to_string())?;
     let mut resolved = markdown.clone();
     let temp_dir = std::env::temp_dir().join(format!("zell_export_{}", Uuid::now_v7()));
     std::fs::create_dir_all(&temp_dir).map_err(|e| format!("创建临时目录失败: {}", e))?;
