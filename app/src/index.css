@@ -484,6 +484,8 @@ kbd {
   padding-left: 0;
   list-style-position: inside;
 }
+.tl-rich-text ul { list-style-type: disc; }
+.tl-rich-text ol { list-style-type: decimal; }
 .tl-rich-text li {
   margin: 0;
 }

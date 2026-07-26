@@ -7,15 +7,15 @@ function defaultContent(text: string): any {
   return { type: 'doc', content: text ? [{ type: 'paragraph', content: [{ type: 'text', text }] }] : [{ type: 'paragraph' }] }
 }
 
-const TextHTML = memo(function TextHTML({ html, elW, elH }: { html: string; elW: number; elH: number }) {
+const TextHTML = memo(function TextHTML({ html }: { html: string }) {
   return (
     <div
       className="tl-rich-text"
       dangerouslySetInnerHTML={{ __html: html }}
-      style={{ padding: 0, margin: 0, width: elW - 8, minHeight: 0 }}
+      style={{ padding: 0, margin: 0 }}
     />
   )
-}, (prev, next) => prev.html === next.html && prev.elW === next.elW && prev.elH === next.elH)
+}, (prev, next) => prev.html === next.html)
 
 function measureContentHeight(html: string, w: number, fontSize: number, fontFamily: string, lineHeight: number): number {
   const div = document.createElement('div')
@@ -108,7 +108,7 @@ export function TextEl({ el, isSelected }: EP) {
 
   return (
     <div data-el-id={el.id} ref={containerRef} style={boxStyle} onClick={handleClick} onMouseDown={editing ? (e) => e.stopPropagation() : onMouseDown}>
-      {!editing && <TextHTML html={html} elW={el.w} elH={el.h} />}
+      {!editing && <TextHTML html={html} />}
       {editing && (
         <RichTextEditor
           content={content}
@@ -141,7 +141,7 @@ export function ReadOnlyTextEl({ el }: EP) {
   const html = useMemo(() => renderRichTextHTML(content), [content])
   return (
     <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: p.fontSize || 16, color: p.fontColor || '#333', fontFamily: p.fontFamily || 'inherit', fontWeight: p.fontWeight || 'normal', fontStyle: p.fontStyle || 'normal', textDecoration: p.textDecoration || 'none', lineHeight: p.lineHeight || 1.5, textAlign: (p.textAlign || 'left') as any, letterSpacing: (p.letterSpacing || 0) + 'px', overflow: 'hidden', padding: '2px 4px', overflowWrap: 'break-word', wordBreak: 'break-word' as any, boxShadow: ss, pointerEvents: 'none', userSelect: 'none' }}>
-      <TextHTML html={html} elW={el.w} elH={el.h} />
+      <TextHTML html={html} />
     </div>
   )
 }
