@@ -1,8 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, GripVertical } from 'lucide-react'
+import { X, GripVertical, Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, ArrowUpDown } from 'lucide-react'
 import { usePptStore } from './store'
 import type { CanvasElement } from './types'
+import { useRichText } from './elements/RichTextEditor'
+import { toggleListInJSON, hasListInJSON, removeListFromJSON } from './elements/TextElement'
 
 const SCRUB = { threshold: 3, speed: 1 }
 
@@ -350,6 +352,7 @@ export function PropsPanel() {
 function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; updateElement: any; slideId: string }) {
   const update = (changes: Partial<CanvasElement>) => updateElement(slideId, el.id, changes)
   const updateProps = (props: Partial<CanvasElement['props']>) => update({ props: { ...el.props, ...props } })
+  const rt = useRichText()
 
   return (
     <div className="space-y-3">
@@ -377,8 +380,33 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       )}
       {el.type === 'text' && (
         <>
-          <ScrubInput label="字号" value={el.props.fontSize || 16} onChange={v => updateProps({ fontSize: v })} min={1} max={999} />
-          <ColorChip label="颜色" color={el.props.fontColor || '#333'} onChange={v => updateProps({ fontColor: v })} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
+          <FontSelect value={el.props.fontFamily || 'inherit'} onChange={v => {
+            const val = v === 'inherit' ? undefined : v
+            if (rt.editor) { rt.setFontFamily(val || '') }
+            updateProps({ fontFamily: val })
+          }} />
+          <div className="grid gap-1.5 mt-1" style={{ gridTemplateColumns: '2.8em 1fr' }}>
+            <span className="text-[11px] text-gray-500 self-center text-right">字号</span>
+            <ScrubInput label="" value={el.props.fontSize || 16} onChange={v => {
+              if (rt.editor) rt.setFontSize(v + 'px')
+              updateProps({ fontSize: v })
+            }} min={1} max={999} />
+            <span className="text-[11px] text-gray-500 self-center text-right">行距</span>
+            <ScrubInput label="" value={el.props.lineHeight || 1.5} onChange={v => updateProps({ lineHeight: v })} min={0.5} max={5} step={0.1} integer={false} />
+            <span className="text-[11px] text-gray-500 self-center text-right">字距</span>
+            <ScrubInput label="" value={el.props.letterSpacing || 0} onChange={v => updateProps({ letterSpacing: v })} min={-5} max={20} />
+          </div>
+          <ColorChip label="颜色" color={el.props.fontColor || '#333'} onChange={v => {
+            if (rt.editor) rt.setColor(v)
+            updateProps({ fontColor: v })
+          }} opacity={el.opacity} onOpacityChange={v => update({ opacity: v })} />
+          <TextStyleToggles el={el} updateProps={updateProps} />
+          <div className="flex gap-0.5">
+            <TextAlignBtn el={el} updateProps={updateProps} align="left" icon={<AlignLeft size={13} />} />
+            <TextAlignBtn el={el} updateProps={updateProps} align="center" icon={<AlignCenter size={13} />} />
+            <TextAlignBtn el={el} updateProps={updateProps} align="right" icon={<AlignRight size={13} />} />
+          </div>
+          <TextListToggles el={el} updateProps={updateProps} update={update} />
         </>
       )}
       {el.type === 'arrow' && (
@@ -400,6 +428,20 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
                 <button key={opt.v} onClick={() => updateProps({ endShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.endShape || 'arrow') === opt.v ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
               ))}
             </div>
+          </div>
+        </>
+      )}
+      {el.type === 'image' && (
+        <>
+          <ScrubInput label="圆角" value={el.props.borderRadius || 0} onChange={v => updateProps({ borderRadius: v })} min={0} max={200} />
+          <ShadowSection el={el} updateProps={updateProps} />
+          <div className="flex gap-1.5">
+            <button onClick={() => alert('AI抠图功能即将上线')} className="flex-1 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors">
+              AI抠图
+            </button>
+            <button onClick={() => alert('边缘柔化功能即将上线')} className="flex-1 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors">
+              边缘柔化
+            </button>
           </div>
         </>
       )}
@@ -738,6 +780,135 @@ function CornerSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
           <ScrubInput label="" value={el.props.borderRadius ?? 0} onChange={v => updateProps({ borderRadius: v, borderRadiusTL: undefined, borderRadiusTR: undefined, borderRadiusBL: undefined, borderRadiusBR: undefined })} min={0} max={200} />
         )}
       </div>
+    </div>
+  )
+}
+
+function FontSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const fontsRef = useRef(['inherit', '思源宋体', '宋体', '黑体', '微软雅黑', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana'])
+  const fonts = fontsRef.current
+  const label = value === 'inherit' ? '默认' : value
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <label className="text-[12px] text-gray-500">字体</label>
+      <button onClick={() => setOpen(!open)} className="w-full h-[26px] mt-0.5 bg-gray-100 rounded flex items-center justify-between px-2 text-[12px] text-gray-700 hover:bg-gray-200">
+        <span className="truncate" style={{ fontFamily: value === 'inherit' ? undefined : value }}>{label}</span>
+        <span className="text-gray-400 ml-1">▾</span>
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+          <button onClick={() => {
+            const input = document.createElement('input')
+            input.type = 'file'; input.accept = '.ttf,.otf,.woff,.woff2'
+            input.onchange = (e) => {
+              const file = (e.target as HTMLInputElement).files?.[0]
+              if (!file) return
+              const reader = new FileReader()
+              reader.onload = (ev) => {
+                const url = ev.target?.result as string
+                const name = file.name.replace(/\.[^.]+$/, '')
+                const ff = new FontFace(name, `url(${url})`)
+                ff.load().then(() => { (document as any).fonts.add(ff); onChange(name) })
+                fonts.push(name)
+              }
+              reader.readAsDataURL(file)
+            }
+            input.click()
+          }} className="w-full text-left px-2 py-1.5 text-[12px] text-blue-600 hover:bg-gray-100 border-b border-gray-100">+ 上传字体</button>
+          {fonts.map(f => (
+            <button key={f} onClick={() => { onChange(f); setOpen(false) }}
+              className="w-full text-left px-2 py-1.5 text-[12px] hover:bg-gray-100"
+              style={{ fontFamily: f === 'inherit' ? undefined : f }}
+            >{f === 'inherit' ? '默认' : f}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TextAlignBtn({ el, updateProps, align, icon }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void; align: string; icon: React.ReactNode }) {
+  const { editor, textAlign, setTextAlign } = useRichText()
+  const currentAlign = el.props.textAlign || 'left'
+  const active = editor ? textAlign === align : currentAlign === align
+  return (
+    <button onClick={() => {
+      if (editor) setTextAlign(align)
+      else updateProps({ textAlign: align as any })
+    }} className={`flex-1 py-1 rounded border flex items-center justify-center ${active ? 'bg-blue-100 text-blue-700 border-blue-300' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+    >{icon}</button>
+  )
+}
+
+function TextStyleToggles({ el, updateProps }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void }) {
+  const p = el.props
+  const { editor, isBold, isItalic, isUnderline, isStrike, toggleBold, toggleItalic, toggleUnderline, toggleStrike } = useRichText()
+  const activeClass = 'bg-blue-100 text-blue-700 border-blue-300'
+  const btnClass = 'flex-1 py-1.5 text-xs rounded border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center'
+
+  const boldActive = editor ? isBold : p.fontWeight === 'bold'
+  const italicActive = editor ? isItalic : p.fontStyle === 'italic'
+  const underlineActive = editor ? isUnderline : p.textDecoration === 'underline'
+  const strikeActive = editor ? isStrike : p.textDecoration === 'line-through'
+
+  return (
+    <div className="flex gap-0.5">
+      <button onClick={() => {
+        if (editor) toggleBold()
+        else updateProps({ fontWeight: p.fontWeight === 'bold' ? 'normal' : 'bold' })
+      }} className={`${btnClass} ${boldActive ? activeClass : ''}`}><Bold size={13} /></button>
+      <button onClick={() => {
+        if (editor) toggleItalic()
+        else updateProps({ fontStyle: p.fontStyle === 'italic' ? 'normal' : 'italic' })
+      }} className={`${btnClass} ${italicActive ? activeClass : ''}`}><Italic size={13} /></button>
+      <button onClick={() => {
+        if (editor) toggleUnderline()
+        else updateProps({ textDecoration: p.textDecoration === 'underline' ? 'none' : 'underline' })
+      }} className={`${btnClass} ${underlineActive ? activeClass : ''}`}><Underline size={13} /></button>
+      <button onClick={() => {
+        if (editor) toggleStrike()
+        else updateProps({ textDecoration: p.textDecoration === 'line-through' ? 'none' : 'line-through' })
+      }} className={`${btnClass} ${strikeActive ? activeClass : ''}`}><Strikethrough size={13} /></button>
+    </div>
+  )
+}
+
+function TextListToggles({ el, updateProps, update }: { el: CanvasElement; updateProps: (p: Partial<CanvasElement['props']>) => void; update: (c: Partial<CanvasElement>) => void }) {
+  const p = el.props
+  const { editor, isBulletList, isOrderedList, toggleBulletList, toggleOrderedList } = useRichText()
+  const content = el.props.content || {}
+  const isOL = editor ? isOrderedList : hasListInJSON(content, 'ol')
+  const isUL = editor ? isBulletList : hasListInJSON(content, 'ul')
+  const btnClass = 'flex-1 py-1.5 text-xs rounded border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center'
+  const activeClass = 'bg-blue-100 text-blue-700 border-blue-300'
+  return (
+    <div className="flex gap-0.5">
+      <button onClick={() => {
+        if (editor) { toggleOrderedList() }
+        else {
+          const newContent = isOL ? removeListFromJSON(content) : toggleListInJSON(content, 'ol')
+          update({ props: { ...el.props, content: newContent } })
+        }
+      }} className={`${btnClass} ${isOL ? activeClass : ''}`}><ListOrdered size={13} /></button>
+      <button onClick={() => {
+        if (editor) { toggleBulletList() }
+        else {
+          const newContent = isUL ? removeListFromJSON(content) : toggleListInJSON(content, 'ul')
+          update({ props: { ...el.props, content: newContent } })
+        }
+      }} className={`${btnClass} ${isUL ? activeClass : ''}`}><List size={13} /></button>
+      <button onClick={() => { updateProps({ writingMode: p.writingMode === 'vertical-rl' ? 'horizontal-tb' : 'vertical-rl' }) }}
+        className={`${btnClass} ${p.writingMode === 'vertical-rl' ? activeClass : ''}`}><ArrowUpDown size={13} /></button>
     </div>
   )
 }
