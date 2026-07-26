@@ -45,11 +45,12 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   const slide = visible[idx]
   const { setCurrentSlide } = usePptStore()
 
-  // Enter Tauri fullscreen (hides taskbar)
+  // Enter Tauri fullscreen (hides taskbar) + suppress canvas hover
   useEffect(() => {
     const win = getCurrentWindow()
     win.setFullscreen(true)
-    return () => { win.setFullscreen(false) }
+    document.body.classList.add('previewing')
+    return () => { win.setFullscreen(false); document.body.classList.remove('previewing') }
   }, [])
 
   const goNext = useCallback(() => {
