@@ -64,7 +64,7 @@ export function TextEl({ el, isSelected }: EP) {
 
   return (
     <div data-el-id={el.id} style={boxStyle} onClick={handleClick} onMouseDown={editing ? (e) => e.stopPropagation() : onMouseDown}>
-      <TextHTML html={html} style={{ display: editing ? 'none' : undefined }} />
+      {!editing && <TextHTML html={html} />}
       {editing && (
         <RichTextEditor
           content={content}

@@ -50,6 +50,7 @@ export function RichTextEditor({
   const mountRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<Editor | null>(null)
   const initialContentRef = useRef(content)
+  const completingRef = useRef(false)
 
   useLayoutEffect(() => {
     if (!mountRef.current) return
@@ -85,11 +86,13 @@ export function RichTextEditor({
         handleKeyDown: (_view, event) => {
           if (event.key === 'Escape') {
             event.preventDefault()
+            completingRef.current = true
             onCancel()
             return true
           }
           if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault()
+            completingRef.current = true
             onComplete(editorRef.current?.getJSON() || initialContentRef.current)
             return true
           }
@@ -119,6 +122,7 @@ export function RichTextEditor({
         initialContentRef.current = editor.getJSON()
       },
       onBlur: ({ editor }) => {
+        if (completingRef.current) return
         onBlur(editor.getJSON())
       },
     })
