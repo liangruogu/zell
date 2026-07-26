@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Play, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { usePptStore } from './store'
 import { SLIDE_W, SLIDE_H } from './types'
 import { renderRichTextHTML } from './elements/RichTextEditor'
@@ -44,11 +45,11 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   const slide = visible[idx]
   const { setCurrentSlide } = usePptStore()
 
-  // Request fullscreen
+  // Enter Tauri fullscreen (hides taskbar)
   useEffect(() => {
-    const el = document.documentElement
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {})
-    return () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}) }
+    const win = getCurrentWindow()
+    win.setFullscreen(true)
+    return () => { win.setFullscreen(false) }
   }, [])
 
   // ESC to exit
@@ -58,13 +59,8 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goNext()
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goPrev()
     }
-    const onFsChange = () => { if (!document.fullscreenElement) onClose() }
     window.addEventListener('keydown', onKey)
-    document.addEventListener('fullscreenchange', onFsChange)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.removeEventListener('fullscreenchange', onFsChange)
-    }
+    return () => { window.removeEventListener('keydown', onKey) }
   }, [idx, visible.length])
 
   const goNext = useCallback(() => {
