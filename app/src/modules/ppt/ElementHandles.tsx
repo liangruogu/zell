@@ -134,6 +134,7 @@ export function ElementHandles({ element, zoom }: Props) {
               console.log('[H:resizeEnd] STORE h:', el3.h, 'DOM h:', domH?.toFixed(1), 'MATCH:', Math.abs((domH ?? 0) - el3.h) < 1)
             }
           }
+          if (element.type === 'group' && element.groupChildren && stateRef.current.sw > 0 && stateRef.current.sh > 0) {
             const sx2 = (pending.w ?? 0) / stateRef.current.sw
             const sy2 = (pending.h ?? 0) / stateRef.current.sh
             if (sx2 > 0 && sy2 > 0) {
