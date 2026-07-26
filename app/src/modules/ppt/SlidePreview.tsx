@@ -150,6 +150,7 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
           }
           return renderElement(el)
         })}
+      </div>
 
       {/* Navigation hints */}
       <div className={`absolute left-0 top-0 bottom-0 w-1/2 flex items-center justify-start pl-8 pointer-events-none transition-opacity duration-200 ${hoverSide === 'left' ? 'opacity-100' : 'opacity-0'}`}>
