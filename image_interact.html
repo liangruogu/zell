@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PPT 完美裁剪与缩放（修复版）</title>
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f2f5;
+    margin: 0;
+    font-family: sans-serif;
+    user-select: none;
+  }
+  
+  .info { margin-bottom: 10px; color: #666; font-size: 14px; text-align: center; }
+
+  .workspace {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    /* overflow: hidden; */ /* 此处不限制，允许控制点伸出画布 */
+  }
+
+  .resizable-box {
+    position: absolute;
+    top: 150px;
+    left: 200px;
+    width: 400px;
+    height: 250px;
+    box-sizing: border-box;
+    cursor: move;
+    
+    /* ========================================= */
+    /* 核心修复：裁剪框必须自己隐藏超出的内容!!! */
+    /* ========================================= */
+    overflow: hidden; 
+  }
+
+  .resizable-box img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: block;
+    transform-origin: top left;
+  }
+
+  /* 用一个单独的层做边框，确保在 overflow:hidden 之内显示完整 */
+  .border-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border: 2px solid #1890ff;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .handle {
+    position: absolute;
+    background: #fff;
+    border: 2px solid #1890ff;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    z-index: 10; /* 控制点必须在最上层 */
+    transform: translate(-50%, -50%);
+  }
+
+  /* 控制点位置 */
+  .h-nw { top: 0; left: 0; cursor: nwse-resize; }
+  .h-n  { top: 0; left: 50%; cursor: ns-resize; }
+  .h-ne { top: 0; left: 100%; cursor: nesw-resize; }
+  .h-w  { top: 50%; left: 0; cursor: ew-resize; }
+  .h-e  { top: 50%; left: 100%; cursor: ew-resize; }
+  .h-sw { top: 100%; left: 0; cursor: nesw-resize; }
+  .h-s  { top: 100%; left: 50%; cursor: ns-resize; }
+  .h-se { top: 100%; left: 100%; cursor: nwse-resize; }
+</style>
+</head>
+<body>
+
+<div class="info">
+  Bug 修复版：已开启裁剪框溢出隐藏（overflow:hidden）。<br>
+  任意组合裁剪边，图片内容绝对保持不动。外扩自动 Cover（以当前边为基准居中补齐）。
+</div>
+
+<div class="workspace" id="workspace">
+  <div class="resizable-box" id="box">
+    <!-- 1. 蓝色边框层 -->
+    <div class="border-layer"></div>
+    
+    <!-- 2. 图片层 -->
+    <img id="img" src="https://picsum.photos/800/500" alt="Sample Image">
+    
+    <!-- 3. 八个控制点（放在 box 内部，通过 transform translate 溢出边界） -->
+    <div class="handle h-nw" data-dir="nw"></div>
+    <div class="handle h-n" data-dir="n"></div>
+    <div class="handle h-ne" data-dir="ne"></div>
+    <div class="handle h-w" data-dir="w"></div>
+    <div class="handle h-e" data-dir="e"></div>
+    <div class="handle h-sw" data-dir="sw"></div>
+    <div class="handle h-s" data-dir="s"></div>
+    <div class="handle h-se" data-dir="se"></div>
+  </div>
+</div>
+
+<script>
+  const box = document.getElementById('box');
+  const img = document.getElementById('img');
+  const handles = document.querySelectorAll('.handle');
+  
+  let isResizing = false;
+  let currentHandle = null;
+  let startX, startY;
+  
+  let startBoxW, startBoxH, startBoxL, startBoxT;
+  let startImgW, startImgH, startImgL, startImgT;
+  
+  let shiftPressed = false;
+
+  window.addEventListener('keydown', (e) => { if (e.key === 'Shift') shiftPressed = true; });
+  window.addEventListener('keyup', (e) => { if (e.key === 'Shift') shiftPressed = false; });
+
+  handles.forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      currentHandle = e.target.getAttribute('data-dir');
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      const workspaceRect = document.getElementById('workspace').getBoundingClientRect();
+      const rect = box.getBoundingClientRect();
+      
+      startBoxW = rect.width;
+      startBoxH = rect.height;
+      startBoxL = rect.left - workspaceRect.left;
+      startBoxT = rect.top - workspaceRect.top;
+
+      startImgW = img.offsetWidth;
+      startImgH = img.offsetHeight;
+      startImgL = img.offsetLeft;
+      startImgT = img.offsetTop;
+
+      // 临时锁定绝对像素值
+      img.style.width = startImgW + 'px';
+      img.style.height = startImgH + 'px';
+      img.style.left = startImgL + 'px';
+      img.style.top = startImgT + 'px';
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  });
+
+  function onMouseMove(e) {
+    if (!isResizing) return;
+    
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    let boxW = startBoxW;
+    let boxH = startBoxH;
+    let boxL = startBoxL;
+    let boxT = startBoxT;
+
+    let imgW = startImgW;
+    let imgH = startImgH;
+    let imgL = startImgL;
+    let imgT = startImgT;
+
+    const isCorner = currentHandle.length === 2;
+    const currentImgAR = startImgW / startImgH;
+
+    if (isCorner) {
+      // ========= 角点拖拽：整体缩放 =========
+      const boxRatio = startBoxW / startBoxH;
+
+      if (currentHandle.includes('e')) boxW = Math.max(40, startBoxW + dx);
+      if (currentHandle.includes('w')) boxW = Math.max(40, startBoxW - dx);
+      
+      if (!shiftPressed) {
+        boxH = Math.max(40, boxW / boxRatio);
+        if (boxH === 40) boxW = 40 * boxRatio;
+      } else {
+        if (currentHandle.includes('s')) boxH = Math.max(40, startBoxH + dy);
+        if (currentHandle.includes('n')) boxH = Math.max(40, startBoxH - dy);
+      }
+
+      if (currentHandle.includes('w')) boxL = startBoxL + (startBoxW - boxW);
+      if (currentHandle.includes('n')) boxT = startBoxT + (startBoxH - boxH);
+
+      const scaleX = boxW / startBoxW;
+      const scaleY = boxH / startBoxH;
+      imgW = startImgW * scaleX;
+      imgH = startImgH * scaleY;
+      imgL = startImgL * scaleX;
+      imgT = startImgT * scaleY;
+
+    } else {
+      // ========= 边缘拖拽：裁剪与外扩 =========
+      if (currentHandle === 'e') boxW = Math.max(40, startBoxW + dx);
+      if (currentHandle === 's') boxH = Math.max(40, startBoxH + dy);
+      if (currentHandle === 'w') {
+        boxW = Math.max(40, startBoxW - dx);
+        boxL = startBoxL + (startBoxW - boxW);
+      }
+      if (currentHandle === 'n') {
+        boxH = Math.max(40, startBoxH - dy);
+        boxT = startBoxT + (startBoxH - boxH);
+      }
+
+      // 1. 核心：抵消容器移动对图片产生的视觉偏移 (向内裁切时图片不动)
+      const moveX = boxL - startBoxL;
+      const moveY = boxT - startBoxT;
+      imgL = startImgL - moveX;
+      imgT = startImgT - moveY;
+
+      // 2. Cover 修复检测：向外拉伸导致产生空白时，强制图片等比放大覆盖空白
+      if (currentHandle === 'e' && (imgL + imgW < boxW)) {
+        imgW = boxW - imgL;
+        imgH = imgW / currentImgAR;
+        imgT = imgT - (imgH - startImgH) / 2; // 沿Y轴居中补齐
+      }
+      if (currentHandle === 'w' && (imgL > 0)) {
+        imgW = imgW + imgL;
+        imgH = imgW / currentImgAR;
+        imgT = imgT - (imgH - startImgH) / 2;
+        imgL = 0;
+      }
+      if (currentHandle === 's' && (imgT + imgH < boxH)) {
+        imgH = boxH - imgT;
+        imgW = imgH * currentImgAR;
+        imgL = imgL - (imgW - startImgW) / 2; // 沿X轴居中补齐
+      }
+      if (currentHandle === 'n' && (imgT > 0)) {
+        imgH = imgH + imgT;
+        imgW = imgH * currentImgAR;
+        imgL = imgL - (imgW - startImgW) / 2;
+        imgT = 0;
+      }
+    }
+
+    // 应用最终样式
+    box.style.width = `${boxW}px`;
+    box.style.height = `${boxH}px`;
+    box.style.left = `${boxL}px`;
+    box.style.top = `${boxT}px`;
+
+    img.style.width = `${imgW}px`;
+    img.style.height = `${imgH}px`;
+    img.style.left = `${imgL}px`;
+    img.style.top = `${imgT}px`;
+  }
+
+  function onMouseUp() {
+    isResizing = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  }
+</script>
+</body>
+</html>

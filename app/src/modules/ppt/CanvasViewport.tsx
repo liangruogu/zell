@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useState } from 'react'
-import { usePptStore } from './store'
+import { usePptStore, getIsResizing } from './store'
 import { CanvasElementView } from './CanvasElement'
 import { ElementHandles } from './ElementHandles'
 import { SLIDE_W, SLIDE_H, type CanvasElement } from './types'
@@ -54,7 +54,7 @@ export function CanvasViewport() {
       const mx = e.clientX - rect.left - rect.width / 2 - panRef.current.x
       const my = e.clientY - rect.top - rect.height / 2 - panRef.current.y
       const oldZoom = usePptStore.getState().zoom
-      const newZoom = Math.max(0.25, Math.min(3, oldZoom - e.deltaY * 0.01))
+      const newZoom = Math.max(0.25, Math.min(3, oldZoom - e.deltaY * 0.002))
         usePptStore.getState().setZoom(newZoom)
       const scale = newZoom / oldZoom
       const nx = mx - scale * mx + panRef.current.x
@@ -133,7 +133,7 @@ export function CanvasViewport() {
       const target = e.target as HTMLElement
       const st = usePptStore.getState()
       // only start from canvas background, never from elements or handles
-      if (st._resizing) return
+      if (getIsResizing()) return
       // check if the click is on the background (not on any positioned element)
       const onBg = target.closest('[data-canvas="bg"]')
       const onEl = target.closest('[data-el-id]') || target.closest('[data-handle]')
@@ -268,6 +268,43 @@ export function CanvasViewport() {
     zIndex: 50,
     pointerEvents: 'none' as const,
   } : undefined
+
+  // File drop → insert image
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => { e.preventDefault(); e.stopPropagation() }
+    const onDrop = async (e: DragEvent) => {
+      e.preventDefault(); e.stopPropagation()
+      const file = e.dataTransfer?.files?.[0]
+      if (!file || !file.type.startsWith('image/')) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const src = ev.target?.result as string
+        const img = new Image()
+        img.onload = () => {
+          const ow = img.naturalWidth, oh = img.naturalHeight
+          const maxW = SLIDE_W * 0.6, maxH = SLIDE_H * 0.6
+          let w = ow, h = oh
+          if (w > maxW) { h = h * (maxW / w); w = maxW }
+          if (h > maxH) { w = w * (maxH / h); h = maxH }
+          const st = usePptStore.getState()
+          if (st.currentSlideId) {
+            const id = crypto.randomUUID()
+            st.addElement(st.currentSlideId, {
+              id, type: 'image',
+              x: (SLIDE_W - w) / 2, y: (SLIDE_H - h) / 2,
+              w: Math.round(w), h: Math.round(h), opacity: 1,
+              props: { src, origW: ow, origH: oh, imgScale: w / ow },
+            })
+          }
+        }
+        img.src = src
+      }
+      reader.readAsDataURL(file)
+    }
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('drop', onDrop)
+    return () => { document.removeEventListener('dragover', onDragOver); document.removeEventListener('drop', onDrop) }
+  }, [])
 
   return (
     <div ref={containerRef}

@@ -1,100 +1,124 @@
 import { useCallback, useRef, useEffect, useState } from 'react'
 import type { CanvasElement } from './types'
 import { usePptStore } from './store'
-import { snapPos } from './CanvasElement'
+import type { ElementConfig } from './elements/utils'
+import { snapPos } from './elements/utils'
+import { imageConfig } from './elements/ImageElement'
+import { shapeConfig } from './elements/RectElement'
+import { textConfig } from './elements/TextElement'
 
 interface Props { element: CanvasElement; zoom: number }
 const HS = 8
-const CS = 10 // corner size
+const CS = 10
+
+function getConfig(type: string): ElementConfig {
+  if (type === 'image') return imageConfig
+  if (type === 'text') return textConfig
+  return shapeConfig
+}
 
 export function ElementHandles({ element, zoom }: Props) {
   const [activeHandle, setActiveHandle] = useState<string | null>(null)
-  const ref = useRef({ mx: 0, my: 0, ox: 0, oy: 0, ow: 0, oh: 0 })
+  const stateRef = useRef<any>(null)
 
   const startResize = useCallback((e: React.MouseEvent, handle: string) => {
     e.stopPropagation(); e.preventDefault()
     setActiveHandle(handle)
     usePptStore.getState().setResizing(true)
-    const s = usePptStore.getState()
-    ref.current = { mx: e.clientX, my: e.clientY, ox: element.x, oy: element.y, ow: element.w, oh: element.h }
-  }, [element.x, element.y, element.w, element.h])
+    const config = getConfig(element.type)
+    stateRef.current = config.onResizeStart(element, handle, e)
+  }, [element.x, element.y, element.w, element.h, element.props, element.type])
 
   useEffect(() => {
     if (!activeHandle) return
+    const config = getConfig(element.type)
+
     const onMove = (e: MouseEvent) => {
       const s = usePptStore.getState()
-      if (!s.currentSlideId) return
-      const zoom = s.zoom || 1
-      const dx = (e.clientX - ref.current.mx) / zoom
-      const dy = (e.clientY - ref.current.my) / zoom
-      const { ox, oy, ow, oh } = ref.current
+      if (!s.currentSlideId || !stateRef.current) return
+      const z = s.zoom || 1
+      const dx = (e.clientX - stateRef.current.mx) / z
+      const dy = (e.clientY - stateRef.current.my) / z
 
-      let nx = ox, ny = oy, nw = ow, nh = oh
-      switch (activeHandle) {
-        case 'nw': nx = ox + dx; ny = oy + dy; nw = ow - dx; nh = oh - dy; break
-        case 'ne': ny = oy + dy; nw = ow + dx; nh = oh - dy; break
-        case 'sw': nx = ox + dx; nw = ow - dx; nh = oh + dy; break
-        case 'se': nw = ow + dx; nh = oh + dy; break
-        case 'n': ny = oy + dy; nh = oh - dy; break
-        case 's': nh = oh + dy; break
-        case 'w': nx = ox + dx; nw = ow - dx; break
-        case 'e': nw = ow + dx; break
-      }
-      if (nw < 1) nw = 1
-      if (nh < 1) nh = 1
-      // prevent left/top edges from crossing right/bottom
-      if (activeHandle.includes('w')) nx = Math.min(nx, ox + ow - 1)
-      if (activeHandle.includes('n')) ny = Math.min(ny, oy + oh - 1)
-      // prevent right/bottom edges from crossing left/top
-      if (activeHandle.includes('e')) nw = Math.max(1, nw)
-      if (activeHandle.includes('s')) nh = Math.max(1, nh)
+      const fresh = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
+      const el = fresh || element
 
-      const lockAspect = element.type !== 'line' && element.type !== 'arrow' && e.shiftKey
-      if (lockAspect && activeHandle.length === 2 && ow > 0 && oh > 0) {
-        const aspect = ow / oh
-        nw = Math.max(10, nw)
-        nh = nw / aspect
+      let updates = config.onResizeMove(stateRef.current, el, activeHandle, dx, dy, e.shiftKey)
+      if (updates.props) {
+        updates = { ...updates, props: { ...(el.props), ...updates.props } }
       }
 
-      // snap — adjust position or size depending on which handle is active
-      const el = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
-      if (el) {
+      // Snap to other elements
+      if (updates.x != null || updates.y != null || updates.w != null || updates.h != null) {
         const others = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.filter(ee => ee.id !== element.id) || []
-        const snapped = snapPos({ ...el, x: nx, y: ny, w: nw, h: nh }, others, nx, ny, activeHandle)
+        const t = { ...el, x: updates.x ?? el.x, y: updates.y ?? el.y, w: updates.w ?? el.w, h: updates.h ?? el.h }
+        const snapped = snapPos(t, others, t.x, t.y, activeHandle)
         switch (activeHandle) {
-          case 'n': ny = snapped.y; nh = ref.current.oy + ref.current.oh - ny; break
-          case 's': nh = snapped.eby - ny; break
-          case 'w': nx = snapped.x; nw = ref.current.ox + ref.current.ow - nx; break
-          case 'e': nw = snapped.erx - nx; break
-          // corners: keep opposite corner fixed
-          case 'nw': nx = snapped.x; ny = snapped.y; nw = ref.current.ox + ref.current.ow - nx; nh = ref.current.oy + ref.current.oh - ny; break
-          case 'ne': ny = snapped.y; nw = snapped.erx - nx; nh = ref.current.oy + ref.current.oh - ny; break
-          case 'sw': nx = snapped.x; nw = ref.current.ox + ref.current.ow - nx; nh = snapped.eby - ny; break
-          case 'se': nw = snapped.erx - nx; nh = snapped.eby - ny; break
+          case 'e': updates = { ...updates, w: snapped.erx - t.x }; break
+          case 'w': updates = { ...updates, x: snapped.x }; updates = { ...updates, w: (updates.w ?? el.w) + ((updates.x as number) - el.x) }; break
+          case 'n': updates = { ...updates, y: snapped.y }; updates = { ...updates, h: (updates.h ?? el.h) + ((updates.y as number) - el.y) }; break
+          case 's': updates = { ...updates, h: snapped.eby - t.y }; break
+          case 'ne': updates = { ...updates, y: snapped.y }; updates = { ...updates, w: snapped.erx - t.x, h: (updates.h ?? el.h) + ((updates.y as number) - el.y) }; break
+          case 'nw': updates = { ...updates, x: snapped.x, y: snapped.y }; updates = { ...updates, w: (updates.w ?? el.w) + ((updates.x as number) - el.x), h: (updates.h ?? el.h) + ((updates.y as number) - el.y) }; break
+          case 'sw': updates = { ...updates, x: snapped.x }; updates = { ...updates, w: (updates.w ?? el.w) + ((updates.x as number) - el.x), h: snapped.eby - t.y }; break
+          case 'se': updates = { ...updates, w: snapped.erx - t.x, h: snapped.eby - t.y }; break
         }
       }
 
-      s.updateElement(s.currentSlideId, element.id, { x: Math.round(nx), y: Math.round(ny), w: Math.round(nw), h: Math.round(nh) })
-      // if element is a group, also scale its children
-      if (element.type === 'group' && element.groupChildren) {
-        const ow = ref.current.ow, oh = ref.current.oh
-        if (ow > 0 && oh > 0) {
-          const sx = nw / ow, sy = nh / oh
-          const el2 = s.slides.find(sl => sl.id === s.currentSlideId)?.elements.find(ee => ee.id === element.id)
-          if (el2) {
-            const scaled = element.groupChildren.map(c => ({
-              ...c,
-              x: Math.round(c.x * sx),
-              y: Math.round(c.y * sy),
-              w: Math.round(c.w * sx),
-              h: Math.round(c.h * sy),
-            }))
-            s.updateElement(s.currentSlideId, element.id, { groupChildren: scaled } as any)
+      // Direct DOM manipulation for element + handles wrapper
+      const boxEl = document.querySelector<HTMLElement>(`[data-el-id="${element.id}"]`)
+      const hEl = document.querySelector<HTMLElement>(`[data-handles-el-id="${element.id}"]`)
+      if (boxEl) {
+        if (updates.x != null) boxEl.style.left = updates.x + 'px'
+        if (updates.y != null) boxEl.style.top = updates.y + 'px'
+        if (updates.w != null) boxEl.style.width = updates.w + 'px'
+        if (updates.h != null) boxEl.style.height = updates.h + 'px'
+        // Text-specific: update font-size on DOM during corner resize
+        if (updates.props?.fontSize != null) boxEl.style.fontSize = updates.props.fontSize + 'px'
+      }
+      if (hEl) {
+        if (updates.x != null) hEl.style.left = updates.x + 'px'
+        if (updates.y != null) hEl.style.top = updates.y + 'px'
+        if (updates.w != null) hEl.style.width = updates.w + 'px'
+        if (updates.h != null) hEl.style.height = updates.h + 'px'
+      }
+      // For images, also update the img element
+      if (element.type === 'image' && boxEl) {
+        const imgEl = boxEl.querySelector<HTMLImageElement>('img')
+        if (imgEl && updates.props) {
+          if (updates.props.imgScale != null || updates.props.cropL != null) {
+            // Force re-render for image crop changes (complex DOM structure)
+            s.updateElement(s.currentSlideId, element.id, updates)
           }
         }
       }
+
+      ;(stateRef.current as any)._pending = updates
     }
-    const onUp = () => { setActiveHandle(null); usePptStore.getState().setGuideLines([]); usePptStore.getState().setResizing(false) }
+
+    const onUp = () => {
+      setActiveHandle(null)
+      usePptStore.getState().setResizing(false)
+      const s = usePptStore.getState()
+      if (s.currentSlideId && stateRef.current) {
+        const pending = (stateRef.current as any)._pending
+        if (pending) {
+          s.updateElement(s.currentSlideId, element.id, pending)
+          if (element.type === 'group' && element.groupChildren && stateRef.current.sw > 0 && stateRef.current.sh > 0) {
+            const sx2 = (pending.w ?? 0) / stateRef.current.sw
+            const sy2 = (pending.h ?? 0) / stateRef.current.sh
+            if (sx2 > 0 && sy2 > 0) {
+              const scaled = element.groupChildren.map(c => ({
+                ...c, x: Math.round(c.x * sx2), y: Math.round(c.y * sy2),
+                w: Math.round(c.w * sx2), h: Math.round(c.h * sy2),
+              }))
+              s.updateElement(s.currentSlideId, element.id, { groupChildren: scaled } as any)
+            }
+          }
+        }
+      }
+      stateRef.current = null
+    }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
@@ -107,9 +131,11 @@ export function ElementHandles({ element, zoom }: Props) {
     const s = 1 / z
     const cSize = (isCorner ? CS : HS) * s
     const barLen = (isV || isH ? 18 : cSize / s) * s
+    const isImgEdge = element.type === 'image' && (isH || isV)
     return {
       position: 'absolute',
-      background: '#3b82f6', border: `${2 * s}px solid white`,
+      background: isImgEdge ? '#10b981' : '#3b82f6',
+      border: `${2 * s}px solid white`,
       borderRadius: isCorner ? '50%' : `${3 * s}px`,
       cursor: isV ? 'ns-resize' : isH ? 'ew-resize'
         : pos === 'nw' || pos === 'se' ? 'nwse-resize' : 'nesw-resize',
@@ -122,22 +148,12 @@ export function ElementHandles({ element, zoom }: Props) {
     }
   }
 
-  const handles = element.type === 'arrow' || element.type === 'line' ? ['w', 'e'] : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
+  const config = getConfig(element.type)
+  const handles = element.type === 'arrow' || element.type === 'line' ? ['w', 'e'] : config.handles
 
   return (
-    <div style={{
-      position: 'absolute',
-      left: element.x, top: element.y,
-      width: element.w, height: element.h,
-      pointerEvents: 'none',
-      zIndex: 1,
-    }}>
-      <div style={{
-        position: 'absolute',
-        inset: `${-(2 / zoom)}px`,
-        border: `${2 / zoom}px solid #3b82f6`,
-        pointerEvents: 'none',
-      }} />
+    <div style={{ position: 'absolute', left: element.x, top: element.y, width: element.w, height: element.h, pointerEvents: 'none', zIndex: 1 }} data-handles-el-id={element.id}>
+      <div style={{ position: 'absolute', inset: `${-(2 / zoom)}px`, border: `${2 / zoom}px solid #3b82f6`, pointerEvents: 'none' }} />
       {handles.map(p => (
         <div key={p} data-handle="" style={{ ...hStyle(p, zoom), pointerEvents: 'auto' }} onMouseDown={e => startResize(e, p)} />
       ))}

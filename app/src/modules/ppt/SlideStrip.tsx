@@ -457,9 +457,26 @@ function MiniSlide({ slide }: { slide: Slide }) {
   const s = 0.1 // 1280*0.1=128, 720*0.1=72
   return (
     <div style={{ width: 1280 * s, height: 720 * s, background: slide.background || '#fff', position: 'relative', overflow: 'hidden' }}>
-      {slide.elements.slice(0, 15).map(el => (
-        <div key={el.id} style={{ position: 'absolute', left: el.x * s, top: el.y * s, width: Math.max(el.w * s, 2), height: Math.max(el.h * s, 1), background: el.type === 'text' ? '#d1d5db' : el.type === 'image' ? '#93c5fd' : el.props.fill || '#e2e8f0', borderRadius: el.type === 'ellipse' ? '50%' : 0, opacity: el.opacity }} />
-      ))}
+      {slide.elements.slice(0, 15).map(el => {
+        if (el.type === 'image' && el.props.src) {
+          const p = el.props
+          const ow = p.origW || el.w
+          const oh = p.origH || el.h
+          const scale = p.imgScale ?? 1
+          const imgW = ow * scale
+          const imgH = oh * scale
+          const cL = p.cropL ?? 0; const cR = p.cropR ?? 0
+          const cT = p.cropT ?? 0; const cB = p.cropB ?? 0
+          return (
+            <div key={el.id} style={{ position: 'absolute', left: el.x * s, top: el.y * s, width: Math.max(el.w * s, 1), height: Math.max(el.h * s, 1), overflow: 'hidden', opacity: el.opacity }}>
+              <img src={p.src} style={{ position: 'absolute', left: -cL * s, top: -cT * s, width: imgW * s, height: imgH * s, display: 'block' }} draggable={false} />
+            </div>
+          )
+        }
+        return (
+          <div key={el.id} style={{ position: 'absolute', left: el.x * s, top: el.y * s, width: Math.max(el.w * s, 2), height: Math.max(el.h * s, 1), background: el.type === 'text' ? '#d1d5db' : el.props.fill || '#e2e8f0', borderRadius: el.type === 'ellipse' ? '50%' : 0, opacity: el.opacity }} />
+        )
+      })}
     </div>
   )
 }
