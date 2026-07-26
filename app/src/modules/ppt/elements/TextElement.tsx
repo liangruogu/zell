@@ -26,7 +26,7 @@ function measureContentHeight(html: string, w: number, fontSize: number, fontFam
     `visibility:hidden`,
     `width:${w - 8}px`,
     `font-size:${fontSize}px`,
-    `font-family:${fontFamily === 'inherit' ? 'inherit' : fontFamily}`,
+    `font-family:${fontFamily === '思源宋体' ? '思源宋体' : fontFamily}`,
     `line-height:${lineHeight}`,
     `letter-spacing:${letterSpacing}px`,
     `overflow-wrap:break-word`,
@@ -89,7 +89,7 @@ export function TextEl({ el, isSelected }: EP) {
         measureHtml,
         el.w,
         fontSize,
-        p.fontFamily || 'inherit',
+        p.fontFamily || '思源宋体',
         p.lineHeight || 1.5,
         p.letterSpacing || 0
       )
@@ -105,7 +105,7 @@ export function TextEl({ el, isSelected }: EP) {
     opacity: el.opacity,
     fontSize: fontSize + 'px',
     color: p.fontColor || '#333',
-    fontFamily: p.fontFamily || 'inherit',
+    fontFamily: p.fontFamily || '思源宋体',
     fontWeight: p.fontWeight || 'normal',
     fontStyle: p.fontStyle || 'normal',
     textDecoration: p.textDecoration || 'none',
@@ -130,7 +130,7 @@ export function TextEl({ el, isSelected }: EP) {
           content={content}
           fontSize={fontSize}
           fontColor={p.fontColor || '#333'}
-          fontFamily={p.fontFamily || 'inherit'}
+          fontFamily={p.fontFamily || '思源宋体'}
           fontWeight={p.fontWeight || 'normal'}
           fontStyle={p.fontStyle || 'normal'}
           textDecoration={p.textDecoration || 'none'}
@@ -156,7 +156,7 @@ export function ReadOnlyTextEl({ el }: EP) {
   const content = p.content || defaultContent(p.text || '')
   const html = useMemo(() => renderRichTextHTML(content), [content])
   return (
-    <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: p.fontSize || 16, color: p.fontColor || '#333', fontFamily: p.fontFamily || 'inherit', fontWeight: p.fontWeight || 'normal', fontStyle: p.fontStyle || 'normal', textDecoration: p.textDecoration || 'none', lineHeight: p.lineHeight || 1.5, textAlign: (p.textAlign || 'left') as any, letterSpacing: (p.letterSpacing || 0) + 'px', overflow: 'hidden', padding: '2px 4px', overflowWrap: 'break-word', wordBreak: 'break-word' as any, boxShadow: ss, pointerEvents: 'none', userSelect: 'none' }}>
+    <div data-el-id={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: p.fontSize || 16, color: p.fontColor || '#333', fontFamily: p.fontFamily || '思源宋体', fontWeight: p.fontWeight || 'normal', fontStyle: p.fontStyle || 'normal', textDecoration: p.textDecoration || 'none', lineHeight: p.lineHeight || 1.5, textAlign: (p.textAlign || 'left') as any, letterSpacing: (p.letterSpacing || 0) + 'px', overflow: 'hidden', padding: '2px 4px', overflowWrap: 'break-word', wordBreak: 'break-word' as any, boxShadow: ss, pointerEvents: 'none', userSelect: 'none' }}>
       <TextHTML html={html} />
     </div>
   )
@@ -229,7 +229,7 @@ export const textConfig: ElementConfig = {
     const html = renderRichTextHTML(content)
     const w = el.w
     const fontSize = el.props.fontSize || 16
-    const fontFamily = el.props.fontFamily || 'inherit'
+    const fontFamily = el.props.fontFamily || '思源宋体'
     const lineHeight = el.props.lineHeight || 1.5
     const measured = measureContentHeight(html, w, fontSize, fontFamily, lineHeight, el.props.letterSpacing || 0)
     return { h: Math.max(10, measured + 4) }

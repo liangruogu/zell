@@ -61,7 +61,7 @@ export function RichTextEditor({
     const styleStr = [
       `font-size:${fontSize}px`,
       `color:${fontColor}`,
-      `font-family:${fontFamily === 'inherit' ? 'inherit' : fontFamily}`,
+      `font-family:${fontFamily}`,
       `font-weight:${fontWeight || 'normal'}`,
       `font-style:${fontStyle || 'normal'}`,
       `text-decoration:${textDecoration || 'none'}`,
@@ -185,7 +185,7 @@ export function useRichText() {
     setTextAlign: (a: string) =>
       editor?.chain().focus().setTextAlign(a as any).run(),
     setFontFamily: (f: string) =>
-      editor?.chain().focus().setFontFamily(f === 'inherit' ? '' : f).run(),
+      editor?.chain().focus().setFontFamily(f).run(),
     setFontSize: (s: string) =>
       editor?.chain().focus().setFontSize(s).run(),
     setColor: (c: string) =>

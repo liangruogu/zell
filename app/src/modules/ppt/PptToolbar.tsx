@@ -10,7 +10,7 @@ export function PptToolbar() {
   const add = (type: CanvasElement['type']) => {
     if (!currentSlideId) return
     const defaults: Record<string, Partial<CanvasElement>> = {
-      text: { type: 'text', x: 100, y: 100, w: 200, h: 30, opacity: 1, props: { text: '新文本', fontSize: 20, fontColor: '#333', fontWeight: 'normal', lineHeight: 1.5, letterSpacing: 0 } },
+      text: { type: 'text', x: 100, y: 100, w: 200, h: 30, opacity: 1, props: { text: '新文本', fontSize: 20, fontColor: '#333', fontFamily: '思源宋体', fontWeight: 'normal', lineHeight: 1.5, letterSpacing: 0 } },
       rect: { type: 'rect', x: 200, y: 150, w: 200, h: 120, opacity: 1, props: { fill: '#e2e8f0', borderRadius: 4 } },
       ellipse: { type: 'ellipse', x: 200, y: 150, w: 120, h: 120, opacity: 1, props: { fill: '#e2e8f0' } },
       arrow: { type: 'arrow', x: 100, y: 300, w: 300, h: 30, opacity: 1, props: { stroke: '#94a3b8', strokeWidth: 2, endShape: 'arrow', startShape: 'none' } },

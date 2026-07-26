@@ -411,10 +411,9 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       )}
       {el.type === 'text' && (
         <>
-          <FontSelect value={el.props.fontFamily || 'inherit'} onChange={v => {
-            const val = v === 'inherit' ? undefined : v
-            if (rt.editor) rt.setFontFamily(val || '')
-            remeasure({ fontFamily: val })
+          <FontSelect value={el.props.fontFamily || '思源宋体'} onChange={v => {
+            if (rt.editor) rt.setFontFamily(v)
+            remeasure({ fontFamily: v })
           }} />
           <div className="grid gap-1.5 mt-1" style={{ gridTemplateColumns: '2.8em 1fr' }}>
             <span className="text-[11px] text-gray-500 self-center text-right">字号</span>
@@ -819,9 +818,9 @@ function FontSelect({ value, onChange }: { value: string; onChange: (v: string) 
   const [open, setOpen] = useState(false)
   const [sysFonts, setSysFonts] = useState<string[]>([])
   const ref = useRef<HTMLDivElement>(null)
-  const builtin = ['inherit', '思源宋体', '宋体', '黑体', '微软雅黑', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana']
+  const builtin = ['思源宋体', '宋体', '黑体', '微软雅黑', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana']
   const fonts = [...builtin, ...sysFonts.filter(f => !builtin.includes(f))]
-  const label = value === 'inherit' ? '默认' : value
+  const label = value || builtin[0]
 
   useEffect(() => {
     invoke<string[]>('list_system_fonts').then(setSysFonts).catch(() => {})
