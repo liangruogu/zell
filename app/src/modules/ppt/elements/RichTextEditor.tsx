@@ -80,7 +80,7 @@ export function RichTextEditor({
       element: mountRef.current,
       extensions,
       content: initialContentRef.current,
-      autofocus: true,
+      autofocus: 'end' as any,
       editable: true,
       editorProps: {
         attributes: {
@@ -140,12 +140,7 @@ export function RichTextEditor({
     editorRef.current = ed
     usePptStore.getState().setActiveEditor(ed)
 
-    const timeout = setTimeout(() => {
-      ed.commands.focus('end')
-    }, 50)
-
     return () => {
-      clearTimeout(timeout)
       usePptStore.getState().setActiveEditor(null)
       editorRef.current = null
       ed.destroy()
