@@ -65,7 +65,7 @@ export function RichTextEditor({
       `text-align:${textAlign}`,
       `letter-spacing:${letterSpacing}px`,
       `outline:none`,
-      `padding:2px 4px`,
+      `padding:0`,
       `margin:0`,
       `overflow-wrap:break-word`,
       `word-break:break-word`,
