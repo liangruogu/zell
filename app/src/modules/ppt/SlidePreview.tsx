@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Play, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { usePptStore } from './store'
 import { SLIDE_W, SLIDE_H } from './types'
 import { renderRichTextHTML } from './elements/RichTextEditor'
@@ -44,15 +45,12 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   const slide = visible[idx]
   const { setCurrentSlide } = usePptStore()
 
-  // Enter fullscreen + suppress canvas hover
+  // Enter Tauri fullscreen (hides taskbar) + suppress canvas hover
   useEffect(() => {
+    const win = getCurrentWindow()
+    win.setFullscreen(true)
     document.body.classList.add('previewing')
-    const el = document.documentElement
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {})
-    return () => {
-      document.body.classList.remove('previewing')
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
-    }
+    return () => { win.setFullscreen(false); document.body.classList.remove('previewing') }
   }, [])
 
   const goNext = useCallback(() => {
