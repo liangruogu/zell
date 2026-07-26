@@ -508,3 +508,9 @@ kbd {
   color: currentColor;
   border-radius: 2px;
 }
+
+/* Hover outline on canvas elements (no handles, subtle) */
+[data-el-id]:hover {
+  outline: 1.5px solid rgba(59,130,246,0.25);
+  outline-offset: 1px;
+}

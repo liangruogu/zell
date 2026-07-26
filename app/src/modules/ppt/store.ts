@@ -14,6 +14,7 @@ interface PptState {
   selectedIds: string[]
   selectedSlideIds: string[]
   activeEditor: Editor | null
+  hoveredId: string | null
   zoom: number
   panX: number
   panY: number
@@ -49,6 +50,7 @@ interface PptState {
   setPreviewing: (v: boolean) => void
   setGuideLines: (lines: GuideLine[]) => void
   setActiveEditor: (e: Editor | null) => void
+  setHoveredId: (id: string | null) => void
   undo: () => void
   redo: () => void
   groupElements: (slideId: string, ids: string[]) => void
@@ -106,6 +108,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   selectedIds: [],
   selectedSlideIds: [],
   activeEditor: null,
+  hoveredId: null,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -246,6 +249,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   setPan: (x, y) => set({ panX: x, panY: y }),
   setGuideLines: (lines) => set({ guideLines: lines }),
   setActiveEditor: (e) => set({ activeEditor: e }),
+  setHoveredId: (id) => set({ hoveredId: id }),
   setResizing: (v: boolean) => { _isResizing = v },
   resetView: () => {
     set({ zoom: 1, transitioning: true })
