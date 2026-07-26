@@ -70,7 +70,7 @@ func main() {
 	// WebSocket (y-websocket compatible: /ws/:pid/:articleID)
 	r.GET("/ws/:pid/:aid", wsH.Handle)
 
-	log.Printf("Bindle server starting on :%s", cfg.Port)
+	log.Printf("Zell server starting on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

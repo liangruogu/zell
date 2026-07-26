@@ -1,10 +1,10 @@
 [package]
-name = "bindle"
+name = "zell"
 version = "0.1.0"
-description = "Bindle - Project Context & Knowledge Management"
-authors = ["Bindle Team"]
+description = "Zell - Creative Design & Knowledge Management"
+authors = ["Zell Team"]
 license = "MIT"
-repository = "https://github.com/anomalyco/bindle"
+repository = "https://github.com/anomalyco/zell"
 edition = "2021"
 rust-version = "1.77.2"
 

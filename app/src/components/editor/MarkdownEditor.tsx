@@ -286,7 +286,7 @@ export function MarkdownEditor({
           title: article.title,
           content: md,
           contentJson: '{}',
-        }).then((updated: { content: string }) => {
+        }).then((updated: any) => {
           useKnowledgeStore.getState().updateArticle(article.id, article.title, updated.content)
         }).catch(e => console.error('save failed:', e))
       }
@@ -363,7 +363,7 @@ export function MarkdownEditor({
           })
           return changed ? tr : null
         },
-      }),
+      }) as any,
     ],
     content: collabYDocRef.current ? undefined : initialHtml,
     editable: editable,

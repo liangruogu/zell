@@ -10,7 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("bindle-secret-change-me")
+var jwtSecret = []byte("zell-secret-change-me")
 
 type InviteHandler struct {
 	db *repository.DB

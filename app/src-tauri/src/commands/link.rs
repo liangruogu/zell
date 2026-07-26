@@ -69,7 +69,7 @@ async fn resolve_favicon(url: &str) -> Option<String> {
 async fn fetch_page_markdown(url: &str) -> Result<String, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
-        .user_agent("Mozilla/5.0 Bindle/1.0")
+        .user_agent("Mozilla/5.0 Zell/1.0")
         .build()
         .map_err(|e| e.to_string())?;
     let resp = client

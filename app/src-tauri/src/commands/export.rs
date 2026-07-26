@@ -43,16 +43,16 @@ pub fn export_article(
         return Err("Pandoc 未安装。请访问 https://pandoc.org/installing.html 安装后重试。".to_string());
     }
 
-    // Resolve bindle-img references
+    // Resolve zell-img references
     let re = Regex::new(r#"bindle-img:([^/\s]+)/([^\s)"\]]+)"#).map_err(|e| e.to_string())?;
     let mut resolved = markdown.clone();
-    let temp_dir = std::env::temp_dir().join(format!("bindle_export_{}", Uuid::now_v7()));
+    let temp_dir = std::env::temp_dir().join(format!("zell_export_{}", Uuid::now_v7()));
     std::fs::create_dir_all(&temp_dir).map_err(|e| format!("创建临时目录失败: {}", e))?;
 
     for cap in re.captures_iter(&markdown) {
         let proj_id = &cap[1];
         let file_name = &cap[2];
-        let bindle_ref = &cap[0];
+        let img_ref = &cap[0];
         if let Ok(img_dir) = images_dir(&app, proj_id) {
             let src = img_dir.join(file_name);
             if src.exists() {
@@ -60,7 +60,7 @@ pub fn export_article(
                 let temp_name = format!("img_{}.{}", Uuid::now_v7(), ext);
                 let dest = temp_dir.join(&temp_name);
                 if std::fs::copy(&src, &dest).is_ok() {
-                    resolved = resolved.replace(bindle_ref, &temp_name);
+                    resolved = resolved.replace(img_ref, &temp_name);
                 }
             }
         }
