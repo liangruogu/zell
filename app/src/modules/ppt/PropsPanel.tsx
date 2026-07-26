@@ -9,7 +9,7 @@ import { toggleListInJSON, hasListInJSON, removeListFromJSON } from './elements/
 const SCRUB = { threshold: 3, speed: 1 }
 
 // recent color palette — persisted to localStorage
-const STORAGE_KEY = 'bindle_recent_colors'
+const STORAGE_KEY = 'zell_recent_colors'
 function loadRecentColors(): string[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch { return [] }
 }
@@ -312,8 +312,8 @@ export function PropsPanel() {
   return (
     <div data-panel="props" className="w-52 border-l border-gray-200 bg-white shrink-0 overflow-y-auto select-none relative z-10">
       <div className="flex border-b border-gray-200">
-        <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'props' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
-        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'layers' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
+        <button onClick={() => setActiveTab('props')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'props' ? 'text-zell-600 border-b-2 border-zell-500' : 'text-gray-500 hover:text-gray-700'}`}>属性</button>
+        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-[12px] font-medium text-center cursor-pointer ${activeTab === 'layers' ? 'text-zell-600 border-b-2 border-zell-500' : 'text-gray-500 hover:text-gray-700'}`}>图层</button>
       </div>
       <div className="p-3">
         {activeTab === 'props' ? (
@@ -417,7 +417,7 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
             <label className="text-[10px] text-gray-500">起点</label>
             <div className="flex gap-1 mt-0.5">
               {[{ v: 'none', s: '—' }, { v: 'arrow', s: '▶' }, { v: 'circle', s: '●' }, { v: 'square', s: '■' }].map(opt => (
-                <button key={opt.v} onClick={() => updateProps({ startShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.startShape || 'none') === opt.v ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
+                <button key={opt.v} onClick={() => updateProps({ startShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.startShape || 'none') === opt.v ? 'bg-zell-50 border-zell-300 text-zell-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
               ))}
             </div>
           </div>
@@ -425,7 +425,7 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
             <label className="text-[10px] text-gray-500">终点</label>
             <div className="flex gap-1 mt-0.5">
               {[{ v: 'none', s: '—' }, { v: 'arrow', s: '▶' }, { v: 'circle', s: '●' }, { v: 'square', s: '■' }].map(opt => (
-                <button key={opt.v} onClick={() => updateProps({ endShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.endShape || 'arrow') === opt.v ? 'bg-bindle-50 border-bindle-300 text-bindle-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
+                <button key={opt.v} onClick={() => updateProps({ endShape: opt.v })} className={`flex-1 py-1 text-xs rounded border ${(el.props.endShape || 'arrow') === opt.v ? 'bg-zell-50 border-zell-300 text-zell-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{opt.s}</button>
               ))}
             </div>
           </div>
@@ -1019,7 +1019,7 @@ function LayersTab({ slide }: { slide: import('./types').Slide | undefined }) {
           <div
             data-layer-idx={i}
             onPointerDown={e => onPointerDown(e, i)}
-            className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-xs transition-colors ${isSelected(el) ? 'bg-bindle-50' : 'hover:bg-gray-50'} ${dragIdx === i ? 'opacity-40' : ''}`}
+            className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-xs transition-colors ${isSelected(el) ? 'bg-zell-50' : 'hover:bg-gray-50'} ${dragIdx === i ? 'opacity-40' : ''}`}
             style={{ cursor: dragIdx !== null ? 'grabbing' : 'grab' }}
           >
             <GripVertical size={10} className="text-gray-300 shrink-0" />

@@ -36,7 +36,7 @@ export default function ExternalLinksPage() {
   const { fetchProject } = useProjectStore()
   const { links, currentLink, loading: linkLoading, fetchLinks, createLink, updateLink, deleteLink, setCurrentLink, syncLink } = useLinkStore()
   const { files, currentFile, loading: fileLoading, fetchFiles, importFile, deleteFile, updateFile, setCurrentFile, resolveFileUrl, getFilePath, reExtractText, renameFile } = useFileStore()
-  const panel = useResizablePanel(224, 120, 400, 80, 'bindle_panel_links')
+  const panel = useResizablePanel(224, 120, 400, 80, 'zell_panel_links')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [tab, setTab] = useState<TabType>('links')
@@ -319,7 +319,7 @@ export default function ExternalLinksPage() {
               onClick={() => { setTab('links'); setCurrentFile(null) }}
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors',
-                tab === 'links' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-400 hover:text-gray-600'
+                tab === 'links' ? 'text-zell-600 border-b-2 border-zell-500' : 'text-gray-400 hover:text-gray-600'
               )}
             >
               <Link2 size={14} /> 链接
@@ -328,7 +328,7 @@ export default function ExternalLinksPage() {
               onClick={() => { setTab('files'); setCurrentLink(null); setIsNewLink(false) }}
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors',
-                tab === 'files' ? 'text-bindle-600 border-b-2 border-bindle-500' : 'text-gray-400 hover:text-gray-600'
+                tab === 'files' ? 'text-zell-600 border-b-2 border-zell-500' : 'text-gray-400 hover:text-gray-600'
               )}
             >
               <FolderOpen size={14} /> 文件
@@ -350,7 +350,7 @@ export default function ExternalLinksPage() {
                       className={cn(
                         'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
                         currentLink?.id === link.id && !isNewLink
-                          ? 'bg-bindle-100 text-bindle-700'
+                          ? 'bg-zell-100 text-zell-700'
                           : 'text-gray-600 hover:bg-gray-50'
                       )}
                       onClick={() => selectLink(link)}
@@ -372,8 +372,8 @@ export default function ExternalLinksPage() {
                       )}
                       <span className="text-[10px] text-gray-400 shrink-0">{LINK_TYPE_LABELS[link.link_type] || link.link_type}</span>
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
-                        <button onClick={(e) => { e.stopPropagation(); handleOpenUrl(link.url) }} className="p-0.5 rounded hover:bg-bindle-200" title="打开链接">
-                          <ExternalLinkIcon size={13} className="text-gray-400 hover:text-bindle-600" />
+                        <button onClick={(e) => { e.stopPropagation(); handleOpenUrl(link.url) }} className="p-0.5 rounded hover:bg-zell-200" title="打开链接">
+                          <ExternalLinkIcon size={13} className="text-gray-400 hover:text-zell-600" />
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); confirmDelete(link) }} className="p-0.5 rounded hover:bg-red-100" title="删除">
                           <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
@@ -399,7 +399,7 @@ export default function ExternalLinksPage() {
               <div
                 className={cn(
                   'flex-1 overflow-auto py-1',
-                  isDragOver && 'bg-bindle-50'
+                  isDragOver && 'bg-zell-50'
                 )}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -410,9 +410,9 @@ export default function ExternalLinksPage() {
                 ) : files.length === 0 ? (
                   <div className={cn(
                     'flex flex-col items-center justify-center gap-3 py-8 text-center transition-colors',
-                    isDragOver ? 'text-bindle-500' : 'text-gray-400'
+                    isDragOver ? 'text-zell-500' : 'text-gray-400'
                   )}>
-                    <Upload size={32} strokeWidth={1} className={isDragOver ? 'text-bindle-400' : ''} />
+                    <Upload size={32} strokeWidth={1} className={isDragOver ? 'text-zell-400' : ''} />
                     <div>
                       <p className="text-sm">{isDragOver ? '松手以导入文件' : '拖入文件到此处'}</p>
                       <p className="text-xs mt-1">PDF / Word / PPT / 图片 / Markdown</p>
@@ -421,7 +421,7 @@ export default function ExternalLinksPage() {
                 ) : (
                   <>
                     {isDragOver && (
-                      <div className="flex items-center justify-center gap-2 py-3 text-sm text-bindle-500 bg-bindle-50 border-2 border-dashed border-bindle-300 mx-2 rounded-lg">
+                      <div className="flex items-center justify-center gap-2 py-3 text-sm text-zell-500 bg-zell-50 border-2 border-dashed border-zell-300 mx-2 rounded-lg">
                         <Upload size={16} /> 松手以导入文件                      </div>
                     )}
                     {files.map((f) => (
@@ -491,7 +491,7 @@ export default function ExternalLinksPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">类型:</span>
                   <select value={linkType} onChange={(e) => setLinkType(e.target.value)}
-                    className="px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400">
+                    className="px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-zell-400">
                     {Object.entries(LINK_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                   {currentLink && (
@@ -516,7 +516,7 @@ export default function ExternalLinksPage() {
                       {currentLink.last_snapshot.length > 2000 && (
                         <button
                           onClick={() => setShowLinkPreview(true)}
-                          className="text-xs text-bindle-500 hover:text-bindle-600"
+                          className="text-xs text-zell-500 hover:text-zell-600"
                         >
                           展开预览
                         </button>
@@ -597,7 +597,7 @@ export default function ExternalLinksPage() {
                       <label className="block text-sm font-medium text-gray-700">提取的文本（AI 上下文）</label>
                       <button
                         onClick={() => setShowFullPreview(true)}
-                        className="text-xs text-bindle-500 hover:text-bindle-600"
+                        className="text-xs text-zell-500 hover:text-zell-600"
                       >
                         展开预览
                       </button>
@@ -672,7 +672,7 @@ export default function ExternalLinksPage() {
         />
         <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
           <span>共 {currentFile?.extracted_text?.length || 0} 字符</span>
-          <button onClick={() => setShowFullPreview(false)} className="text-bindle-500 hover:text-bindle-600">关闭</button>
+          <button onClick={() => setShowFullPreview(false)} className="text-zell-500 hover:text-zell-600">关闭</button>
         </div>
       </Dialog>
 
@@ -682,7 +682,7 @@ export default function ExternalLinksPage() {
         />
         <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
           <span>共 {currentLink?.last_snapshot?.length || 0} 字符</span>
-          <button onClick={() => setShowLinkPreview(false)} className="text-bindle-500 hover:text-bindle-600">关闭</button>
+          <button onClick={() => setShowLinkPreview(false)} className="text-zell-500 hover:text-zell-600">关闭</button>
         </div>
       </Dialog>
     </AppShell>
@@ -708,7 +708,7 @@ function FileItem({ file, isActive, onSelect, onDelete, onRename }: {
     <div
       className={cn(
         'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
-        isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50'
+        isActive ? 'bg-zell-100 text-zell-700' : 'text-gray-600 hover:bg-gray-50'
       )}
       onClick={onSelect}
       onDoubleClick={(e) => { e.stopPropagation(); setRenaming(true); setName(file.original_name) }}
@@ -725,7 +725,7 @@ function FileItem({ file, isActive, onSelect, onDelete, onRename }: {
             if (e.key === 'Escape') { setRenaming(false); setName(file.original_name) }
           }}
           onClick={(e) => e.stopPropagation()}
-          className="flex-1 px-1 py-0.5 text-xs border border-bindle-300 rounded outline-none focus:ring-1 focus:ring-bindle-400"
+          className="flex-1 px-1 py-0.5 text-xs border border-zell-300 rounded outline-none focus:ring-1 focus:ring-zell-400"
         />
       ) : (
         <span className="truncate flex-1 text-xs">{file.original_name}</span>

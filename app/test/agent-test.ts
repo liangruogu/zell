@@ -1,5 +1,5 @@
 /**
- * Agent 运行时测试 — 模拟真实 Bindle 调用链
+ * Agent 运行时测试 — 模拟真实 Zell 调用链
  * 运行: npx tsx test/agent-test.ts
  */
 import { ChatOpenAI } from '@langchain/openai'
@@ -7,14 +7,14 @@ import { tool } from '@langchain/core/tools'
 import { z } from 'zod'
 import { HumanMessage, SystemMessage, AIMessage } from '@langchain/core/messages'
 
-// ── 模拟 Bindle 配置 ────────────────────────────────────────────────
+// ── 模拟 Zell 配置 ────────────────────────────────────────────────
 const PROVIDER = {
   baseUrl: 'https://api.deepseek.com',
   apiKey: 'sk-a1704ab9ca5c4146851415fc7b11af7f',
   model: 'deepseek-chat',
 }
 
-// ── 模拟工具（和 Bindle 知识库一样） ─────────────────────────────────
+// ── 模拟工具（和 Zell 知识库一样） ─────────────────────────────────
 const getProjectContext = tool(
   async () => JSON.stringify({ name: 'TestProject', background: '测试用', status: 'sprint' }),
   { name: 'get_project_context', description: '获取当前项目信息' }
@@ -29,7 +29,7 @@ const searchDocs = tool(
 )
 
 const listArticles = tool(
-  async () => JSON.stringify([{ id: '1', title: '技术架构', preview: 'Bindle 基于 Tauri...' }]),
+  async () => JSON.stringify([{ id: '1', title: '技术架构', preview: 'Zell 基于 Tauri...' }]),
   { name: 'list_articles', description: '列出所有文章' }
 )
 

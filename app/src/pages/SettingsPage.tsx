@@ -159,7 +159,7 @@ export default function SettingsPage() {
             <Input
               id="serverUrl"
               label="服务器地址"
-              placeholder="https://bindle.example.com"
+              placeholder="https://zell.example.com"
               {...register('serverUrl')}
             />
             <p className="text-xs text-gray-400 mt-1">
@@ -173,7 +173,7 @@ export default function SettingsPage() {
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">默认字号</label>
                 <select
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-bindle-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-zell-400"
                   {...register('editorFontSize')}
                 >
                   {FONT_SIZE_OPTIONS.map((opt) => (
@@ -184,7 +184,7 @@ export default function SettingsPage() {
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">默认编辑模式</label>
                 <select
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-bindle-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-zell-400"
                   {...register('editorDefaultMode')}
                 >
                   {EDITOR_MODE_OPTIONS.map((opt) => (

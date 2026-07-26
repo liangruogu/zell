@@ -282,7 +282,7 @@ export default function ProjectPage() {
           </div>
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700">项目名称 *</label>
-            <input className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400"
+            <input className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
               value={editName} onChange={(e) => setEditName(e.target.value)} />
           </div>
           <div className="space-y-1">

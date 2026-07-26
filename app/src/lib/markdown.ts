@@ -8,23 +8,23 @@ const turndown = new TurndownService({
   bulletListMarker: '-',
 })
 
-// Preserve image width and bindle-img refs
+// Preserve image width and zell-img refs
 turndown.addRule('imageWithSize', {
   filter: (node) => node.nodeName === 'IMG',
   replacement: (_content, node) => {
     const el = node as HTMLImageElement
     const alt = el.getAttribute('alt') || ''
     const src = el.getAttribute('src') || ''
-    const bindleRef = el.getAttribute('data-zell-ref')
+    const imgRef = el.getAttribute('data-zell-ref')
     const width = el.getAttribute('width')
 
-    // If resolved from bindle-img, use the original ref
-    if (bindleRef) {
+    // If resolved from zell-img, use the original ref
+    if (imgRef) {
       const titleAttr = width ? ` "width=${width}"` : ''
-      return `![${alt}](${bindleRef}${titleAttr})`
+      return `![${alt}](${imgRef}${titleAttr})`
     }
 
-    if (src.startsWith('bindle-img:')) {
+    if (src.startsWith('zell-img:')) {
       const titleAttr = width ? ` "width=${width}"` : ''
       return `![${alt}](${src}${titleAttr})`
     }
@@ -50,7 +50,7 @@ turndown.addRule('imageGroup', {
   },
 })
 
-// Custom image renderer: keep bindle-img refs as-is (resolved later)
+// Custom image renderer: keep zell-img refs as-is (resolved later)
 marked.use({
   renderer: {
     image({ href, title, text }: { href: string; title: string | null; text: string }) {

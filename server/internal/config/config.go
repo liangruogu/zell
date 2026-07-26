@@ -12,12 +12,12 @@ type Config struct {
 }
 
 func Load() *Config {
-	port := os.Getenv("BINDLE_PORT")
+	port := os.Getenv("ZELL_PORT")
 	if port == "" {
 		port = "3000"
 	}
 
-	dataDir := os.Getenv("BINDLE_DATA_DIR")
+	dataDir := os.Getenv("ZELL_DATA_DIR")
 	if dataDir == "" {
 		execPath, _ := os.Executable()
 		dataDir = filepath.Join(filepath.Dir(execPath), "data")

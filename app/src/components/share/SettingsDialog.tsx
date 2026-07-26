@@ -102,7 +102,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 text-sm text-left transition-colors',
                 category === cat.key
-                  ? 'bg-white text-bindle-700 font-medium border-r-2 border-bindle-500 -mr-px'
+                  ? 'bg-white text-zell-700 font-medium border-r-2 border-zell-500 -mr-px'
                   : 'text-gray-600 hover:bg-gray-100'
               )}
             >
@@ -151,7 +151,7 @@ function parseSettings(settings: Record<string, string>) {
 
 // ---- Appearance Settings ----
 const DEFAULT_THEMES = [
-  { value: 'bindle', label: 'Zell 默认' },
+  { value: 'zell', label: 'Zell 默认' },
   { value: 'github', label: 'GitHub' },
   { value: 'notion', label: 'Notion' },
   { value: 'minimal', label: '报告' },
@@ -166,7 +166,7 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
   showToast: (msg: string) => void
 }) {
   const showToolbarVal = parsed.appearance.showToolbar !== false
-  const currentTheme = String(parsed.appearance.theme || 'bindle')
+  const currentTheme = String(parsed.appearance.theme || 'zell')
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>([])
   const [newName, setNewName] = useState('')
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
@@ -236,9 +236,9 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
       const filePath = await join(dir, `${name}.css`)
       await remove(filePath)
       if (currentTheme === name) {
-        await setSetting('appearance', JSON.stringify({ ...parsed.appearance, theme: 'bindle' }))
+        await setSetting('appearance', JSON.stringify({ ...parsed.appearance, theme: 'zell' }))
         document.documentElement.removeAttribute('data-zell-custom-theme')
-        document.documentElement.setAttribute('data-zell-theme', 'bindle')
+        document.documentElement.setAttribute('data-zell-theme', 'zell')
       }
       await loadCustomThemes()
       showToast('主题已删除')
@@ -505,7 +505,7 @@ function AISettings({ parsed, setSetting, showToast }: {
               name="activeProvider"
               checked={activeId === p.id || (providers.length === 1 && !activeId)}
               onChange={() => { setActiveId(p.id); save(providers, p.id) }}
-              className="text-bindle-500"
+              className="text-zell-500"
             />
             <input
               value={p.name}
@@ -524,7 +524,7 @@ function AISettings({ parsed, setSetting, showToast }: {
                 value={p.baseUrl}
                 onChange={(e) => updateProvider(p.id, 'baseUrl', e.target.value)}
                 placeholder="https://api.deepseek.com"
-                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-zell-400"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -535,7 +535,7 @@ function AISettings({ parsed, setSetting, showToast }: {
                   value={p.apiKey}
                   onChange={(e) => updateProvider(p.id, 'apiKey', e.target.value)}
                   placeholder="sk-..."
-                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-zell-400"
                 />
               </div>
               <div>
@@ -544,7 +544,7 @@ function AISettings({ parsed, setSetting, showToast }: {
                   value={p.model}
                   onChange={(e) => updateProvider(p.id, 'model', e.target.value)}
                   placeholder="deepseek-chat"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-zell-400"
                 />
               </div>
             </div>
@@ -605,13 +605,13 @@ function EditorSettings({ parsed, setSetting, showToast }: {
       <h3 className="font-semibold text-gray-800">编辑器偏好</h3>
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">默认编辑模式</label>
-        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('defaultMode')}>
+        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400" {...register('defaultMode')}>
           {EDITOR_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">图片存储方式</label>
-        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bindle-400" {...register('imageStorage')}>
+        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400" {...register('imageStorage')}>
           {IMAGE_STORAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <p className="text-xs text-gray-400 mt-1">Base64 模式：图片直接嵌入 Markdown<br />文件模式：图片保存为独立文件，Markdown 仅存引用</p>
@@ -659,14 +659,14 @@ function ResourceSyncSettings({ parsed, setSetting, showToast }: {
         ].map((opt) => (
           <label key={opt.value} className={cn(
             'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-            policy === opt.value ? 'border-bindle-300 bg-bindle-50' : 'border-gray-200 hover:bg-gray-50'
+            policy === opt.value ? 'border-zell-300 bg-zell-50' : 'border-gray-200 hover:bg-gray-50'
           )}>
             <input
               type="radio"
               name="syncPolicy"
               checked={policy === opt.value}
               onChange={() => setPolicy(opt.value)}
-              className="mt-0.5 text-bindle-500"
+              className="mt-0.5 text-zell-500"
             />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-700">{opt.label}</p>
@@ -677,7 +677,7 @@ function ResourceSyncSettings({ parsed, setSetting, showToast }: {
                   <input
                     value={intervalHours}
                     onChange={(e) => setIntervalHours(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                    className="w-16 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
+                    className="w-16 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-zell-400"
                   />
                   <span className="text-xs text-gray-500">小时</span>
                 </div>
