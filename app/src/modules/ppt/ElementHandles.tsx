@@ -99,6 +99,7 @@ export function ElementHandles({ element, zoom }: Props) {
     const onUp = () => {
       setActiveHandle(null)
       usePptStore.getState().setResizing(false)
+      usePptStore.getState().setGuideLines([])
       const s2 = usePptStore.getState()
       if (s2.currentSlideId && stateRef.current) {
         const pending = (stateRef.current as any)._pending

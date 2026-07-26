@@ -228,9 +228,6 @@ export const textConfig: ElementConfig = {
     const fontFamily = el.props.fontFamily || 'inherit'
     const lineHeight = el.props.lineHeight || 1.5
     const measured = measureContentHeight(html, w, fontSize, fontFamily, lineHeight)
-    if (measured + 4 > el.h) {
-      return { h: measured + 4 }
-    }
-    return null
+    return { h: Math.max(10, measured + 4) }
   },
 }
