@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Editor } from '@tiptap/core'
+import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager'
 import type { Slide, CanvasElement, PptData } from './types'
 
 function clone(slides: Slide[]): Slide[] {
@@ -257,17 +258,12 @@ export const usePptStore = create<PptState>((set, get) => ({
     const slide = slides.find(s => s.id === currentSlideId)
     if (!slide || selectedIds.length === 0) return
     const elements = slide.elements.filter(e => selectedIds.includes(e.id))
-    const data = JSON.stringify(clone(elements))
-    try {
-      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
-      await writeText('ZELL_ELEMENTS:' + data)
-    } catch {}
+    try { await writeText('ZELL_ELEMENTS:' + JSON.stringify(clone(elements))) } catch {}
   },
   pasteElements: async (): Promise<boolean> => {
     const { slides, currentSlideId } = get()
     if (!currentSlideId) return false
     try {
-      const { readText } = await import('@tauri-apps/plugin-clipboard-manager')
       const text = await readText()
       if (text && text.startsWith('ZELL_ELEMENTS:')) {
         const data = JSON.parse(text.slice('ZELL_ELEMENTS:'.length))

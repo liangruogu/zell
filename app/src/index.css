@@ -517,3 +517,6 @@ kbd {
 body.previewing [data-el-id]:hover {
   outline: none;
 }
+body.marqueeing [data-el-id]:hover {
+  outline: none;
+}

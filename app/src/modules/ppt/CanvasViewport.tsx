@@ -146,6 +146,7 @@ export function CanvasViewport() {
       }
       if (!onBg) return
       if (onEl || insideEl) return
+      document.body.classList.add('marqueeing')
       if (target.closest('[data-canvas="bg"]') || target === el || el.contains(target)) {
         dragging = true
         const rect = el.getBoundingClientRect()
@@ -163,6 +164,7 @@ export function CanvasViewport() {
     const onUp = (e: MouseEvent) => {
       if (!dragging || !marqueeRef.current) { dragging = false; return }
       dragging = false
+      document.body.classList.remove('marqueeing')
       const m = marqueeRef.current
       marqueeRef.current = null
       setMarqueeTick(t => t + 1)
