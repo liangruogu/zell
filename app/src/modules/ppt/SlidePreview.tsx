@@ -52,30 +52,41 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
     return () => { win.setFullscreen(false) }
   }, [])
 
-  // ESC to exit
+  // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goNext()
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goPrev()
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'j') goNext()
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'k') goPrev()
+      if (e.key === 'g') {
+        if ((e.target as HTMLElement)?.tagName === 'INPUT') return
+        if (ggTimer.current) { clearTimeout(ggTimer.current); ggTimer.current = null; goFirst() }
+        else { ggTimer.current = setTimeout(() => { ggTimer.current = null }, 350) }
+      }
+      if (e.key === 'G' && !e.ctrlKey) goLast()
     }
     window.addEventListener('keydown', onKey)
     return () => { window.removeEventListener('keydown', onKey) }
-  }, [idx, visible.length])
+  }, [idx, visible.length, goNext, goPrev, goFirst, goLast, onClose])
 
   const goNext = useCallback(() => {
-    if (idx < visible.length - 1) {
-      setIdx(idx + 1)
-      setCurrentSlide(visible[idx + 1].id)
-    }
+    if (idx < visible.length - 1) { setIdx(idx + 1); setCurrentSlide(visible[idx + 1].id) }
   }, [idx, visible])
 
   const goPrev = useCallback(() => {
-    if (idx > 0) {
-      setIdx(idx - 1)
-      setCurrentSlide(visible[idx - 1].id)
-    }
+    if (idx > 0) { setIdx(idx - 1); setCurrentSlide(visible[idx - 1].id) }
   }, [idx, visible])
+
+  const goFirst = useCallback(() => {
+    if (visible.length > 0 && idx !== 0) { setIdx(0); setCurrentSlide(visible[0].id) }
+  }, [idx, visible])
+
+  const goLast = useCallback(() => {
+    const last = visible.length - 1
+    if (last >= 0 && idx !== last) { setIdx(last); setCurrentSlide(visible[last].id) }
+  }, [idx, visible])
+
+  const ggTimer = useRef<ReturnType<typeof setTimeout>>()
 
   const [hoverSide, setHoverSide] = useState<'left' | 'right' | null>(null)
   const cursorTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -105,6 +116,11 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
     <div
       className="fixed inset-0 z-[99999] bg-black flex items-center justify-center"
       data-preview="true"
+      onClick={(e) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+        if (e.clientX < rect.left + rect.width / 2) goPrev()
+        else goNext()
+      }}
       onMouseMove={(e) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
         setHoverSide(e.clientX > rect.width / 2 ? 'right' : 'left')
