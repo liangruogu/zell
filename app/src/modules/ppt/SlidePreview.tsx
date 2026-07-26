@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Play, ChevronLeft, ChevronRight } from 'lucide-react'
 import { usePptStore } from './store'
 import { SLIDE_W, SLIDE_H } from './types'
+import { renderRichTextHTML } from './elements/RichTextEditor'
 
 export function PreviewButton() {
   const [fullscreen, setFullscreen] = useState(false)
@@ -117,23 +118,20 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
       <div className="absolute left-0 top-0 bottom-0 w-1/2 z-10" onClick={goPrev} style={{ cursor: 'default' }} />
       {/* Right click zone */}
       <div className="absolute right-0 top-0 bottom-0 w-1/2 z-10" onClick={goNext} style={{ cursor: 'default' }} />
-      {/* Slide content — fills viewport, 16:9 aspect */}
+      {/* Slide content — aspect-fit with black bars */}
       <div
-        className="relative shadow-2xl flex-shrink-0"
+        className="relative shadow-2xl"
         style={{
-          width: '100vw',
-          height: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: `min(100vw, calc(100vh * ${SLIDE_W / SLIDE_H}))`,
+          height: `min(100vh, calc(100vw * ${SLIDE_H / SLIDE_W}))`,
         }}
       >
         <div style={{
-          width: '100vw',
-          height: `calc(100vw * ${SLIDE_H / SLIDE_W})`,
-          maxHeight: '100vh',
+          width: '100%',
+          height: '100%',
           background: slide.background || '#ffffff',
           position: 'relative',
+          overflow: 'hidden',
         }}>
         {/* Background with opacity */}
         <div style={{
@@ -145,14 +143,13 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
         {slide.elements.map((el: any) => {
           if (el.type === 'group' && el.groupChildren) {
             return (
-              <div key={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h }}>
+              <div key={el.id} style={{ position: 'absolute', left: `${el.x / SLIDE_W * 100}%`, top: `${el.y / SLIDE_H * 100}%`, width: `${el.w / SLIDE_W * 100}%`, height: `${el.h / SLIDE_H * 100}%` }}>
                 {el.groupChildren.map((c: any) => renderElement(c))}
               </div>
             )
           }
           return renderElement(el)
         })}
-      </div>
 
       {/* Navigation hints */}
       <div className={`absolute left-0 top-0 bottom-0 w-1/2 flex items-center justify-start pl-8 pointer-events-none transition-opacity duration-200 ${hoverSide === 'left' ? 'opacity-100' : 'opacity-0'}`}>
@@ -175,30 +172,42 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
 }
 
 function renderElement(el: any) {
-  const s = 1
-  const br = el.props?.borderRadius || 0
   const ss = el.props?.shadows ? el.props.shadows.map((s: any) => `${s.x || 0}px ${s.y || 2}px ${s.blur}px ${s.color || 'rgba(0,0,0,0.15)'}`).join(', ') : undefined
   const sw = el.props?.strokeWidth ?? 0
   const hasStroke = sw > 0 && el.props?.stroke
+  const p = el.props || {}
 
   switch (el.type) {
     case 'image':
-      return <img key={el.id} src={el.props.src || ''} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity }} draggable={false} />
-    case 'text':
-      return <div key={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, fontSize: el.props.fontSize || 16, color: el.props.fontColor || '#333', fontWeight: el.props.fontWeight || 'normal', padding: 8, overflow: 'hidden', whiteSpace: 'pre-wrap', boxShadow: ss }}>{el.props.text || ''}</div>
-    case 'ellipse':
-      return <div key={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: '50%', background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss }} />
-    case 'arrow': {
-      const sw2 = el.props.strokeWidth || 2; const c2 = el.props.stroke || '#94a3b8'; const hs = sw2 * 5
-      const x1 = el.props.startShape && el.props.startShape !== 'none' ? hs : 0
-      const x2 = el.props.endShape && el.props.endShape !== 'none' ? el.w - hs : el.w
+      return <img key={el.id} src={p.src || ''} style={{ position: 'absolute', left: `${el.x / SLIDE_W * 100}%`, top: `${el.y / SLIDE_H * 100}%`, width: `${el.w / SLIDE_W * 100}%`, height: `${el.h / SLIDE_H * 100}%`, opacity: el.opacity }} draggable={false} />
+    case 'text': {
+      const content = p.content || (p.text ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: p.text }] }] } : { type: 'doc', content: [{ type: 'paragraph' }] })
+      const html = renderRichTextHTML(content)
       return (
-        <svg key={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, overflow: 'visible', opacity: el.opacity }}>
-          <line x1={x1} y1={el.h / 2} x2={x2} y2={el.h / 2} stroke={c2} strokeWidth={sw2} />
+        <div key={el.id} className="tl-rich-text" style={{ position: 'absolute', left: `${el.x / SLIDE_W * 100}%`, top: `${el.y / SLIDE_H * 100}%`, width: `${el.w / SLIDE_W * 100}%`, height: `${el.h / SLIDE_H * 100}%`, opacity: el.opacity, fontSize: `calc(${(p.fontSize || 16) / SLIDE_W * 100}vw)`, color: p.fontColor || '#333', fontFamily: p.fontFamily || '思源宋体', fontWeight: p.fontWeight || 'normal', fontStyle: p.fontStyle || 'normal', textDecoration: p.textDecoration || 'none', lineHeight: p.lineHeight || 1.5, letterSpacing: `calc(${(p.letterSpacing || 0) / SLIDE_W * 100}vw)`, padding: '0.5%', overflow: 'hidden', boxShadow: ss }}>
+          <div dangerouslySetInnerHTML={{ __html: html }} />
+        </div>
+      )
+    }
+    case 'ellipse':
+      return <div key={el.id} style={{ position: 'absolute', left: `${el.x / SLIDE_W * 100}%`, top: `${el.y / SLIDE_H * 100}%`, width: `${el.w / SLIDE_W * 100}%`, height: `${el.h / SLIDE_H * 100}%`, opacity: el.opacity, borderRadius: '50%', background: p.fill || '#e2e8f0', border: hasStroke ? `calc(${sw} / ${SLIDE_W} * 100vw) solid ${p.stroke}` : 'none', boxShadow: ss }} />
+    case 'arrow': {
+      const hs = (p.strokeWidth || 2) * 5
+      const x1 = p.startShape && p.startShape !== 'none' ? `${hs / SLIDE_W * 100}%` : '0%'
+      const x2 = p.endShape && p.endShape !== 'none' ? `${(el.w - hs) / SLIDE_W * 100}%` : `${el.w / SLIDE_W * 100}%`
+      return (
+        <svg key={el.id} style={{ position: 'absolute', left: `${el.x / SLIDE_W * 100}%`, top: `${el.y / SLIDE_H * 100}%`, width: `${el.w / SLIDE_W * 100}%`, height: `${el.h / SLIDE_H * 100}%`, overflow: 'visible', opacity: el.opacity }}>
+          <line x1={x1} y1="50%" x2={x2} y2="50%" stroke={p.stroke || '#94a3b8'} strokeWidth={`calc(${p.strokeWidth || 2} / ${SLIDE_W} * 100vw)`} />
         </svg>
       )
     }
-    default:
-      return <div key={el.id} style={{ position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, opacity: el.opacity, borderRadius: `${el.props.borderRadiusTL ?? br}px ${el.props.borderRadiusTR ?? br}px ${el.props.borderRadiusBR ?? br}px ${el.props.borderRadiusBL ?? br}px`, background: el.props.fill || '#e2e8f0', border: hasStroke ? `${sw}px solid ${el.props.stroke}` : 'none', boxShadow: ss }} />
+    default: {
+      const br = p.borderRadius || 0
+      const brTL = ((p.borderRadiusTL ?? br) / SLIDE_W * 100).toFixed(2)
+      const brTR = ((p.borderRadiusTR ?? br) / SLIDE_W * 100).toFixed(2)
+      const brBR = ((p.borderRadiusBR ?? br) / SLIDE_W * 100).toFixed(2)
+      const brBL = ((p.borderRadiusBL ?? br) / SLIDE_W * 100).toFixed(2)
+      return <div key={el.id} style={{ position: 'absolute', left: `${el.x / SLIDE_W * 100}%`, top: `${el.y / SLIDE_H * 100}%`, width: `${el.w / SLIDE_W * 100}%`, height: `${el.h / SLIDE_H * 100}%`, opacity: el.opacity, borderRadius: `${brTL}vw ${brTR}vw ${brBR}vw ${brBL}vw`, background: p.fill || '#e2e8f0', border: hasStroke ? `calc(${sw} / ${SLIDE_W} * 100vw) solid ${p.stroke}` : 'none', boxShadow: ss }} />
+    }
   }
 }
