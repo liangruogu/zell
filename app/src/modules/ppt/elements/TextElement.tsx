@@ -36,7 +36,6 @@ function measureContentHeight(html: string, w: number, fontSize: number, fontFam
   document.body.appendChild(div)
   const rect = div.getBoundingClientRect()
   const h = Math.ceil(rect.height)
-  console.log('[measureContentHeight] w:', w, 'w-8:', w-8, 'fontSize:', fontSize, 'rect.height:', rect.height, 'ceil:', h, 'scrollHeight:', div.scrollHeight)
   document.body.removeChild(div)
   return h
 }
@@ -52,20 +51,13 @@ export function TextEl({ el, isSelected }: EP) {
   const html = useMemo(() => renderRichTextHTML(content), [content])
 
   const rafRef = useRef<number>(0)
-  const latestHRef = useRef(el.h)
 
   const handleHeightChange = useCallback((newH: number) => {
-    latestHRef.current = newH
-    if (rafRef.current) {
-      console.log('[handleHeightChange] batched (rAF pending), latestH:', newH)
-      return
-    }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = 0
       const s = usePptStore.getState()
       if (s.currentSlideId) {
-        console.log('[handleHeightChange] store update h:', latestHRef.current, 'el.h was:', el.h)
-        s.updateElement(s.currentSlideId, el.id, { h: latestHRef.current })
+        s.updateElement(s.currentSlideId, el.id, { h: newH })
       }
     })
   }, [el.id])
@@ -96,8 +88,7 @@ export function TextEl({ el, isSelected }: EP) {
         p.fontFamily || 'inherit',
         p.lineHeight || 1.5
       )
-      const newH = Math.max(10, measured + 4)
-      console.log('[saveContent] measured:', measured, '+4:', measured + 4, 'el.h was:', el.h, '→ newH:', newH)
+      const newH = Math.max(el.h, measured + 4)
       s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, content: json }, h: newH })
     }
   }, [el.id, el.props, el.w, el.h, fontSize, p.fontFamily, p.lineHeight])
@@ -236,8 +227,6 @@ export const textConfig: ElementConfig = {
     const fontFamily = el.props.fontFamily || 'inherit'
     const lineHeight = el.props.lineHeight || 1.5
     const measured = measureContentHeight(html, w, fontSize, fontFamily, lineHeight)
-    const newH = Math.max(10, measured + 4)
-    console.log('[onResizeEnd] measured:', measured, '+4:', newH, 'el.h:', el.h)
-    return { h: newH }
+    return { h: Math.max(10, measured + 4) }
   },
 }

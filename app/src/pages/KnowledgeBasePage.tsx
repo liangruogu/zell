@@ -47,7 +47,7 @@ export default function KnowledgeBasePage() {
     articles, currentArticle, loading,
     fetchArticles, createArticle, updateArticle, deleteArticle, setCurrentArticle,
   } = useKnowledgeStore()
-  const panel = useResizablePanel(224, 120, 400, 80, 'zell_panel_knowledge')
+  const panel = useResizablePanel(224, 120, 400, 80, 'bindle_panel_knowledge')
 
   const [showCreate, setShowCreate] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -110,7 +110,7 @@ export default function KnowledgeBasePage() {
 
   const handleCreate = useCallback(async () => {
     if (!projectId || !newTitle.trim()) return
-    const mdContent = `# ${newTitle.trim()}\n\n开始编写内�?..`
+    const mdContent = `# ${newTitle.trim()}\n\n开始编写内容...`
     const article = await createArticle(projectId, newTitle.trim(), mdContent)
     setNewTitle('')
     setShowCreate(false)
@@ -265,7 +265,7 @@ export default function KnowledgeBasePage() {
               className={cn(
                 'flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium transition-colors',
                 listTab === 'files'
-                  ? 'text-zell-600 border-b-2 border-zell-500 bg-zell-50/50'
+                  ? 'text-bindle-600 border-b-2 border-bindle-500 bg-bindle-50/50'
                   : 'text-gray-500 hover:text-gray-700'
               )}
             >
@@ -277,7 +277,7 @@ export default function KnowledgeBasePage() {
               className={cn(
                 'flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium transition-colors',
                 listTab === 'outline'
-                  ? 'text-zell-600 border-b-2 border-zell-500 bg-zell-50/50'
+                  ? 'text-bindle-600 border-b-2 border-bindle-500 bg-bindle-50/50'
                   : 'text-gray-500 hover:text-gray-700'
               )}
             >
@@ -297,7 +297,7 @@ export default function KnowledgeBasePage() {
                   placeholder="搜索文章..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-7 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-zell-400"
+                  className="w-full pl-8 pr-7 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bindle-400"
                 />
                 <button
                   onClick={() => { setShowSearch(false); setSearchQuery('') }}
@@ -312,23 +312,23 @@ export default function KnowledgeBasePage() {
           {/* Content area */}
           <div
             className={cn(
-              'flex-1 overflow-auto py-1 zell-scrollbar transition-colors',
-              isDragOver && 'bg-zell-50 ring-2 ring-inset ring-zell-400'
+              'flex-1 overflow-auto py-1 bindle-scrollbar transition-colors',
+              isDragOver && 'bg-bindle-50 ring-2 ring-inset ring-bindle-400'
             )}
           >
             {isDragOver && (
-              <div className="flex flex-col items-center justify-center h-full text-zell-500 gap-2">
+              <div className="flex flex-col items-center justify-center h-full text-bindle-500 gap-2">
                 <Upload size={32} strokeWidth={1.5} />
-                <p className="text-sm font-medium">释放以导�?Markdown 文件</p>
+                <p className="text-sm font-medium">释放以导入 Markdown 文件</p>
               </div>
             )}
             {!isDragOver && (
               listTab === 'files' ? (
               loading ? (
-                <p className="px-3 py-4 text-sm text-gray-400 text-center">加载�?..</p>
+                <p className="px-3 py-4 text-sm text-gray-400 text-center">加载中...</p>
               ) : filteredArticles.length === 0 ? (
                 <p className="px-3 py-4 text-sm text-gray-400 text-center">
-                  {searchQuery ? '无匹配文�? : '暂无文章'}
+                  {searchQuery ? '无匹配文章' : '暂无文章'}
                 </p>
               ) : (
                 filteredArticles.map((article) => (
@@ -345,7 +345,7 @@ export default function KnowledgeBasePage() {
               )
             ) : (
               headingTree.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-gray-400 text-center">无标�?/p>
+                <p className="px-3 py-4 text-sm text-gray-400 text-center">无标题</p>
               ) : (
                 headingTree.map((node, i) => (
                   <OutlineNode key={i} node={node} depth={0} />
@@ -370,7 +370,7 @@ export default function KnowledgeBasePage() {
                       if (e.key === 'Enter') handleCreate()
                       if (e.key === 'Escape') { setShowCreate(false); setNewTitle('') }
                     }}
-                    className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-zell-400"
+                    className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-bindle-400"
                   />
                   <Button size="sm" onClick={handleCreate} disabled={!newTitle.trim()}>确定</Button>
                 </div>
@@ -410,7 +410,7 @@ export default function KnowledgeBasePage() {
             <div className="flex-1 flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <FileText size={48} strokeWidth={1} className="mx-auto mb-3" />
-                <p className="text-lg">选择或创建一篇文�?/p>
+                <p className="text-lg">选择或创建一篇文章</p>
               </div>
             </div>
           )}
@@ -421,7 +421,7 @@ export default function KnowledgeBasePage() {
         open={!!deleteTarget}
         onOpenChange={() => setDeleteTarget(null)}
         title="删除文章"
-        description={'确定要删�?' + (deleteTarget?.title || '') + '"吗？此操作不可撤销�?}>
+        description={'确定要删除"' + (deleteTarget?.title || '') + '"吗？此操作不可撤销。'}>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setDeleteTarget(null)}>取消</Button>
           <Button variant="destructive" onClick={handleDelete}>确认删除</Button>
@@ -460,7 +460,7 @@ function ArticleItem({
     <div
       className={cn(
         'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
-        isActive ? 'bg-zell-100 text-zell-700' : 'text-gray-600 hover:bg-gray-50'
+        isActive ? 'bg-bindle-100 text-bindle-700' : 'text-gray-600 hover:bg-gray-50'
       )}
       onClick={() => onSelect(article)}
       onDoubleClick={handleDoubleClick}
@@ -477,14 +477,14 @@ function ArticleItem({
             if (e.key === 'Escape') { setRenaming(false); setRenameValue(article.title) }
           }}
           onClick={(e) => e.stopPropagation()}
-          className="flex-1 px-1 py-0.5 text-sm border border-zell-300 rounded outline-none focus:ring-1 focus:ring-zell-400"
+          className="flex-1 px-1 py-0.5 text-sm border border-bindle-300 rounded outline-none focus:ring-1 focus:ring-bindle-400"
         />
       ) : (
         <span className="truncate flex-1">{article.title}</span>
       )}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button onClick={(e) => { e.stopPropagation(); onExport(article, 'pdf') }} className="p-0.5 rounded hover:bg-zell-200" title="导出 PDF">
-          <FileOutput size={13} className="text-gray-400 hover:text-zell-600" />
+        <button onClick={(e) => { e.stopPropagation(); onExport(article, 'pdf') }} className="p-0.5 rounded hover:bg-bindle-200" title="导出 PDF">
+          <FileOutput size={13} className="text-gray-400 hover:text-bindle-600" />
         </button>
         <button onClick={(e) => { e.stopPropagation(); onDelete(article) }} className="p-0.5 rounded hover:bg-red-100" title="删除">
           <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
