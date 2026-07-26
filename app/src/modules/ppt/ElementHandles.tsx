@@ -147,11 +147,10 @@ export function ElementHandles({ element, zoom }: Props) {
               const scaled = element.groupChildren.map(c => ({
                 ...c, x: Math.round(c.x * sx2), y: Math.round(c.y * sy2),
                 w: Math.round(c.w * sx2), h: Math.round(c.h * sy2),
-              }))
-              usePptStore.getState().updateElement(usePptStore.getState().currentSlideId!, element.id, { groupChildren: scaled } as any)
-            }
+               }))
+               usePptStore.getState().updateElement(usePptStore.getState().currentSlideId!, element.id, { groupChildren: scaled } as any)
+              }
           }
-        }
       }
       stateRef.current = null
     }
