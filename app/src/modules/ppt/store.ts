@@ -15,7 +15,6 @@ interface PptState {
   selectedSlideIds: string[]
   activeEditor: Editor | null
   hoveredId: string | null
-  clipboardElements: CanvasElement[] | null
   zoom: number
   panX: number
   panY: number
@@ -53,7 +52,7 @@ interface PptState {
   setActiveEditor: (e: Editor | null) => void
   setHoveredId: (id: string | null) => void
   copyElements: () => void
-  pasteElements: () => void
+  pasteElements: () => Promise<boolean>
   undo: () => void
   redo: () => void
   groupElements: (slideId: string, ids: string[]) => void
@@ -112,7 +111,6 @@ export const usePptStore = create<PptState>((set, get) => ({
   selectedSlideIds: [],
   activeEditor: null,
   hoveredId: null,
-  clipboardElements: null,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -254,23 +252,39 @@ export const usePptStore = create<PptState>((set, get) => ({
   setGuideLines: (lines) => set({ guideLines: lines }),
   setActiveEditor: (e) => set({ activeEditor: e }),
   setHoveredId: (id) => set({ hoveredId: id }),
-  copyElements: () => {
+  copyElements: async () => {
     const { slides, currentSlideId, selectedIds } = get()
     const slide = slides.find(s => s.id === currentSlideId)
     if (!slide || selectedIds.length === 0) return
-    set({ clipboardElements: clone(slide.elements.filter(e => selectedIds.includes(e.id))) })
+    const elements = slide.elements.filter(e => selectedIds.includes(e.id))
+    const data = JSON.stringify(clone(elements))
+    try {
+      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
+      await writeText('ZELL_ELEMENTS:' + data)
+    } catch {}
   },
-  pasteElements: () => {
-    const { slides, currentSlideId, clipboardElements } = get()
-    if (!currentSlideId || !clipboardElements || clipboardElements.length === 0) return
-    const freshCopies = clone(clipboardElements).map((e: CanvasElement) => ({ ...e, id: genId(), x: e.x + 20, y: e.y + 20 }))
-    mutate(set, s => {
-      const ns = s.slides.map(sl => {
-        if (sl.id !== currentSlideId) return sl
-        return { ...sl, elements: [...sl.elements, ...freshCopies] }
-      })
-      return { slides: ns, selectedIds: freshCopies.map(e => e.id) }
-    })
+  pasteElements: async (): Promise<boolean> => {
+    const { slides, currentSlideId } = get()
+    if (!currentSlideId) return false
+    try {
+      const { readText } = await import('@tauri-apps/plugin-clipboard-manager')
+      const text = await readText()
+      if (text && text.startsWith('ZELL_ELEMENTS:')) {
+        const data = JSON.parse(text.slice('ZELL_ELEMENTS:'.length))
+        if (Array.isArray(data) && data.length > 0) {
+          const freshCopies = clone(data).map((e: CanvasElement) => ({ ...e, id: genId(), x: e.x + 20, y: e.y + 20 }))
+          mutate(set, s => {
+            const ns = s.slides.map(sl => {
+              if (sl.id !== currentSlideId) return sl
+              return { ...sl, elements: [...sl.elements, ...freshCopies] }
+            })
+            return { slides: ns, selectedIds: freshCopies.map(e => e.id) }
+          })
+          return true
+        }
+      }
+    } catch {}
+    return false
   },
   setResizing: (v: boolean) => { _isResizing = v },
   resetView: () => {
