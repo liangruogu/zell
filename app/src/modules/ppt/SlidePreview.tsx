@@ -114,7 +114,8 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
 
   return (
     <div
-      className="fixed inset-0 z-[99999] bg-black flex items-center justify-center"
+      className="fixed inset-0 z-[99999]"
+      style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       data-preview="true"
       onClick={(e) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
