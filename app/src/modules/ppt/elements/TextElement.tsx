@@ -88,7 +88,7 @@ export function TextEl({ el, isSelected }: EP) {
         p.fontFamily || 'inherit',
         p.lineHeight || 1.5
       )
-      const newH = Math.max(el.h, measured + 4)
+      const newH = Math.max(10, measured + 4)
       s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, content: json }, h: newH })
     }
   }, [el.id, el.props, el.w, el.h, fontSize, p.fontFamily, p.lineHeight])
