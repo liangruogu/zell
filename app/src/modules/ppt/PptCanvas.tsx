@@ -47,8 +47,10 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
           if (st._previewing) {
             const reenter = () => getCurrentWindow().setFullscreen(true).catch(() => {})
             requestAnimationFrame(reenter)
-            setTimeout(reenter, 30)
-            setTimeout(reenter, 80)
+            setTimeout(reenter, 20)
+            setTimeout(reenter, 50)
+            setTimeout(reenter, 100)
+            setTimeout(reenter, 200)
           }
         }
       }
