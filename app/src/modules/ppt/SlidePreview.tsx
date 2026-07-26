@@ -52,23 +52,6 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
     return () => { win.setFullscreen(false) }
   }, [])
 
-  // Keyboard navigation
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'j') goNext()
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'k') goPrev()
-      if (e.key === 'g') {
-        if ((e.target as HTMLElement)?.tagName === 'INPUT') return
-        if (ggTimer.current) { clearTimeout(ggTimer.current); ggTimer.current = null; goFirst() }
-        else { ggTimer.current = setTimeout(() => { ggTimer.current = null }, 350) }
-      }
-      if (e.key === 'G' && !e.ctrlKey) goLast()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => { window.removeEventListener('keydown', onKey) }
-  }, [idx, visible.length, goNext, goPrev, goFirst, goLast, onClose])
-
   const goNext = useCallback(() => {
     if (idx < visible.length - 1) { setIdx(idx + 1); setCurrentSlide(visible[idx + 1].id) }
   }, [idx, visible])
@@ -87,6 +70,23 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   }, [idx, visible])
 
   const ggTimer = useRef<ReturnType<typeof setTimeout>>()
+
+  // Keyboard navigation
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'j') goNext()
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'k') goPrev()
+      if (e.key === 'g') {
+        if ((e.target as HTMLElement)?.tagName === 'INPUT') return
+        if (ggTimer.current) { clearTimeout(ggTimer.current); ggTimer.current = null; goFirst() }
+        else { ggTimer.current = setTimeout(() => { ggTimer.current = null }, 350) }
+      }
+      if (e.key === 'G' && !e.ctrlKey) goLast()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey) }
+  }, [idx, visible.length, goNext, goPrev, goFirst, goLast, onClose])
 
   const [hoverSide, setHoverSide] = useState<'left' | 'right' | null>(null)
   const cursorTimer = useRef<ReturnType<typeof setTimeout>>()
