@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useCallback } from 'react'
 import { Editor } from '@tiptap/core'
 import { StarterKit } from '@tiptap/starter-kit'
 import { TextAlign } from '@tiptap/extension-text-align'
@@ -38,6 +38,7 @@ interface RichTextEditorProps {
   onBlur: (json: any) => void
   onCancel: () => void
   onComplete: (json: any) => void
+  onHeightChange?: (h: number) => void
 }
 
 export function RichTextEditor({
@@ -45,12 +46,14 @@ export function RichTextEditor({
   fontSize, fontColor, fontFamily,
   fontWeight, fontStyle, textDecoration,
   lineHeight, textAlign, letterSpacing,
-  onBlur, onCancel, onComplete,
+  onBlur, onCancel, onComplete, onHeightChange,
 }: RichTextEditorProps) {
   const mountRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<Editor | null>(null)
   const initialContentRef = useRef(content)
   const completingRef = useRef(false)
+  const onHeightChangeRef = useRef(onHeightChange)
+  onHeightChangeRef.current = onHeightChange
 
   useLayoutEffect(() => {
     if (!mountRef.current) return
@@ -71,6 +74,7 @@ export function RichTextEditor({
       `overflow-wrap:break-word`,
       `word-break:break-word`,
       `white-space:pre-wrap`,
+      `list-style-position:${textAlign === 'left' ? 'outside' : 'inside'}`,
     ].join(';')
 
     const ed = new Editor({
@@ -120,6 +124,13 @@ export function RichTextEditor({
       },
       onUpdate: ({ editor }) => {
         initialContentRef.current = editor.getJSON()
+        if (onHeightChangeRef.current) {
+          const dom = editor.view.dom
+          if (dom) {
+            const contentH = dom.scrollHeight
+            onHeightChangeRef.current(contentH + 4)
+          }
+        }
       },
       onBlur: ({ editor }) => {
         if (completingRef.current) return
@@ -146,7 +157,7 @@ export function RichTextEditor({
     <div
       ref={mountRef}
       className="tl-rich-text"
-      style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+      style={{ position: 'absolute', top: 2, left: 4, right: 4, bottom: 2, zIndex: 1 }}
     />
   )
 }

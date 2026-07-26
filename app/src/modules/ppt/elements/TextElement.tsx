@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, memo } from 'react'
+import { useState, useCallback, useMemo, memo, useRef } from 'react'
 import { useDrag, shadowStyle, type EP, type ElementConfig } from './utils'
 import { usePptStore } from '../store'
 import { RichTextEditor, renderRichTextHTML } from './RichTextEditor'
@@ -43,10 +43,17 @@ export function TextEl({ el, isSelected }: EP) {
   const { onMouseDown, dragging } = useDrag(el.id)
   const ss = shadowStyle(el.props)
   const p = el.props
+  const containerRef = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
   const content = p.content || defaultContent(p.text || '')
   const fontSize = p.fontSize || 16
   const html = useMemo(() => renderRichTextHTML(content), [content])
+
+  const handleHeightChange = useCallback((newH: number) => {
+    if (containerRef.current && newH > el.h) {
+      containerRef.current.style.height = newH + 'px'
+    }
+  }, [el.h])
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (e.detail === 2) { e.preventDefault(); e.stopPropagation(); setEditing(true) }
@@ -100,7 +107,7 @@ export function TextEl({ el, isSelected }: EP) {
   }
 
   return (
-    <div data-el-id={el.id} style={boxStyle} onClick={handleClick} onMouseDown={editing ? (e) => e.stopPropagation() : onMouseDown}>
+    <div data-el-id={el.id} ref={containerRef} style={boxStyle} onClick={handleClick} onMouseDown={editing ? (e) => e.stopPropagation() : onMouseDown}>
       {!editing && <TextHTML html={html} elW={el.w} elH={el.h} />}
       {editing && (
         <RichTextEditor
@@ -120,6 +127,7 @@ export function TextEl({ el, isSelected }: EP) {
             saveContent(json)
             setEditing(false)
           }}
+          onHeightChange={handleHeightChange}
         />
       )}
     </div>
@@ -188,7 +196,7 @@ export const textConfig: ElementConfig = {
     if (handle.length === 2) {
       let nw = sw, nh = sh, nx = sx, ny = sy
       switch (handle) { case 'nw': nx = sx + dx; ny = sy + dy; nw = sw - dx; nh = sh - dy; break; case 'ne': ny = sy + dy; nw = sw + dx; nh = sh - dy; break; case 'sw': nx = sx + dx; nw = sw - dx; nh = sh + dy; break; case 'se': nw = sw + dx; nh = sh + dy; break }
-      if (nw < 20) nw = 20; if (nh < 10) nh = 10
+      if (nw < sFontSize) nw = sFontSize; if (nh < 10) nh = 10
       const scale = nw / sw
       const newSize = Math.max(6, Math.min(999, Math.round(sFontSize * scale)))
       nh = sh * (newSize / sFontSize)
@@ -196,7 +204,7 @@ export const textConfig: ElementConfig = {
     }
     let nx = sx, ny = sy, nw = sw, nh = sh
     switch (handle) { case 'w': nx = sx + dx; nw = sw - dx; break; case 'e': nw = sw + dx; break }
-    if (nw < 20) nw = 20; nh = sh
+    if (nw < sFontSize) nw = sFontSize; nh = sh
     return { x: Math.round(nx), y: Math.round(ny), w: Math.round(nw), h: Math.round(nh) }
   },
 }

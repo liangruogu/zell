@@ -481,8 +481,8 @@ kbd {
 .tl-rich-text ul,
 .tl-rich-text ol {
   margin: 0;
-  padding-left: 1.625ch;
-  list-style: revert;
+  padding-left: 0;
+  list-style-position: inside;
 }
 .tl-rich-text li {
   margin: 0;
