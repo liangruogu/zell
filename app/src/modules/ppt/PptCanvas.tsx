@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { getCurrentWindow } from '@tauri-apps/api/window'
+import { readImage } from '@tauri-apps/plugin-clipboard-manager'
 import { PptToolbar } from './PptToolbar'
 import { SlideStrip } from './SlideStrip'
 import { CanvasViewport } from './CanvasViewport'
@@ -19,14 +19,8 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
 
   useEffect(() => { if (data) init(data) }, [data])
 
-  // Ctrl+V paste image via contenteditable
+  // Ctrl+V paste image via Tauri clipboard plugin (no focus change needed)
   useEffect(() => {
-    // Hidden contenteditable to receive paste (webview2 only allows paste to focused contenteditable)
-    const div = document.createElement('div')
-    div.contentEditable = 'true'
-    div.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden'
-    document.body.appendChild(div)
-
     const insertImage = (src: string) => {
       const img = new Image()
       img.onload = () => {
@@ -43,72 +37,22 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
             w: Math.round(w), h: Math.round(h), opacity: 1,
             props: { src, origW: ow, origH: oh, imgScale: w / ow },
           })
-          // Re-enter fullscreen quickly if previewing
-          if (st._previewing) {
-            const retry = (n: number) => {
-              if (n <= 0) return
-              getCurrentWindow().setFullscreen(true).catch(() => {})
-              setTimeout(() => retry(n - 1), 50)
-            }
-            setTimeout(() => retry(2), 50)
-          }
         }
       }
       img.src = src
     }
 
-    const onPaste = (e: ClipboardEvent) => {
-      // Only handle when our hidden div is the target
-      if (e.target !== div) return
-      e.preventDefault(); e.stopPropagation()
-      // Check for file/image in clipboardData (synchronous API, works in webview2)
-      const items = e.clipboardData?.items
-      if (!items) return
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith('image/')) {
-          const blob = items[i].getAsFile()
-          if (blob) {
-            const reader = new FileReader()
-            reader.onload = (ev) => {
-              const src = ev.target?.result as string
-              if (src) insertImage(src)
-            }
-            reader.readAsDataURL(blob)
-            div.innerHTML = ''
-            return
-          }
-        }
-      }
-      // Check for pasted img tags (HTML paste)
-      setTimeout(() => {
-        const imgs = div.querySelectorAll('img')
-        imgs.forEach((img) => { if ((img as HTMLImageElement).src) insertImage((img as HTMLImageElement).src) })
-        div.innerHTML = ''
-      }, 10)
-    }
-
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = async (e: KeyboardEvent) => {
       if (!(e.ctrlKey && e.key === 'v')) return
-      if ((e.target as HTMLElement)?.closest?.('[contenteditable="true"]')) return
-      if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return
-      e.preventDefault(); e.stopPropagation()
-      div.innerHTML = ''
-      div.focus()
-      // Manually dispatch paste event to the focused div via browser API
-      requestAnimationFrame(() => {
-        document.execCommand('paste')
-      })
+      if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return
+      try {
+        const base64 = await readImage()
+        if (base64) { e.preventDefault(); insertImage(`data:image/png;base64,${base64}`) }
+      } catch { /* no image in clipboard */ }
     }
 
     document.addEventListener('keydown', onKey)
-    div.addEventListener('paste', onPaste)
-    ;(window as any).__pptPasteImage = () => { div.innerHTML = ''; div.focus() }
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      div.removeEventListener('paste', onPaste)
-      delete (window as any).__pptPasteImage
-      div.remove()
-    }
+    return () => { document.removeEventListener('keydown', onKey) }
   }, [])
 
   useEffect(() => {
