@@ -108,6 +108,7 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   return (
     <div
       className="fixed inset-0 z-[99999] bg-black flex items-center justify-center"
+      data-preview="true"
       onMouseMove={(e) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
         setHoverSide(e.clientX > rect.width / 2 ? 'right' : 'left')
