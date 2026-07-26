@@ -36,6 +36,7 @@ function measureContentHeight(html: string, w: number, fontSize: number, fontFam
   document.body.appendChild(div)
   const rect = div.getBoundingClientRect()
   const h = Math.ceil(rect.height)
+  console.log('[H:measure] w-8:', w-8, 'fontSize:', fontSize, 'rectH:', rect.height.toFixed(1), '→ ceil:', h, '(scrollH:', div.scrollHeight, ')')
   document.body.removeChild(div)
   return h
 }
@@ -51,13 +52,20 @@ export function TextEl({ el, isSelected }: EP) {
   const html = useMemo(() => renderRichTextHTML(content), [content])
 
   const rafRef = useRef<number>(0)
+  const latestHRef = useRef(el.h)
 
   const handleHeightChange = useCallback((newH: number) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    latestHRef.current = newH
+    if (rafRef.current) {
+      console.log('[H:rAF] queued latestH:', newH)
+      return
+    }
     rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0
       const s = usePptStore.getState()
       if (s.currentSlideId) {
-        s.updateElement(s.currentSlideId, el.id, { h: newH })
+        console.log('[H:rAF] STORE h:', latestHRef.current, '(was:', el.h, ')')
+        s.updateElement(s.currentSlideId, el.id, { h: latestHRef.current })
       }
     })
   }, [el.id])
@@ -89,6 +97,7 @@ export function TextEl({ el, isSelected }: EP) {
         p.lineHeight || 1.5
       )
       const newH = Math.max(10, measured + 4)
+      console.log('[H:save] measured:', measured, '+4→', newH, '(el.h:', el.h, ')')
       s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, content: json }, h: newH })
     }
   }, [el.id, el.props, el.w, el.h, fontSize, p.fontFamily, p.lineHeight])
@@ -227,6 +236,8 @@ export const textConfig: ElementConfig = {
     const fontFamily = el.props.fontFamily || 'inherit'
     const lineHeight = el.props.lineHeight || 1.5
     const measured = measureContentHeight(html, w, fontSize, fontFamily, lineHeight)
-    return { h: Math.max(10, measured + 4) }
+    const newH = Math.max(10, measured + 4)
+    console.log('[H:resizeEnd] measured:', measured, '+4→', newH, '(el.h:', el.h, 'el.w:', el.w, ')')
+    return { h: newH }
   },
 }
