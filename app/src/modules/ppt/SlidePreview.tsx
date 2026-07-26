@@ -13,7 +13,8 @@ export function PreviewButton() {
   useEffect(() => {
     if (fullscreen) {
       usePptStore.getState().setPreviewing(true)
-      return () => usePptStore.getState().setPreviewing(false)
+      console.log('_previewing set to TRUE')
+      return () => { usePptStore.getState().setPreviewing(false); console.log('_previewing set to FALSE') }
     }
   }, [fullscreen])
 
