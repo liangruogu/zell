@@ -4,6 +4,7 @@ import { X, GripVertical, Bold, Italic, Underline, Strikethrough, AlignLeft, Ali
 import { usePptStore } from './store'
 import type { CanvasElement } from './types'
 import { useRichText } from './elements/RichTextEditor'
+import { renderRichTextHTML } from './elements/RichTextEditor'
 import { toggleListInJSON, hasListInJSON, removeListFromJSON } from './elements/TextElement'
 
 const SCRUB = { threshold: 3, speed: 1 }
@@ -354,6 +355,35 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
   const updateProps = (props: Partial<CanvasElement['props']>) => update({ props: { ...el.props, ...props } })
   const rt = useRichText()
 
+  const remeasure = (patch: Record<string, any>) => {
+    const np = { ...el.props, ...patch }
+    const html = renderRichTextHTML(el.props.content)
+    if (html) {
+      const h = (() => {
+        const div = document.createElement('div')
+        div.className = 'tl-rich-text'
+        div.innerHTML = html
+        div.style.cssText = [
+          `position:absolute;visibility:hidden`,
+          `width:${el.w - 8}px`,
+          `font-size:${np.fontSize || 16}px`,
+          `font-family:${np.fontFamily || 'inherit'}`,
+          `line-height:${np.lineHeight || 1.5}`,
+          `letter-spacing:${np.letterSpacing || 0}px`,
+          `overflow-wrap:break-word;word-break:break-word`,
+          `padding:0;margin:0`,
+        ].join(';')
+        document.body.appendChild(div)
+        const hh = Math.ceil(div.getBoundingClientRect().height) + 4
+        document.body.removeChild(div)
+        return hh
+      })()
+      update({ props: np, h: Math.max(10, h) })
+    } else {
+      update({ props: np })
+    }
+  }
+
   return (
     <div className="space-y-3">
       {el.type !== 'group' && (
@@ -382,19 +412,19 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
         <>
           <FontSelect value={el.props.fontFamily || 'inherit'} onChange={v => {
             const val = v === 'inherit' ? undefined : v
-            if (rt.editor) { rt.setFontFamily(val || '') }
-            updateProps({ fontFamily: val })
+            if (rt.editor) rt.setFontFamily(val || '')
+            remeasure({ fontFamily: val })
           }} />
           <div className="grid gap-1.5 mt-1" style={{ gridTemplateColumns: '2.8em 1fr' }}>
             <span className="text-[11px] text-gray-500 self-center text-right">字号</span>
             <ScrubInput label="" value={el.props.fontSize || 16} onChange={v => {
               if (rt.editor) rt.setFontSize(v + 'px')
-              updateProps({ fontSize: v })
+              remeasure({ fontSize: v })
             }} min={1} max={999} />
             <span className="text-[11px] text-gray-500 self-center text-right">行距</span>
-            <ScrubInput label="" value={el.props.lineHeight || 1.5} onChange={v => updateProps({ lineHeight: v })} min={0.5} max={5} step={0.1} integer={false} />
+            <ScrubInput label="" value={el.props.lineHeight || 1.5} onChange={v => remeasure({ lineHeight: v })} min={0.5} max={5} step={0.1} integer={false} />
             <span className="text-[11px] text-gray-500 self-center text-right">字距</span>
-            <ScrubInput label="" value={el.props.letterSpacing || 0} onChange={v => updateProps({ letterSpacing: v })} min={-5} max={20} />
+            <ScrubInput label="" value={el.props.letterSpacing || 0} onChange={v => remeasure({ letterSpacing: v })} min={-5} max={20} />
           </div>
           <ColorChip label="颜色" color={el.props.fontColor || '#333'} onChange={v => {
             if (rt.editor) rt.setColor(v)

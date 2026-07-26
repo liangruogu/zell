@@ -17,7 +17,7 @@ const TextHTML = memo(function TextHTML({ html }: { html: string }) {
   )
 }, (prev, next) => prev.html === next.html)
 
-function measureContentHeight(html: string, w: number, fontSize: number, fontFamily: string, lineHeight: number): number {
+function measureContentHeight(html: string, w: number, fontSize: number, fontFamily: string, lineHeight: number, letterSpacing: number = 0): number {
   const div = document.createElement('div')
   div.className = 'tl-rich-text'
   div.innerHTML = html
@@ -28,6 +28,7 @@ function measureContentHeight(html: string, w: number, fontSize: number, fontFam
     `font-size:${fontSize}px`,
     `font-family:${fontFamily === 'inherit' ? 'inherit' : fontFamily}`,
     `line-height:${lineHeight}`,
+    `letter-spacing:${letterSpacing}px`,
     `overflow-wrap:break-word`,
     `word-break:break-word`,
     `padding:0`,
@@ -89,7 +90,8 @@ export function TextEl({ el, isSelected }: EP) {
         el.w,
         fontSize,
         p.fontFamily || 'inherit',
-        p.lineHeight || 1.5
+        p.lineHeight || 1.5,
+        p.letterSpacing || 0
       )
       const newH = Math.max(10, measured + 4)
       s.updateElement(s.currentSlideId, el.id, { props: { ...el.props, content: json }, h: newH })
@@ -229,7 +231,7 @@ export const textConfig: ElementConfig = {
     const fontSize = el.props.fontSize || 16
     const fontFamily = el.props.fontFamily || 'inherit'
     const lineHeight = el.props.lineHeight || 1.5
-    const measured = measureContentHeight(html, w, fontSize, fontFamily, lineHeight)
+    const measured = measureContentHeight(html, w, fontSize, fontFamily, lineHeight, el.props.letterSpacing || 0)
     return { h: Math.max(10, measured + 4) }
   },
 }
