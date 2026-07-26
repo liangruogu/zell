@@ -3,6 +3,7 @@ import { Plus, Trash2, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePptStore } from './store'
 import type { Slide } from './types'
+import { renderRichTextHTML } from './elements/RichTextEditor'
 
 export function SlideStrip() {
   const s = usePptStore()
@@ -473,9 +474,16 @@ function MiniSlide({ slide }: { slide: Slide }) {
             </div>
           )
         }
-        return (
-          <div key={el.id} style={{ position: 'absolute', left: el.x * s, top: el.y * s, width: Math.max(el.w * s, 2), height: Math.max(el.h * s, 1), background: el.type === 'text' ? '#d1d5db' : el.props.fill || '#e2e8f0', borderRadius: el.type === 'ellipse' ? '50%' : 0, opacity: el.opacity }} />
-        )
+        if (el.type === 'text') {
+          const p = el.props
+          const content = p.content || { type: 'doc', content: p.text ? [{ type: 'paragraph', content: [{ type: 'text', text: p.text }] }] : [{ type: 'paragraph' }] }
+          const html = renderRichTextHTML(content)
+          return (
+            <div key={el.id} style={{ position: 'absolute', left: el.x * s, top: el.y * s, width: Math.max(el.w * s, 1), height: Math.max(el.h * s, 1), overflow: 'hidden', opacity: el.opacity, fontSize: (p.fontSize || 16) * s, color: p.fontColor || '#333', fontFamily: p.fontFamily || 'inherit', fontWeight: p.fontWeight || 'normal', fontStyle: p.fontStyle || 'normal', textDecoration: p.textDecoration || 'none', lineHeight: p.lineHeight || 1.5, textAlign: (p.textAlign || 'left') as any, letterSpacing: (p.letterSpacing || 0) * s, padding: 2 * s }}>
+              <div className="tl-rich-text" dangerouslySetInnerHTML={{ __html: html }} style={{ transform: `scale(${s})`, transformOrigin: 'top left', width: el.w, fontSize: p.fontSize || 16 }} />
+            </div>
+          )
+        }
       })}
     </div>
   )

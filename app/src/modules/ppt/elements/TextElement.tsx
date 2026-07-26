@@ -34,7 +34,8 @@ function measureContentHeight(html: string, w: number, fontSize: number, fontFam
     `margin:0`,
   ].join(';')
   document.body.appendChild(div)
-  const h = div.scrollHeight
+  const rect = div.getBoundingClientRect()
+  const h = Math.ceil(rect.height)
   document.body.removeChild(div)
   return h
 }

@@ -126,8 +126,8 @@ export function RichTextEditor({
         if (onHeightChangeRef.current) {
           const dom = editor.view.dom
           if (dom) {
-            const contentH = dom.scrollHeight
-            onHeightChangeRef.current(contentH + 4)
+            const rect = dom.getBoundingClientRect()
+            onHeightChangeRef.current(Math.ceil(rect.height) + 4)
           }
         }
       },

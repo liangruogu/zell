@@ -97,7 +97,8 @@ export function ElementHandles({ element, zoom }: Props) {
       if (element.type === 'text' && boxEl && updates.w != null) {
         const textDiv = boxEl.querySelector<HTMLElement>('.tl-rich-text')
         if (textDiv) {
-          const naturalH = textDiv.scrollHeight + 4
+          const rect = textDiv.getBoundingClientRect()
+          const naturalH = Math.ceil(rect.height) + 4
           if (Math.abs(naturalH - (updates.h ?? element.h)) > 1) {
             updates = { ...updates, h: naturalH }
             boxEl.style.height = naturalH + 'px'
