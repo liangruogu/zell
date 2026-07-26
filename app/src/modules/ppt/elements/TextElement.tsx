@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, memo, useRef } from 'react'
+import { useState, useCallback, useMemo, memo, useRef, useEffect } from 'react'
 import { useDrag, shadowStyle, type EP, type ElementConfig } from './utils'
 import { usePptStore } from '../store'
 import { RichTextEditor, renderRichTextHTML } from './RichTextEditor'
@@ -49,11 +49,23 @@ export function TextEl({ el, isSelected }: EP) {
   const fontSize = p.fontSize || 16
   const html = useMemo(() => renderRichTextHTML(content), [content])
 
+  const heightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const handleHeightChange = useCallback((newH: number) => {
-    if (containerRef.current && newH > el.h) {
-      containerRef.current.style.height = newH + 'px'
-    }
-  }, [el.h])
+    if (newH <= el.h) return
+    // Debounce store updates during typing
+    if (heightTimerRef.current) clearTimeout(heightTimerRef.current)
+    heightTimerRef.current = setTimeout(() => {
+      const s = usePptStore.getState()
+      if (s.currentSlideId) {
+        s.updateElement(s.currentSlideId, el.id, { h: newH })
+      }
+    }, 60)
+  }, [el.id, el.h])
+
+  useEffect(() => {
+    return () => { if (heightTimerRef.current) clearTimeout(heightTimerRef.current) }
+  }, [])
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (e.detail === 2) { e.preventDefault(); e.stopPropagation(); setEditing(true) }
@@ -206,5 +218,19 @@ export const textConfig: ElementConfig = {
     switch (handle) { case 'w': nx = sx + dx; nw = sw - dx; break; case 'e': nw = sw + dx; break }
     if (nw < sFontSize) nw = sFontSize; nh = sh
     return { x: Math.round(nx), y: Math.round(ny), w: Math.round(nw), h: Math.round(nh) }
+  },
+  onResizeEnd(el, state) {
+    const content = el.props.content
+    if (!content) return null
+    const html = renderRichTextHTML(content)
+    const w = el.w
+    const fontSize = el.props.fontSize || 16
+    const fontFamily = el.props.fontFamily || 'inherit'
+    const lineHeight = el.props.lineHeight || 1.5
+    const measured = measureContentHeight(html, w, fontSize, fontFamily, lineHeight)
+    if (measured + 4 > el.h) {
+      return { h: measured + 4 }
+    }
+    return null
   },
 }

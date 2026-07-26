@@ -13,6 +13,7 @@ export interface ElementConfig {
   handles: string[]
   onResizeStart: (el: CanvasElement, handle: string, e: React.MouseEvent) => any
   onResizeMove: (state: any, el: CanvasElement, handle: string, dx: number, dy: number, shift: boolean) => Partial<CanvasElement>
+  onResizeEnd?: (el: CanvasElement, state: any) => Partial<CanvasElement> | null
 }
 
 export function useDrag(elementId: string) {

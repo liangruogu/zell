@@ -99,11 +99,19 @@ export function ElementHandles({ element, zoom }: Props) {
     const onUp = () => {
       setActiveHandle(null)
       usePptStore.getState().setResizing(false)
-      const s = usePptStore.getState()
-      if (s.currentSlideId && stateRef.current) {
+      const s2 = usePptStore.getState()
+      if (s2.currentSlideId && stateRef.current) {
         const pending = (stateRef.current as any)._pending
         if (pending) {
-          s.updateElement(s.currentSlideId, element.id, pending)
+          s2.updateElement(s2.currentSlideId, element.id, pending)
+          const config2 = getConfig(element.type)
+          if (config2.onResizeEnd) {
+            const el2 = s2.slides.find(sl => sl.id === s2.currentSlideId)?.elements.find(ee => ee.id === element.id)
+            if (el2) {
+              const post = config2.onResizeEnd(el2, stateRef.current)
+              if (post) s2.updateElement(s2.currentSlideId, element.id, post)
+            }
+          }
           if (element.type === 'group' && element.groupChildren && stateRef.current.sw > 0 && stateRef.current.sh > 0) {
             const sx2 = (pending.w ?? 0) / stateRef.current.sw
             const sy2 = (pending.h ?? 0) / stateRef.current.sh
@@ -112,7 +120,7 @@ export function ElementHandles({ element, zoom }: Props) {
                 ...c, x: Math.round(c.x * sx2), y: Math.round(c.y * sy2),
                 w: Math.round(c.w * sx2), h: Math.round(c.h * sy2),
               }))
-              s.updateElement(s.currentSlideId, element.id, { groupChildren: scaled } as any)
+              s2.updateElement(s2.currentSlideId, element.id, { groupChildren: scaled } as any)
             }
           }
         }
