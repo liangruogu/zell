@@ -254,8 +254,11 @@ export function CanvasViewport() {
       }
       if (e.ctrlKey && e.key === 'v') {
         e.preventDefault()
-        if (s.clipboardElements && s.clipboardElements.length > 0) s.pasteElements()
-        else { try { (window as any).__pptPasteImage() } catch { s.pasteSlide() } }
+        if (s.clipboardElements && s.clipboardElements.length > 0) {
+          s.pasteElements()
+        } else {
+          (window as any).__pptPasteImage?.()
+        }
       }
       if (e.ctrlKey && e.key === 'g' && !e.shiftKey && s.currentSlideId) { e.preventDefault(); s.groupElements(s.currentSlideId, s.selectedIds) }
       if (e.ctrlKey && e.shiftKey && e.key === 'G' && s.currentSlideId) { e.preventDefault(); if (s.selectedIds.length === 1) s.ungroupElement(s.currentSlideId, s.selectedIds[0]) }
