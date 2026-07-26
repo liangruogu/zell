@@ -43,9 +43,13 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
             w: Math.round(w), h: Math.round(h), opacity: 1,
             props: { src, origW: ow, origH: oh, imgScale: w / ow },
           })
-          // Re-enter fullscreen if previewing (focus was stolen by paste)
+          // Re-enter fullscreen if previewing (focus lost during paste)
           if (st._previewing) {
-            setTimeout(() => { getCurrentWindow().setFullscreen(true) }, 100)
+            const retry = (n: number) => {
+              if (n <= 0) return
+              getCurrentWindow().setFullscreen(true).catch(() => setTimeout(() => retry(n - 1), 200))
+            }
+            setTimeout(() => retry(3), 150)
           }
         }
       }
