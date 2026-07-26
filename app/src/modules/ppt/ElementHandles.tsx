@@ -113,36 +113,34 @@ export function ElementHandles({ element, zoom }: Props) {
       setActiveHandle(null)
       usePptStore.getState().setResizing(false)
       usePptStore.getState().setGuideLines([])
-      const s2 = usePptStore.getState()
-      if (s2.currentSlideId && stateRef.current) {
-        const pending = (stateRef.current as any)._pending
-        if (pending) {
-          console.log('[H:up] pending.h:', pending.h, 'pending.w:', pending.w)
-          s2.updateElement(s2.currentSlideId, element.id, pending)
-          if (element.type === 'text') {
-            const elAfter = s2.slides.find(sl => sl.id === s2.currentSlideId)?.elements.find(ee => ee.id === element.id)
-            console.log('[H:up] after pending, store.h:', elAfter?.h)
-          }
-          const config2 = getConfig(element.type)
-          if (config2.onResizeEnd) {
-            const el2 = s2.slides.find(sl => sl.id === s2.currentSlideId)?.elements.find(ee => ee.id === element.id)
-            if (el2) {
-              const post = config2.onResizeEnd(el2, stateRef.current)
-              if (post) s2.updateElement(s2.currentSlideId, element.id, post)
+      if (!usePptStore.getState().currentSlideId || !stateRef.current) return
+      const pending = (stateRef.current as any)._pending
+      if (pending) {
+        console.log('[H:up] pending.h:', pending.h)
+        usePptStore.getState().updateElement(usePptStore.getState().currentSlideId!, element.id, pending)
+        console.log('[H:up] after update, store.h:', usePptStore.getState().slides.find(sl => sl.id === usePptStore.getState().currentSlideId)?.elements.find(ee => ee.id === element.id)?.h)
+        const config2 = getConfig(element.type)
+        if (config2.onResizeEnd) {
+          const freshEl = usePptStore.getState().slides.find(sl => sl.id === usePptStore.getState().currentSlideId)?.elements.find(ee => ee.id === element.id)
+          if (freshEl) {
+            const post = config2.onResizeEnd(freshEl, stateRef.current)
+            if (post) {
+              usePptStore.getState().updateElement(usePptStore.getState().currentSlideId!, element.id, post)
+              console.log('[H:resizeEnd] after post, store.h:', usePptStore.getState().slides.find(sl => sl.id === usePptStore.getState().currentSlideId)?.elements.find(ee => ee.id === element.id)?.h)
             }
           }
-          if (element.type === 'text') {
-            const el3 = s2.slides.find(sl => sl.id === s2.currentSlideId)?.elements.find(ee => ee.id === element.id)
-            if (el3) {
-              console.log('[H:resizeEnd] after post, store.h:', el3.h)
-              requestAnimationFrame(() => {
-                const boxEl2 = document.querySelector<HTMLElement>(`[data-el-id="${element.id}"]`)
-                const domH = boxEl2?.getBoundingClientRect().height
-                console.log('[H:resizeEnd] DOM h:', domH?.toFixed(1), 'MATCH:', Math.abs((domH ?? 0) - el3.h) < 1)
-              })
-            }
+        }
+        if (element.type === 'text') {
+          const el3 = usePptStore.getState().slides.find(sl => sl.id === usePptStore.getState().currentSlideId)?.elements.find(ee => ee.id === element.id)
+          if (el3) {
+            requestAnimationFrame(() => {
+              const boxEl2 = document.querySelector<HTMLElement>(`[data-el-id="${element.id}"]`)
+              const domH = boxEl2?.getBoundingClientRect().height
+              console.log('[H:resizeEnd] DOM h:', domH?.toFixed(1), 'MATCH:', Math.abs((domH ?? 0) - el3.h) < 1)
+            })
           }
-          if (element.type === 'group' && element.groupChildren && stateRef.current.sw > 0 && stateRef.current.sh > 0) {
+        }
+        if (element.type === 'group' && element.groupChildren && stateRef.current.sw > 0 && stateRef.current.sh > 0) {
             const sx2 = (pending.w ?? 0) / stateRef.current.sw
             const sy2 = (pending.h ?? 0) / stateRef.current.sh
             if (sx2 > 0 && sy2 > 0) {
@@ -150,7 +148,7 @@ export function ElementHandles({ element, zoom }: Props) {
                 ...c, x: Math.round(c.x * sx2), y: Math.round(c.y * sy2),
                 w: Math.round(c.w * sx2), h: Math.round(c.h * sy2),
               }))
-              s2.updateElement(s2.currentSlideId, element.id, { groupChildren: scaled } as any)
+              usePptStore.getState().updateElement(usePptStore.getState().currentSlideId!, element.id, { groupChildren: scaled } as any)
             }
           }
         }
