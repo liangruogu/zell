@@ -126,10 +126,7 @@ export function RichTextEditor({
         if (onHeightChangeRef.current) {
           const dom = editor.view.dom
           if (dom) {
-            const sh = dom.scrollHeight
-            const rect = dom.getBoundingClientRect()
-            console.log('[H:editor] scrollH:', sh, 'rectH:', rect.height.toFixed(1), '→', Math.ceil(rect.height) + 4)
-            onHeightChangeRef.current(Math.ceil(rect.height) + 4)
+            onHeightChangeRef.current(Math.ceil(dom.getBoundingClientRect().height) + 4)
           }
         }
       },
@@ -209,4 +206,28 @@ export function renderRichTextHTML(content: any): string {
   } catch {
     return ''
   }
+}
+
+export function measureContentWidth(content: any, fontSize: number, fontFamily: string, lineHeight: number): number {
+  const html = renderRichTextHTML(content)
+  if (!html) return 100
+  const div = document.createElement('div')
+  div.className = 'tl-rich-text'
+  div.innerHTML = html
+  div.style.cssText = [
+    `position:absolute`,
+    `visibility:hidden`,
+    `font-size:${fontSize}px`,
+    `font-family:${fontFamily === 'inherit' ? 'inherit' : fontFamily}`,
+    `line-height:${lineHeight}`,
+    `overflow-wrap:break-word`,
+    `word-break:break-word`,
+    `white-space:pre-wrap`,
+    `padding:0`,
+    `margin:0`,
+  ].join(';')
+  document.body.appendChild(div)
+  const w = Math.max(100, Math.ceil(div.scrollWidth) + 8)
+  document.body.removeChild(div)
+  return w
 }

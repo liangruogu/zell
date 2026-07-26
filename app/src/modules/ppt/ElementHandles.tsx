@@ -102,7 +102,6 @@ export function ElementHandles({ element, zoom }: Props) {
           updates = { ...updates, h: naturalH }
           boxEl.style.height = naturalH + 'px'
           if (hEl) hEl.style.height = naturalH + 'px'
-          console.log('[H:resize] rectH:', rect.height.toFixed(1), '→ ceil+4:', naturalH, 'domH:', boxEl.style.height)
         }
       }
 
@@ -116,9 +115,7 @@ export function ElementHandles({ element, zoom }: Props) {
       if (!usePptStore.getState().currentSlideId || !stateRef.current) return
       const pending = (stateRef.current as any)._pending
       if (pending) {
-        console.log('[H:up] pending.h:', pending.h)
         usePptStore.getState().updateElement(usePptStore.getState().currentSlideId!, element.id, pending)
-        console.log('[H:up] after update, store.h:', usePptStore.getState().slides.find(sl => sl.id === usePptStore.getState().currentSlideId)?.elements.find(ee => ee.id === element.id)?.h)
         const config2 = getConfig(element.type)
         if (config2.onResizeEnd) {
           const freshEl = usePptStore.getState().slides.find(sl => sl.id === usePptStore.getState().currentSlideId)?.elements.find(ee => ee.id === element.id)
@@ -126,18 +123,7 @@ export function ElementHandles({ element, zoom }: Props) {
             const post = config2.onResizeEnd(freshEl, stateRef.current)
             if (post) {
               usePptStore.getState().updateElement(usePptStore.getState().currentSlideId!, element.id, post)
-              console.log('[H:resizeEnd] after post, store.h:', usePptStore.getState().slides.find(sl => sl.id === usePptStore.getState().currentSlideId)?.elements.find(ee => ee.id === element.id)?.h)
             }
-          }
-        }
-        if (element.type === 'text') {
-          const el3 = usePptStore.getState().slides.find(sl => sl.id === usePptStore.getState().currentSlideId)?.elements.find(ee => ee.id === element.id)
-          if (el3) {
-            requestAnimationFrame(() => {
-              const boxEl2 = document.querySelector<HTMLElement>(`[data-el-id="${element.id}"]`)
-              const domH = boxEl2?.getBoundingClientRect().height
-              console.log('[H:resizeEnd] DOM h:', domH?.toFixed(1), 'MATCH:', Math.abs((domH ?? 0) - el3.h) < 1)
-            })
           }
         }
         if (element.type === 'group' && element.groupChildren && stateRef.current.sw > 0 && stateRef.current.sh > 0) {
