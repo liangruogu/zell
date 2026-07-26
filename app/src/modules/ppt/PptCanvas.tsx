@@ -45,8 +45,7 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
           })
           // Re-enter fullscreen if previewing (focus lost during paste)
           if (st._previewing) {
-            console.log('re-entering fullscreen after image insert')
-            const reenter = () => getCurrentWindow().setFullscreen(true).catch((e: any) => console.log('fullscreen retry failed:', e))
+            const reenter = () => getCurrentWindow().setFullscreen(true).catch(() => {})
             requestAnimationFrame(reenter)
             setTimeout(reenter, 20)
             setTimeout(reenter, 50)
@@ -59,7 +58,6 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
     }
 
     const onPaste = (e: ClipboardEvent) => {
-      console.log('onPaste:', e.target === div, usePptStore.getState()._previewing)
       if (e.target !== div) return
       e.preventDefault(); e.stopPropagation()
       // Check for file/image in clipboardData (synchronous API, works in webview2)

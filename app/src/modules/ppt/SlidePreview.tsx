@@ -12,9 +12,7 @@ export function PreviewButton() {
 
   useEffect(() => {
     if (fullscreen) {
-      usePptStore.getState().setPreviewing(true)
-      console.log('_previewing set to TRUE')
-      return () => { usePptStore.getState().setPreviewing(false); console.log('_previewing set to FALSE') }
+      return () => {}
     }
   }, [fullscreen])
 
@@ -46,12 +44,17 @@ function FullscreenPreview({ slides, currentSlideId, onClose }: {
   const slide = visible[idx]
   const { setCurrentSlide } = usePptStore()
 
-  // Enter Tauri fullscreen (hides taskbar) + suppress canvas hover
+  // Enter Tauri fullscreen + manage _previewing state
   useEffect(() => {
     const win = getCurrentWindow()
     win.setFullscreen(true)
     document.body.classList.add('previewing')
-    return () => { win.setFullscreen(false); document.body.classList.remove('previewing') }
+    usePptStore.getState().setPreviewing(true)
+    return () => {
+      win.setFullscreen(false)
+      document.body.classList.remove('previewing')
+      usePptStore.getState().setPreviewing(false)
+    }
   }, [])
 
   const goNext = useCallback(() => {
