@@ -248,10 +248,14 @@ export function CanvasViewport() {
         if (s.selectedIds.length > 0 && s.currentSlideId) s.copyElements()
         else s.copySlide()
       }
+      if (e.ctrlKey && e.key === 'x' && s.currentSlideId) {
+        e.preventDefault()
+        if (s.selectedIds.length > 0) { s.copyElements(); s.deleteElements(s.currentSlideId, s.selectedIds) }
+      }
       if (e.ctrlKey && e.key === 'v') {
         e.preventDefault()
         if (s.clipboardElements && s.clipboardElements.length > 0) s.pasteElements()
-        else s.pasteSlide()
+        else { try { (window as any).__pptPasteImage() } catch { s.pasteSlide() } }
       }
       if (e.ctrlKey && e.key === 'g' && !e.shiftKey && s.currentSlideId) { e.preventDefault(); s.groupElements(s.currentSlideId, s.selectedIds) }
       if (e.ctrlKey && e.shiftKey && e.key === 'G' && s.currentSlideId) { e.preventDefault(); if (s.selectedIds.length === 1) s.ungroupElement(s.currentSlideId, s.selectedIds[0]) }

@@ -86,24 +86,9 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
       }, 10)
     }
 
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey && e.key === 'v')) return
-      if ((e.target as HTMLElement)?.closest?.('[contenteditable="true"]')) return
-      if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return
-      e.preventDefault(); e.stopPropagation()
-      div.innerHTML = ''
-      div.focus()
-      // Manually dispatch paste event to the focused div via browser API
-      requestAnimationFrame(() => {
-        document.execCommand('paste')
-      })
-    }
-
-    document.addEventListener('keydown', onKey)
     div.addEventListener('paste', onPaste)
-    ;(window as any).__pptPasteImage = () => { div.innerHTML = ''; div.focus() }
+    ;(window as any).__pptPasteImage = () => { div.innerHTML = ''; div.focus(); requestAnimationFrame(() => { document.execCommand('paste') }) }
     return () => {
-      document.removeEventListener('keydown', onKey)
       div.removeEventListener('paste', onPaste)
       delete (window as any).__pptPasteImage
       div.remove()
