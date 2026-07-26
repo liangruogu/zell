@@ -127,7 +127,9 @@ export function RichTextEditor({
           const dom = editor.view.dom
           if (dom) {
             const rect = dom.getBoundingClientRect()
-            onHeightChangeRef.current(Math.ceil(rect.height) + 4)
+            const h = Math.ceil(rect.height) + 4
+            console.log('[editor onUpdate] scrollHeight:', dom.scrollHeight, 'rect.height:', rect.height, 'ceil+4:', h)
+            onHeightChangeRef.current(h)
           }
         }
       },
