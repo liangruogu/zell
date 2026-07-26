@@ -263,10 +263,10 @@ export const usePptStore = create<PptState>((set, get) => ({
   pasteElements: () => {
     const { slides, currentSlideId, clipboardElements } = get()
     if (!currentSlideId || !clipboardElements || clipboardElements.length === 0) return
+    const freshCopies = clone(clipboardElements).map((e: CanvasElement) => ({ ...e, id: genId(), x: e.x + 20, y: e.y + 20 }))
     mutate(set, s => {
       const ns = s.slides.map(sl => {
         if (sl.id !== currentSlideId) return sl
-        const freshCopies = clone(clipboardElements).map((e: CanvasElement) => ({ ...e, id: genId(), x: e.x + 20, y: e.y + 20 }))
         return { ...sl, elements: [...sl.elements, ...freshCopies] }
       })
       return { slides: ns, selectedIds: freshCopies.map(e => e.id) }
