@@ -97,7 +97,17 @@ export function useDrag(elementId: string) {
       }
 
       const tid = ref.current.clonedId || elementId
-      const nx = Math.round(ref.current.ox + dx), ny = Math.round(ref.current.oy + dy)
+      let nx = Math.round(ref.current.ox + dx), ny = Math.round(ref.current.oy + dy)
+
+      const slide = s.slides.find(sl => sl.id === s.currentSlideId)
+      const dragEl = slide?.elements.find(ee => ee.id === tid)
+      if (dragEl && slide) {
+        const others = slide.elements.filter(ee => ee.id !== tid)
+        const snapped = snapPos({ ...dragEl, x: nx, y: ny }, others, nx, ny)
+        nx = snapped.x
+        ny = snapped.y
+      }
+
       const el = document.querySelector<HTMLElement>(`[data-el-id="${tid}"]`)
       if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px' }
       const hEl = document.querySelector<HTMLElement>(`[data-handles-el-id="${tid}"]`)

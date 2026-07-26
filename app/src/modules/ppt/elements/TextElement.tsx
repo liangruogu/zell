@@ -49,22 +49,20 @@ export function TextEl({ el, isSelected }: EP) {
   const fontSize = p.fontSize || 16
   const html = useMemo(() => renderRichTextHTML(content), [content])
 
-  const heightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const rafRef = useRef<number>(0)
 
   const handleHeightChange = useCallback((newH: number) => {
-    if (newH <= el.h) return
-    // Debounce store updates during typing
-    if (heightTimerRef.current) clearTimeout(heightTimerRef.current)
-    heightTimerRef.current = setTimeout(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(() => {
       const s = usePptStore.getState()
       if (s.currentSlideId) {
         s.updateElement(s.currentSlideId, el.id, { h: newH })
       }
-    }, 60)
-  }, [el.id, el.h])
+    })
+  }, [el.id])
 
   useEffect(() => {
-    return () => { if (heightTimerRef.current) clearTimeout(heightTimerRef.current) }
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [])
 
   const handleClick = useCallback((e: React.MouseEvent) => {

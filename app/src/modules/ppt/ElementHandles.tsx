@@ -93,6 +93,19 @@ export function ElementHandles({ element, zoom }: Props) {
         }
       }
 
+      // For text, measure content height after width change (text reflow)
+      if (element.type === 'text' && boxEl && updates.w != null) {
+        const textDiv = boxEl.querySelector<HTMLElement>('.tl-rich-text')
+        if (textDiv) {
+          const naturalH = textDiv.scrollHeight + 4
+          if (Math.abs(naturalH - (updates.h ?? element.h)) > 1) {
+            updates = { ...updates, h: naturalH }
+            boxEl.style.height = naturalH + 'px'
+            if (hEl) hEl.style.height = naturalH + 'px'
+          }
+        }
+      }
+
       ;(stateRef.current as any)._pending = updates
     }
 
