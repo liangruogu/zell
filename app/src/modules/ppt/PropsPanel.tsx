@@ -412,6 +412,7 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
       {el.type === 'text' && (
         <>
           <FontSelect value={el.props.fontFamily || '思源宋体'} onChange={v => {
+            localStorage.setItem('zell_last_font', v)
             if (rt.editor) rt.setFontFamily(v)
             remeasure({ fontFamily: v })
           }} />
