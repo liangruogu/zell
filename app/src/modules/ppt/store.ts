@@ -15,6 +15,7 @@ interface PptState {
   selectedSlideIds: string[]
   activeEditor: Editor | null
   hoveredId: string | null
+  clipboardElements: CanvasElement[] | null
   zoom: number
   panX: number
   panY: number
@@ -51,6 +52,8 @@ interface PptState {
   setGuideLines: (lines: GuideLine[]) => void
   setActiveEditor: (e: Editor | null) => void
   setHoveredId: (id: string | null) => void
+  copyElements: () => void
+  pasteElements: () => void
   undo: () => void
   redo: () => void
   groupElements: (slideId: string, ids: string[]) => void
@@ -109,6 +112,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   selectedSlideIds: [],
   activeEditor: null,
   hoveredId: null,
+  clipboardElements: null,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -250,6 +254,24 @@ export const usePptStore = create<PptState>((set, get) => ({
   setGuideLines: (lines) => set({ guideLines: lines }),
   setActiveEditor: (e) => set({ activeEditor: e }),
   setHoveredId: (id) => set({ hoveredId: id }),
+  copyElements: () => {
+    const { slides, currentSlideId, selectedIds } = get()
+    const slide = slides.find(s => s.id === currentSlideId)
+    if (!slide || selectedIds.length === 0) return
+    set({ clipboardElements: clone(slide.elements.filter(e => selectedIds.includes(e.id))) })
+  },
+  pasteElements: () => {
+    const { slides, currentSlideId, clipboardElements } = get()
+    if (!currentSlideId || !clipboardElements || clipboardElements.length === 0) return
+    mutate(set, s => {
+      const ns = s.slides.map(sl => {
+        if (sl.id !== currentSlideId) return sl
+        const freshCopies = clone(clipboardElements).map((e: CanvasElement) => ({ ...e, id: genId(), x: e.x + 20, y: e.y + 20 }))
+        return { ...sl, elements: [...sl.elements, ...freshCopies] }
+      })
+      return { slides: ns, selectedIds: freshCopies.map(e => e.id) }
+    })
+  },
   setResizing: (v: boolean) => { _isResizing = v },
   resetView: () => {
     set({ zoom: 1, transitioning: true })

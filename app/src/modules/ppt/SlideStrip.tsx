@@ -484,6 +484,9 @@ function MiniSlide({ slide }: { slide: Slide }) {
             </div>
           )
         }
+        return (
+          <div key={el.id} style={{ position: 'absolute', left: el.x * s, top: el.y * s, width: Math.max(el.w * s, 2), height: Math.max(el.h * s, 1), background: el.type === 'ellipse' ? (el.props.fill || '#e2e8f0') : el.props.fill || '#e2e8f0', borderRadius: el.type === 'ellipse' ? '50%' : `${(el.props.borderRadius || 0) * s}px`, opacity: el.opacity, border: el.props.strokeWidth ? `${el.props.strokeWidth * s}px solid ${el.props.stroke || '#94a3b8'}` : undefined }} />
+        )
       })}
     </div>
   )
