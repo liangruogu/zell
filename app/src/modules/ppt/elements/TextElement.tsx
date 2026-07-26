@@ -51,13 +51,16 @@ export function TextEl({ el, isSelected }: EP) {
   const html = useMemo(() => renderRichTextHTML(content), [content])
 
   const rafRef = useRef<number>(0)
+  const latestHRef = useRef(el.h)
 
   const handleHeightChange = useCallback((newH: number) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    latestHRef.current = newH
+    if (rafRef.current) return
     rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0
       const s = usePptStore.getState()
       if (s.currentSlideId) {
-        s.updateElement(s.currentSlideId, el.id, { h: newH })
+        s.updateElement(s.currentSlideId, el.id, { h: latestHRef.current })
       }
     })
   }, [el.id])
