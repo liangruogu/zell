@@ -99,10 +99,10 @@ export function ElementHandles({ element, zoom }: Props) {
         if (textDiv) {
           const rect = textDiv.getBoundingClientRect()
           const naturalH = Math.ceil(rect.height) + 4
-          console.log('[H:resize] rectH:', rect.height.toFixed(1), '→ ceil+4:', naturalH, '(updates.h:', updates.h, ')')
           updates = { ...updates, h: naturalH }
           boxEl.style.height = naturalH + 'px'
           if (hEl) hEl.style.height = naturalH + 'px'
+          console.log('[H:resize] rectH:', rect.height.toFixed(1), '→ ceil+4:', naturalH, 'domH:', boxEl.style.height)
         }
       }
 
@@ -126,7 +126,14 @@ export function ElementHandles({ element, zoom }: Props) {
               if (post) s2.updateElement(s2.currentSlideId, element.id, post)
             }
           }
-          if (element.type === 'group' && element.groupChildren && stateRef.current.sw > 0 && stateRef.current.sh > 0) {
+          if (element.type === 'text') {
+            const el3 = s2.slides.find(sl => sl.id === s2.currentSlideId)?.elements.find(ee => ee.id === element.id)
+            if (el3) {
+              const boxEl2 = document.querySelector<HTMLElement>(`[data-el-id="${element.id}"]`)
+              const domH = boxEl2?.getBoundingClientRect().height
+              console.log('[H:resizeEnd] STORE h:', el3.h, 'DOM h:', domH?.toFixed(1), 'MATCH:', Math.abs((domH ?? 0) - el3.h) < 1)
+            }
+          }
             const sx2 = (pending.w ?? 0) / stateRef.current.sw
             const sy2 = (pending.h ?? 0) / stateRef.current.sh
             if (sx2 > 0 && sy2 > 0) {

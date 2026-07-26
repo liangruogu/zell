@@ -64,8 +64,12 @@ export function TextEl({ el, isSelected }: EP) {
       rafRef.current = 0
       const s = usePptStore.getState()
       if (s.currentSlideId) {
-        console.log('[H:rAF] STORE h:', latestHRef.current, '(was:', el.h, ')')
         s.updateElement(s.currentSlideId, el.id, { h: latestHRef.current })
+        // Verify DOM matches store
+        requestAnimationFrame(() => {
+          const domH = containerRef.current?.getBoundingClientRect().height
+          console.log('[H:rAF] STORE h:', latestHRef.current, 'DOM h:', domH?.toFixed(1), 'MATCH:', domH === latestHRef.current)
+        })
       }
     })
   }, [el.id])
