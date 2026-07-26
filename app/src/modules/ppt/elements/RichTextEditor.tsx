@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useCallback } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { Editor } from '@tiptap/core'
 import { StarterKit } from '@tiptap/starter-kit'
 import { TextAlign } from '@tiptap/extension-text-align'
