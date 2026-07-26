@@ -4,7 +4,6 @@ import { X, GripVertical, Bold, Italic, Underline, Strikethrough, AlignLeft, Ali
 import { usePptStore } from './store'
 import type { CanvasElement } from './types'
 import { useRichText } from './elements/RichTextEditor'
-import { measureContentWidth } from './elements/RichTextEditor'
 import { toggleListInJSON, hasListInJSON, removeListFromJSON } from './elements/TextElement'
 
 const SCRUB = { threshold: 3, speed: 1 }
@@ -365,7 +364,7 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
             <ScrubInput label="W" value={el.w} onChange={v => update({ w: v })} min={1} />
             <ScrubInput label="H" value={el.h} onChange={v => update({ h: v })} min={1} />
           </div>
-          {el.type !== 'rect' && el.type !== 'ellipse' && (
+          {el.type !== 'rect' && el.type !== 'ellipse' && el.type !== 'text' && (
             <div>
               <label className="text-[10px] text-gray-500">透明度</label>
               <input type="range" min={0} max={1} step={0.1} value={el.opacity} onChange={e => update({ opacity: +e.target.value })} className="w-full" />
@@ -407,21 +406,6 @@ function PanelFields({ el, updateElement, slideId }: { el: CanvasElement; update
             <TextAlignBtn el={el} updateProps={updateProps} align="center" icon={<AlignCenter size={13} />} />
             <TextAlignBtn el={el} updateProps={updateProps} align="right" icon={<AlignRight size={13} />} />
           </div>
-          <button
-            onClick={() => {
-              const w = measureContentWidth(
-                el.props.content,
-                el.props.fontSize || 16,
-                el.props.fontFamily || 'inherit',
-                el.props.lineHeight || 1.5
-              )
-              update({ w })
-            }}
-            className="w-full py-1 text-[11px] text-gray-500 border border-gray-200 rounded hover:bg-gray-50"
-            title="收缩宽度到最长行"
-          >
-            适应文字宽度
-          </button>
           <TextListToggles el={el} updateProps={updateProps} update={update} />
         </>
       )}

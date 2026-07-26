@@ -80,8 +80,11 @@ export function RichTextEditor({
       element: mountRef.current,
       extensions,
       content: initialContentRef.current,
-      autofocus: 'end' as any,
+      autofocus: true,
       editable: true,
+      onCreate: ({ editor }) => {
+        editor.commands.selectAll()
+      },
       editorProps: {
         attributes: {
           style: styleStr,
@@ -206,28 +209,4 @@ export function renderRichTextHTML(content: any): string {
   } catch {
     return ''
   }
-}
-
-export function measureContentWidth(content: any, fontSize: number, fontFamily: string, lineHeight: number): number {
-  const html = renderRichTextHTML(content)
-  if (!html) return 100
-  const div = document.createElement('div')
-  div.className = 'tl-rich-text'
-  div.innerHTML = html
-  div.style.cssText = [
-    `position:absolute`,
-    `visibility:hidden`,
-    `font-size:${fontSize}px`,
-    `font-family:${fontFamily === 'inherit' ? 'inherit' : fontFamily}`,
-    `line-height:${lineHeight}`,
-    `overflow-wrap:break-word`,
-    `word-break:break-word`,
-    `white-space:pre-wrap`,
-    `padding:0`,
-    `margin:0`,
-  ].join(';')
-  document.body.appendChild(div)
-  const w = Math.max(100, Math.ceil(div.scrollWidth) + 8)
-  document.body.removeChild(div)
-  return w
 }
