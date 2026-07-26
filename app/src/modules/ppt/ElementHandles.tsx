@@ -117,7 +117,12 @@ export function ElementHandles({ element, zoom }: Props) {
       if (s2.currentSlideId && stateRef.current) {
         const pending = (stateRef.current as any)._pending
         if (pending) {
+          console.log('[H:up] pending.h:', pending.h, 'pending.w:', pending.w)
           s2.updateElement(s2.currentSlideId, element.id, pending)
+          if (element.type === 'text') {
+            const elAfter = s2.slides.find(sl => sl.id === s2.currentSlideId)?.elements.find(ee => ee.id === element.id)
+            console.log('[H:up] after pending, store.h:', elAfter?.h)
+          }
           const config2 = getConfig(element.type)
           if (config2.onResizeEnd) {
             const el2 = s2.slides.find(sl => sl.id === s2.currentSlideId)?.elements.find(ee => ee.id === element.id)
@@ -129,9 +134,12 @@ export function ElementHandles({ element, zoom }: Props) {
           if (element.type === 'text') {
             const el3 = s2.slides.find(sl => sl.id === s2.currentSlideId)?.elements.find(ee => ee.id === element.id)
             if (el3) {
-              const boxEl2 = document.querySelector<HTMLElement>(`[data-el-id="${element.id}"]`)
-              const domH = boxEl2?.getBoundingClientRect().height
-              console.log('[H:resizeEnd] STORE h:', el3.h, 'DOM h:', domH?.toFixed(1), 'MATCH:', Math.abs((domH ?? 0) - el3.h) < 1)
+              console.log('[H:resizeEnd] after post, store.h:', el3.h)
+              requestAnimationFrame(() => {
+                const boxEl2 = document.querySelector<HTMLElement>(`[data-el-id="${element.id}"]`)
+                const domH = boxEl2?.getBoundingClientRect().height
+                console.log('[H:resizeEnd] DOM h:', domH?.toFixed(1), 'MATCH:', Math.abs((domH ?? 0) - el3.h) < 1)
+              })
             }
           }
           if (element.type === 'group' && element.groupChildren && stateRef.current.sw > 0 && stateRef.current.sh > 0) {

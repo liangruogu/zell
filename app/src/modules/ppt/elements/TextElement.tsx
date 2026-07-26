@@ -65,7 +65,6 @@ export function TextEl({ el, isSelected }: EP) {
       const s = usePptStore.getState()
       if (s.currentSlideId) {
         s.updateElement(s.currentSlideId, el.id, { h: latestHRef.current })
-        // Verify DOM matches store
         requestAnimationFrame(() => {
           const domH = containerRef.current?.getBoundingClientRect().height
           console.log('[H:rAF] STORE h:', latestHRef.current, 'DOM h:', domH?.toFixed(1), 'MATCH:', domH === latestHRef.current)
