@@ -20,6 +20,12 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
 
   // Ctrl+V paste image via contenteditable
   useEffect(() => {
+    // Hidden contenteditable to receive paste (webview2 only allows paste to focused contenteditable)
+    const div = document.createElement('div')
+    div.contentEditable = 'true'
+    div.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden'
+    document.body.appendChild(div)
+
     const insertImage = (src: string) => {
       const img = new Image()
       img.onload = () => {
@@ -41,44 +47,58 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
       img.src = src
     }
 
-    const onPaste = async (e: ClipboardEvent) => {
-      if ((e.target as HTMLElement)?.isContentEditable || (e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return
-      // Try navigator.clipboard.read first (no focus change needed)
-      try {
-        const items = await navigator.clipboard.read()
-        for (const item of items) {
-          for (const type of item.types) {
-            if (type.startsWith('image/')) {
-              const blob = await item.getType(type)
-              const reader = new FileReader()
-              reader.onload = (ev) => { const src = ev.target?.result as string; if (src) insertImage(src) }
-              reader.readAsDataURL(blob)
-              e.preventDefault()
-              return
+    const onPaste = (e: ClipboardEvent) => {
+      // Only handle when our hidden div is the target
+      if (e.target !== div) return
+      e.preventDefault(); e.stopPropagation()
+      // Check for file/image in clipboardData (synchronous API, works in webview2)
+      const items = e.clipboardData?.items
+      if (!items) return
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const blob = items[i].getAsFile()
+          if (blob) {
+            const reader = new FileReader()
+            reader.onload = (ev) => {
+              const src = ev.target?.result as string
+              if (src) insertImage(src)
             }
-          }
-        }
-      } catch {
-        // Fallback: check clipboardData for file items
-        const items2 = e.clipboardData?.items
-        if (!items2) return
-        for (let i = 0; i < items2.length; i++) {
-          if (items2[i].type.startsWith('image/')) {
-            e.preventDefault()
-            const blob = items2[i].getAsFile()
-            if (blob) {
-              const reader = new FileReader()
-              reader.onload = (ev) => { const src = ev.target?.result as string; if (src) insertImage(src) }
-              reader.readAsDataURL(blob)
-              return
-            }
+            reader.readAsDataURL(blob)
+            div.innerHTML = ''
+            return
           }
         }
       }
+      // Check for pasted img tags (HTML paste)
+      setTimeout(() => {
+        const imgs = div.querySelectorAll('img')
+        imgs.forEach((img) => { if ((img as HTMLImageElement).src) insertImage((img as HTMLImageElement).src) })
+        div.innerHTML = ''
+      }, 10)
     }
 
-    document.addEventListener('paste', onPaste)
-    return () => { document.removeEventListener('paste', onPaste) }
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey && e.key === 'v')) return
+      if ((e.target as HTMLElement)?.closest?.('[contenteditable="true"]')) return
+      if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return
+      e.preventDefault(); e.stopPropagation()
+      div.innerHTML = ''
+      div.focus()
+      // Manually dispatch paste event to the focused div via browser API
+      requestAnimationFrame(() => {
+        document.execCommand('paste')
+      })
+    }
+
+    document.addEventListener('keydown', onKey)
+    div.addEventListener('paste', onPaste)
+    ;(window as any).__pptPasteImage = () => { div.innerHTML = ''; div.focus() }
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      div.removeEventListener('paste', onPaste)
+      delete (window as any).__pptPasteImage
+      div.remove()
+    }
   }, [])
 
   useEffect(() => {
