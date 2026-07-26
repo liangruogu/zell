@@ -45,6 +45,7 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
           })
           // Re-enter fullscreen if previewing (focus lost during paste)
           if (st._previewing) {
+            console.log('re-entering fullscreen after image insert')
             const reenter = () => getCurrentWindow().setFullscreen(true).catch((e: any) => console.log('fullscreen retry failed:', e))
             requestAnimationFrame(reenter)
             setTimeout(reenter, 20)
