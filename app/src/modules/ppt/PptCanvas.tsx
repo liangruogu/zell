@@ -59,7 +59,7 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
     }
 
     const onPaste = (e: ClipboardEvent) => {
-      // Only handle when our hidden div is the target
+      console.log('onPaste:', e.target === div, usePptStore.getState()._previewing)
       if (e.target !== div) return
       e.preventDefault(); e.stopPropagation()
       // Check for file/image in clipboardData (synchronous API, works in webview2)
