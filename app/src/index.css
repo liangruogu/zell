@@ -487,6 +487,9 @@ kbd {
 .tl-rich-text li {
   margin: 0;
 }
+.tl-rich-text li > p {
+  display: inline;
+}
 .tl-rich-text a {
   text-decoration: underline;
 }

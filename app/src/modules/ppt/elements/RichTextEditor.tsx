@@ -74,7 +74,6 @@ export function RichTextEditor({
       `overflow-wrap:break-word`,
       `word-break:break-word`,
       `white-space:pre-wrap`,
-      `list-style-position:${textAlign === 'left' ? 'outside' : 'inside'}`,
     ].join(';')
 
     const ed = new Editor({
