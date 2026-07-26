@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { Editor } from '@tiptap/core'
 import type { Slide, CanvasElement, PptData } from './types'
 
 function clone(slides: Slide[]): Slide[] {
@@ -12,6 +13,7 @@ interface PptState {
   currentSlideId: string | null
   selectedIds: string[]
   selectedSlideIds: string[]
+  activeEditor: Editor | null
   zoom: number
   panX: number
   panY: number
@@ -22,7 +24,6 @@ interface PptState {
   _undo: Slide[][]
   _redo: Slide[][]
   _timer: ReturnType<typeof setTimeout> | null
-  _resizing: boolean
 
   init: (data: PptData) => void
   getData: () => PptData
@@ -47,6 +48,7 @@ interface PptState {
   _previewing: boolean
   setPreviewing: (v: boolean) => void
   setGuideLines: (lines: GuideLine[]) => void
+  setActiveEditor: (e: Editor | null) => void
   undo: () => void
   redo: () => void
   groupElements: (slideId: string, ids: string[]) => void
@@ -55,6 +57,9 @@ interface PptState {
 
 function genId(): string { return crypto.randomUUID() }
 
+// Internal flag, not in store state to avoid triggering re-renders
+let _isResizing = false
+export const getIsResizing = () => _isResizing
 let historyTimer: any = null
 function pushSnapshot(slides: Slide[]) {
   const s = usePptStore.getState()
@@ -100,6 +105,7 @@ export const usePptStore = create<PptState>((set, get) => ({
   currentSlideId: null,
   selectedIds: [],
   selectedSlideIds: [],
+  activeEditor: null,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -110,7 +116,6 @@ export const usePptStore = create<PptState>((set, get) => ({
   _undo: [],
   _redo: [],
   _timer: null,
-  _resizing: false,
   _previewing: false,
 
   init: (data) => set({ slides: clone(data.slides), currentSlideId: data.slides[0]?.id || null, selectedIds: [], _undo: [], _redo: [] }),
@@ -218,11 +223,17 @@ export const usePptStore = create<PptState>((set, get) => ({
   },
 
   updateElement: (slideId, elementId, changes) => {
+    // Push history BEFORE change (snapshot pre-change state)
+    if (!historyTimer) {
+      if (get().slides.length > 0) pushSnapshot(get().slides)
+      historyTimer = setTimeout(() => { historyTimer = null }, 400)
+    } else {
+      clearTimeout(historyTimer)
+      historyTimer = setTimeout(() => { historyTimer = null }, 400)
+    }
     set(s => ({
       slides: s.slides.map(sl => sl.id === slideId ? { ...sl, elements: sl.elements.map(el => el.id === elementId ? { ...el, ...changes } : el) } : sl),
     }))
-    // Push history only when NOT already in a burst (no pending timer)
-    if (!historyTimer) pushHistory()
   },
 
   deleteElements: (slideId, elementIds) => {
@@ -234,7 +245,8 @@ export const usePptStore = create<PptState>((set, get) => ({
   setZoom: (z) => set({ zoom: Math.max(0.25, Math.min(3, z)) }),
   setPan: (x, y) => set({ panX: x, panY: y }),
   setGuideLines: (lines) => set({ guideLines: lines }),
-  setResizing: (v: boolean) => set({ _resizing: v }),
+  setActiveEditor: (e) => set({ activeEditor: e }),
+  setResizing: (v: boolean) => { _isResizing = v },
   resetView: () => {
     set({ zoom: 1, transitioning: true })
     requestAnimationFrame(() => {
