@@ -45,7 +45,7 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
           })
           // Re-enter fullscreen if previewing (focus was stolen by paste)
           if (st._previewing) {
-            getCurrentWindow().setFullscreen(true)
+            setTimeout(() => { getCurrentWindow().setFullscreen(true) }, 100)
           }
         }
       }
