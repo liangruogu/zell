@@ -85,6 +85,7 @@ pub fn run() {
             commands::file::rename_project_file,
             commands::system::open_in_system,
             commands::system::get_local_ip,
+            commands::system::list_system_fonts,
             commands::export::export_article,
             commands::server::start_server,
             commands::server::stop_server,

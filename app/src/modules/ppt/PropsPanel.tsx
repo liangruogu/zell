@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { invoke } from '@tauri-apps/api/core'
 import { X, GripVertical, Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, ArrowUpDown } from 'lucide-react'
 import { usePptStore } from './store'
 import type { CanvasElement } from './types'
@@ -816,10 +817,15 @@ function CornerSection({ el, updateProps }: { el: CanvasElement; updateProps: (p
 
 function FontSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false)
+  const [sysFonts, setSysFonts] = useState<string[]>([])
   const ref = useRef<HTMLDivElement>(null)
-  const fontsRef = useRef(['inherit', '思源宋体', '宋体', '黑体', '微软雅黑', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana'])
-  const fonts = fontsRef.current
+  const builtin = ['inherit', '思源宋体', '宋体', '黑体', '微软雅黑', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana']
+  const fonts = [...builtin, ...sysFonts.filter(f => !builtin.includes(f))]
   const label = value === 'inherit' ? '默认' : value
+
+  useEffect(() => {
+    invoke<string[]>('list_system_fonts').then(setSysFonts).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -848,8 +854,7 @@ function FontSelect({ value, onChange }: { value: string; onChange: (v: string) 
                 const url = ev.target?.result as string
                 const name = file.name.replace(/\.[^.]+$/, '')
                 const ff = new FontFace(name, `url(${url})`)
-                ff.load().then(() => { (document as any).fonts.add(ff); onChange(name) })
-                fonts.push(name)
+                ff.load().then(() => { (document as any).fonts.add(ff); onChange(name); setSysFonts(prev => [...prev, name]) })
               }
               reader.readAsDataURL(file)
             }
