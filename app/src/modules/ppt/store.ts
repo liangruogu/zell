@@ -280,7 +280,10 @@ export const usePptStore = create<PptState>((set, get) => ({
       setTimeout(() => set({ transitioning: false }), 350)
     })
   },
-  setPreviewing: (v) => set({ _previewing: v }),
+  setPreviewing: (v) => {
+    console.trace('setPreviewing', v)
+    set({ _previewing: v })
+  },
 
   undo: () => {
     flushHistory()
