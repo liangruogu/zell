@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { readText } from '@tauri-apps/plugin-clipboard-manager'
 import { PptToolbar } from './PptToolbar'
 import { SlideStrip } from './SlideStrip'
 import { CanvasViewport } from './CanvasViewport'
@@ -87,7 +88,22 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
     }
 
     div.addEventListener('paste', onPaste)
-    ;(window as any).__pptPasteImage = () => { div.innerHTML = ''; div.focus(); requestAnimationFrame(() => { document.execCommand('paste') }) }
+    ;(window as any).__pptPasteImage = () => {
+      // Check for Zell elements in clipboard first
+      readText().then(text => {
+        if (text && text.startsWith('ZELL_ELEMENTS:')) {
+          usePptStore.getState().pasteElements()
+        } else {
+          div.innerHTML = ''
+          div.focus()
+          requestAnimationFrame(() => { document.execCommand('paste') })
+        }
+      }).catch(() => {
+        div.innerHTML = ''
+        div.focus()
+        requestAnimationFrame(() => { document.execCommand('paste') })
+      })
+    }
     return () => {
       div.removeEventListener('paste', onPaste)
       delete (window as any).__pptPasteImage
