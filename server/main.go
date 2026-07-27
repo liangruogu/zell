@@ -70,6 +70,24 @@ func main() {
 	// WebSocket (y-websocket compatible: /ws/:pid/:articleID)
 	r.GET("/ws/:pid/:aid", wsH.Handle)
 
+	// Publish management API (called by desktop app)
+	pubAPI := r.Group("/api/v1")
+	{
+		pubH := handler.NewPublishHandler(db)
+		pubAPI.PUT("/projects/:pid/publish", pubH.SaveConfig)
+		pubAPI.PUT("/projects/:pid/publish/articles/:aid", pubH.SaveArticle)
+		pubAPI.PUT("/projects/:pid/publish/whiteboards/:wid", pubH.SaveWhiteboard)
+	}
+
+	// Public publish routes (no auth)
+	pub := r.Group("/pub")
+	{
+		pubH := handler.NewPublishHandler(db)
+		pub.GET("/:pid/wiki/", pubH.WikiIndex)
+		pub.GET("/:pid/wiki/:aid", pubH.WikiArticle)
+		pub.GET("/:pid/ppt/:wid", pubH.PPTPreview)
+	}
+
 	log.Printf("Zell server starting on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Server failed: %v", err)
