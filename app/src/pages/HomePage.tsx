@@ -13,10 +13,12 @@ import { CreateProjectDialog } from '@/components/project/CreateProjectDialog'
 
 export default function HomePage() {
   const { projects, loading, fetchProjects, createProject } = useProjectStore()
-  const { serverUrl, setToken } = useSyncStore()
+  const { setToken } = useSyncStore()
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [joinCode, setJoinCode] = useState('')
+  const [joinServerUrl, setJoinServerUrl] = useState('')
+  const [joinDisplayName, setJoinDisplayName] = useState('')
   const [joining, setJoining] = useState(false)
 
   useEffect(() => {
@@ -24,14 +26,14 @@ export default function HomePage() {
   }, [fetchProjects])
 
   const handleJoin = useCallback(async () => {
-    if (!joinCode.trim() || !serverUrl) return
+    if (!joinCode.trim() || !joinServerUrl.trim() || !joinDisplayName.trim()) return
     setJoining(true)
     try {
       const clientId = crypto.randomUUID()
-      const res = await fetch(`${serverUrl}/api/v1/projects/join`, {
+      const res = await fetch(`${joinServerUrl}/api/v1/projects/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: joinCode.trim(), client_id: clientId }),
+        body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim() }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: '未知错误' }))
@@ -39,24 +41,31 @@ export default function HomePage() {
         return
       }
       const data = await res.json()
-      // Create local project with the server project ID
-      const project = await createProject({
+      if (data.status === 'pending') {
+        alert(`申请已提交，请等待项目管理员审批`)
+        setShowJoin(false)
+        setJoinCode('')
+        setJoinServerUrl('')
+        setJoinDisplayName('')
+        return
+      }
+      await createProject({
         name: `协作项目 ${data.project_id.slice(0, 8)}`,
         description: '',
         background: '',
-        icon: '��',
-        settings: '{}',
+        settings: JSON.stringify({ serverUrl: joinServerUrl }),
       })
-      // Set JWT for this project
       setToken(data.token)
       setShowJoin(false)
       setJoinCode('')
+      setJoinServerUrl('')
+      setJoinDisplayName('')
     } catch {
       alert('无法连接服务器')
     } finally {
       setJoining(false)
     }
-  }, [joinCode, serverUrl, createProject, setToken])
+  }, [joinCode, joinServerUrl, joinDisplayName, createProject, setToken])
 
   return (
     <AppShell>
@@ -98,15 +107,34 @@ export default function HomePage() {
       </div>
       <CreateProjectDialog open={showCreate} onOpenChange={setShowCreate} />
 
-      <Dialog open={showJoin} onOpenChange={setShowJoin} title="加入项目" description="输入邀请码加入已有的协作项目">
+      <Dialog open={showJoin} onOpenChange={setShowJoin} title="加入项目" description="输入服务器地址和邀请码加入已有的协作项目">
         <div className="space-y-4 mt-2">
-          <Input
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            placeholder="输入邀请码 BNDL-xxx-xxxx"
-            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-          />
-          <Button onClick={handleJoin} disabled={!joinCode.trim() || joining} className="w-full">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">服务器地址</label>
+            <Input
+              value={joinServerUrl}
+              onChange={(e) => setJoinServerUrl(e.target.value)}
+              placeholder="http://192.168.1.100:3000"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">邀请码</label>
+            <Input
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              placeholder="BNDL-xxx-xxxx"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">你的名称</label>
+            <Input
+              value={joinDisplayName}
+              onChange={(e) => setJoinDisplayName(e.target.value)}
+              placeholder="输入你的名字"
+              onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            />
+          </div>
+          <Button onClick={handleJoin} disabled={!joinCode.trim() || !joinServerUrl.trim() || !joinDisplayName.trim() || joining} className="w-full">
             {joining ? '加入中...' : '加入项目'}
           </Button>
         </div>

@@ -24,9 +24,10 @@ type PublishWhiteboard struct {
 }
 
 type PublishData struct {
-	Enabled bool     `json:"enabled"`
-	Wiki    []string `json:"wiki"`
-	PPT     []string `json:"ppt"`
-	UI      []string `json:"ui"`
-	Mood    []string `json:"mood"`
+	Enabled     bool     `json:"enabled"`
+	Wiki        []string `json:"wiki"`
+	PPT         []string `json:"ppt"`
+	UI          []string `json:"ui"`
+	Mood        []string `json:"mood"`
+	ProjectName string   `json:"project_name"`
 }

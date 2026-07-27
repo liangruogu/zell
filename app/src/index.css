@@ -302,7 +302,7 @@ html, body, #root {
 .prose.zell-prose ul[data-type="taskList"] li p {
   margin: 0;
 }
-/* GitHub: task list â€” custom checkbox */
+/* GitHub: task list â€?custom checkbox */
 [data-zell-theme="github"] .prose.zell-prose ul[data-type="taskList"] li > label input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
@@ -746,4 +746,8 @@ math-display .math-src .ProseMirror {
 .math-inline-preview {
   display: inline;
 }
+
+
+@keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 600px; } }
+.animate-slideDown { animation: slideDown 0.5s ease-out; }
 

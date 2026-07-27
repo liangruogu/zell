@@ -31,7 +31,7 @@ func main() {
 	r.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Server-Key")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -46,32 +46,36 @@ func main() {
 
 	api := r.Group("/api/v1")
 	{
-		// Public: join project with invite code (with or without project ID)
-		api.POST("/projects/join", inviteH.Join)
-		api.POST("/projects/:pid/join", inviteH.Join)
+	// Public: join project with invite code (with or without project ID)
+	api.POST("/projects/join", inviteH.Join)
+	api.POST("/projects/:pid/join", inviteH.Join)
 
-		// Protected: requires valid JWT
-		auth := api.Group("")
-		auth.Use(middleware.AuthMiddleware(db))
+	// Collab management (requires server key)
+		serverApi := api.Group("")
+		serverApi.Use(middleware.ServerKeyMiddleware(cfg.ServerKey))
 		{
-			// Articles
-			auth.GET("/projects/:pid/articles", articleH.List)
-			auth.POST("/projects/:pid/articles", articleH.Create)
-			auth.PUT("/projects/:pid/articles/:aid", articleH.Update)
-			auth.DELETE("/projects/:pid/articles/:aid", articleH.Delete)
+			serverApi.POST("/projects/:pid/collab", inviteH.CollabToggle)
+			serverApi.GET("/projects/:pid/invite", inviteH.GetInvite)
+			serverApi.POST("/projects/:pid/invite/rotate", inviteH.RotateInvite)
+			serverApi.GET("/projects/:pid/members", inviteH.ListMembers)
+			serverApi.DELETE("/projects/:pid/members/:client_id", inviteH.RemoveMember)
+			serverApi.GET("/projects/:pid/pending", inviteH.ListPending)
+			serverApi.POST("/projects/:pid/pending/:client_id/approve", inviteH.ApprovePending)
+			serverApi.POST("/projects/:pid/pending/:client_id/reject", inviteH.RejectPending)
+			// Article sync (desktop → server)
+			serverApi.GET("/projects/:pid/articles", articleH.List)
+			serverApi.POST("/projects/:pid/articles", articleH.Create)
+			serverApi.PUT("/projects/:pid/articles/:aid", articleH.Update)
+			serverApi.DELETE("/projects/:pid/articles/:aid", articleH.Delete)
 		}
-
-		// Collab management (no strict auth needed in LAN mode)
-		api.POST("/projects/:pid/collab", inviteH.CollabToggle)
-		api.GET("/projects/:pid/invite", inviteH.GetInvite)
-		api.POST("/projects/:pid/invite/rotate", inviteH.RotateInvite)
 	}
 
 	// WebSocket (y-websocket compatible: /ws/:pid/:articleID)
 	r.GET("/ws/:pid/:aid", wsH.Handle)
 
-	// Publish management API (called by desktop app)
+	// Publish management API (requires server key)
 	pubAPI := r.Group("/api/v1")
+	pubAPI.Use(middleware.ServerKeyMiddleware(cfg.ServerKey))
 	{
 		pubH := handler.NewPublishHandler(db)
 		pubAPI.PUT("/projects/:pid/publish", pubH.SaveConfig)
@@ -88,6 +92,12 @@ func main() {
 		pub.GET("/:pid/ppt/:wid", pubH.PPTPreview)
 	}
 
+	if cfg.ServerKey != "" {
+		log.Printf("========== 服务器密钥 ==========")
+		log.Printf("  %s", cfg.ServerKey)
+		log.Printf("  请妥善保存此密钥，填入 Zell 的项目服务器设置中即可使用")
+		log.Printf("=================================")
+	}
 	log.Printf("Zell server starting on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Server failed: %v", err)

@@ -1,27 +1,31 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html"
 	"html/template"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"zell-server/internal/model"
 	"zell-server/internal/repository"
+	zellTmpl "zell-server/internal/template"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yuin/goldmark"
 )
 
 type PublishHandler struct {
 	repo *repository.PublishRepo
+	db   *repository.DB
 }
 
 func NewPublishHandler(db *repository.DB) *PublishHandler {
 	return &PublishHandler{
 		repo: repository.NewPublishRepo(db),
+		db:   db,
 	}
 }
 
@@ -97,27 +101,32 @@ func (h *PublishHandler) WikiIndex(c *gin.Context) {
 		return
 	}
 
+	articles, err := h.db.ListArticles(projectID)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
 	type articleItem struct {
 		ID        string
 		Title     string
 		UpdatedAt string
 	}
+	wikiSet := make(map[string]bool)
+	for _, id := range data.Wiki {
+		wikiSet[id] = true
+	}
 	var items []articleItem
-	for _, aid := range data.Wiki {
-		a, err := h.repo.GetArticle(aid)
-		if err != nil {
+	for _, a := range articles {
+		if !wikiSet[a.ID] {
 			continue
 		}
 		items = append(items, articleItem{ID: a.ID, Title: a.Title, UpdatedAt: a.UpdatedAt})
 	}
 
-	tmpl := template.Must(template.ParseFiles(
-		filepath.Join("internal", "template", "base.html"),
-		filepath.Join("internal", "template", "wiki_index.html"),
-	))
-	tmpl.ExecuteTemplate(c.Writer, "base", gin.H{
-		"Title":       "知识库",
-		"ProjectName": "",
+	zellTmpl.WikiIndexTmpl.ExecuteTemplate(c.Writer, "base.html", gin.H{
+		"Title":       data.ProjectName + " — 知识库",
+		"ProjectName": data.ProjectName,
 		"Articles":    items,
 		"BasePath":    "/pub/" + projectID,
 	})
@@ -150,19 +159,17 @@ func (h *PublishHandler) WikiArticle(c *gin.Context) {
 		return
 	}
 
-	a, err := h.repo.GetArticle(articleID)
+	a, err := h.db.GetArticle(articleID)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles(
-		filepath.Join("internal", "template", "base.html"),
-		filepath.Join("internal", "template", "wiki_article.html"),
-	))
-	tmpl.ExecuteTemplate(c.Writer, "base", gin.H{
+	var buf bytes.Buffer
+	goldmark.Convert([]byte(a.Content), &buf)
+	zellTmpl.WikiArticleTmpl.ExecuteTemplate(c.Writer, "base.html", gin.H{
 		"Title":       a.Title,
-		"ContentHTML": template.HTML(a.ContentHTML),
+		"ContentHTML": template.HTML(buf.String()),
 		"BasePath":    "/pub/" + projectID,
 	})
 }
@@ -227,15 +234,7 @@ func (h *PublishHandler) PPTPreview(c *gin.Context) {
 
 	slidesJSON, _ := json.Marshal(slides)
 
-	tmpl := template.Must(template.New("ppt").Funcs(template.FuncMap{
-		"progressPercent": func(current, one, total int) float64 {
-			return float64(current+one) / float64(total) * 100
-		},
-	}).ParseFiles(
-		filepath.Join("internal", "template", "base.html"),
-		filepath.Join("internal", "template", "ppt_preview.html"),
-	))
-	tmpl.ExecuteTemplate(c.Writer, "base", gin.H{
+	zellTmpl.PptPreviewTmpl.ExecuteTemplate(c.Writer, "base.html", gin.H{
 		"Title":      wb.Name,
 		"Slides":     slides,
 		"SlidesJSON": template.JS(slidesJSON),

@@ -1,14 +1,17 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 )
 
 type Config struct {
-	Port    string
-	DBPath  string
-	DataDir string
+	Port      string
+	DBPath    string
+	DataDir   string
+	ServerKey string
 }
 
 func Load() *Config {
@@ -28,9 +31,17 @@ func Load() *Config {
 		panic("failed to create data directory: " + err.Error())
 	}
 
+	serverKey := os.Getenv("ZELL_SERVER_KEY")
+	if serverKey == "" {
+		b := make([]byte, 16)
+		rand.Read(b)
+		serverKey = hex.EncodeToString(b)
+	}
+
 	return &Config{
-		Port:    port,
-		DBPath:  dbPath,
-		DataDir: dataDir,
+		Port:      port,
+		DBPath:    dbPath,
+		DataDir:   dataDir,
+		ServerKey: serverKey,
 	}
 }

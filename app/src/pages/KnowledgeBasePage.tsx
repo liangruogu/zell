@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useProjectStore } from '@/stores/projectStore'
+import { useSyncStore } from '@/stores/syncStore'
+import { parseProjectSettings } from '@/types/project'
 import { ResizablePanel, useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { KnowledgeArticle } from '@/types/knowledge'
 import { invoke } from '@tauri-apps/api/core'
@@ -115,7 +117,8 @@ export default function KnowledgeBasePage() {
     setNewTitle('')
     setShowCreate(false)
     setCurrentArticle(article)
-  }, [projectId, newTitle, createArticle, setCurrentArticle])
+    syncToServer(article.id, article.title, mdContent, '{}', true)
+  }, [projectId, newTitle, createArticle, setCurrentArticle, syncToServer])
 
   const handleEditorChange = useCallback(
     (_html: string, markdown: string, json?: any) => {
@@ -125,17 +128,33 @@ export default function KnowledgeBasePage() {
       saveTimerRef.current = setTimeout(() => {
         const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
         updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
+        syncToServer(currentArticle.id, currentArticle.title, markdown, contentJson)
       }, 800)
     },
-    [currentArticle, updateArticle]
+    [currentArticle, updateArticle, projectId]
   )
+
+  const syncToServer = useCallback((aid: string, title: string, content: string, contentJson: string, isNew = false) => {
+    const { connected, serverUrl } = useSyncStore.getState()
+    if (!connected || !serverUrl || !projectId) return
+    const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
+    if (!ps.serverKey) return
+    const h = { 'Content-Type': 'application/json', 'X-Server-Key': ps.serverKey }
+    const url = `${serverUrl}/api/v1/projects/${projectId}/articles${isNew ? '' : '/' + aid}`
+    fetch(url, {
+      method: isNew ? 'POST' : 'PUT',
+      headers: h,
+      body: JSON.stringify({ id: aid, project_id: projectId, title, content, content_json: contentJson }),
+    }).catch(() => {})
+  }, [projectId])
 
   const handleImmediateSave = useCallback((_html: string, markdown: string, json?: any) => {
     if (!currentArticle) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
     updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
-  }, [currentArticle, updateArticle])
+    syncToServer(currentArticle.id, currentArticle.title, markdown, contentJson)
+  }, [currentArticle, updateArticle, syncToServer])
 
   const handleExport = useCallback(async (article: KnowledgeArticle, format: 'pdf' | 'docx') => {
     const ext = format === 'pdf' ? 'pdf' : 'docx'

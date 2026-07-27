@@ -20,7 +20,6 @@ export interface CreateProjectInput {
   name: string
   description?: string
   background?: string
-  icon?: string
   settings?: string
 }
 
@@ -28,7 +27,6 @@ export interface UpdateProjectInput {
   name: string
   description: string
   background: string
-  icon: string
   settings: string
 }
 
@@ -63,7 +61,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       name: data.name,
       description: data.description || '',
       background: data.background || '',
-      icon: data.icon || '',
+      icon: '',
       settings: data.settings || '{}',
     })
     set((state) => ({ projects: [project, ...state.projects] }))
@@ -76,7 +74,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       name: data.name,
       description: data.description,
       background: data.background,
-      icon: data.icon,
+      icon: '',
       settings: data.settings,
     })
     set((state) => ({

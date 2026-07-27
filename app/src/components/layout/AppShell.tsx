@@ -1,11 +1,13 @@
 import { type ReactNode, useEffect, useState, useCallback } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TitleBar } from './TitleBar'
 import { AIPanel } from '@/components/editor/AIPanel'
 import { useKeyboardShortcutDialog } from '@/components/share/KeyboardShortcutDialog'
 import { useAIStore } from '@/stores/aiStore'
 import { useSyncStore } from '@/stores/syncStore'
+import { Button } from '@/components/ui/Button'
+import { AlertTriangle } from 'lucide-react'
 
 interface AppShellProps {
   children: ReactNode
@@ -13,11 +15,15 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const location = useLocation()
+  const navigate = useNavigate()
   const { isOpen: isAIOpen, openPanel, closePanel } = useAIStore()
   const [aiWidth, setAiWidth] = useState(320)
   const [aiDragging, setAiDragging] = useState(false)
+  const readOnly = useSyncStore((s) => s.readOnly)
 
   const { dialog: shortcutDialog } = useKeyboardShortcutDialog()
+
+  const isOnOverview = location.pathname.startsWith('/project/') && !location.pathname.includes('/knowledge') && !location.pathname.includes('/whiteboard')
 
   // Auto-connect to saved server on startup
   const serverUrl = useSyncStore((s) => s.serverUrl)
@@ -94,6 +100,18 @@ export function AppShell({ children }: AppShellProps) {
       )}
       {shortcutDialog}
       </div>
+
+      {/* Read-only overlay for joined projects when server is offline */}
+      {readOnly && !isOnOverview && (
+        <div className="fixed inset-0 z-[999] bg-white/90 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center space-y-4 max-w-sm">
+            <AlertTriangle size={48} className="mx-auto text-amber-500" strokeWidth={1} />
+            <h2 className="text-lg font-semibold text-gray-800">与服务器断开连接</h2>
+            <p className="text-sm text-gray-500">你已加入的项目服务器已离线，在恢复连接前无法编辑内容。</p>
+            <Button onClick={() => navigate(-1)}>返回项目概览</Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -37,3 +37,14 @@ func AuthMiddleware(db *repository.DB) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func ServerKeyMiddleware(key string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.GetHeader("X-Server-Key") != key {
+			c.JSON(http.StatusForbidden, gin.H{"error": "invalid server key"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}

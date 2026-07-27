@@ -195,18 +195,6 @@ export function MarkdownEditor({
     }
   } catch { /* use default */ }
 
-  // Read image storage preference
-  const editorPrefs = useSettingsStore((s) => s.settings['editor_prefs'])
-  let imageStorage: 'base64' | 'file' = 'base64'
-  try {
-    if (editorPrefs) {
-      const parsed = JSON.parse(editorPrefs)
-      if (parsed.imageStorage === 'base64' || parsed.imageStorage === 'file') {
-        imageStorage = parsed.imageStorage
-      }
-    }
-  } catch { /* use default */ }
-
   const [justSaved, setJustSaved] = useState(false)
   const [saveMessage, setSaveMessage] = useState('✓ 已保存')
   const [showExport, setShowExport] = useState(false)
@@ -235,29 +223,11 @@ export function MarkdownEditor({
   }, [content])
 
   // Helper: insert image based on storage mode
-  const insertImage = useCallback(async (dataUrl: string, sourcePath?: string) => {
+  const insertImage = useCallback(async (dataUrl: string, _sourcePath?: string) => {
     const ed = editorRef.current
     if (!ed) return
-    const projectId = useProjectStore.getState().currentProject?.id
-
-    if (imageStorage === 'file' && projectId) {
-      try {
-        if (sourcePath) {
-          const saved = await invoke<{ file_name: string }>('save_project_image', { projectId, sourcePath })
-          ed.chain().focus().setImage({ src: `zell-img:${projectId}/${saved.file_name}` }).run()
-        } else {
-          const resp = await fetch(dataUrl)
-          const blob = await resp.blob()
-          const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
-          const ext = blob.type.split('/')[1] || 'png'
-          const saved = await invoke<{ file_name: string }>('save_project_image_bytes', { projectId, bytes, extension: ext })
-          ed.chain().focus().setImage({ src: `zell-img:${projectId}/${saved.file_name}` }).run()
-        }
-        return
-      } catch { /* fall through to base64 */ }
-    }
     ed.chain().focus().setImage({ src: dataUrl }).run()
-  }, [imageStorage])
+  }, [])
 
   const insertImageRef = useRef(insertImage)
   insertImageRef.current = insertImage

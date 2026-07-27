@@ -193,15 +193,6 @@ export function ServerManager({ onSave }: ServerManagerProps) {
              '未配置'}
           </span>
         </div>
-
-        {connected && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-700 font-medium">协作已启用</p>
-            <p className="text-xs text-green-600 mt-1">
-              知识库文章支持实时协作编辑。通过邀请码邀请团队成员加入。
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )
