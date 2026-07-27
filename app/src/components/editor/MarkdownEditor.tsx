@@ -39,31 +39,27 @@ import { save } from '@tauri-apps/plugin-dialog'
 
 const lowlight = createLowlight(common)
 
-type EditorMode = 'wysiwyg' | 'split'
-
 interface MarkdownEditorProps {
   content?: string
+  contentJson?: any
   editable?: boolean
   placeholder?: string
-  onChange?: (html: string, markdown: string) => void
-  onSave?: (html: string, markdown: string) => void
+  onChange?: (html: string, markdown: string, json?: any) => void
+  onSave?: (html: string, markdown: string, json?: any) => void
   className?: string
   autofocus?: boolean
-  editorMode?: EditorMode
-  onModeChange?: (mode: EditorMode) => void
   updatedAt?: string
 }
 
 export function MarkdownEditor({
   content = '',
+  contentJson,
   editable = true,
   placeholder = '开始写作...',
   onChange,
   onSave,
   className,
   autofocus = false,
-  editorMode: externalMode,
-  onModeChange,
   updatedAt,
 }: MarkdownEditorProps) {
   const isAIOpen = useAIStore((s) => s.isOpen)
@@ -211,14 +207,6 @@ export function MarkdownEditor({
     }
   } catch { /* use default */ }
 
-  let typewriterMode = false
-  try {
-    if (editorPrefs) {
-      const parsed = JSON.parse(editorPrefs)
-      typewriterMode = parsed.typewriterMode === 'on'
-    }
-  } catch { /* use default */ }
-
   const [justSaved, setJustSaved] = useState(false)
   const [saveMessage, setSaveMessage] = useState('✓ 已保存')
   const [showExport, setShowExport] = useState(false)
@@ -274,52 +262,19 @@ export function MarkdownEditor({
   const insertImageRef = useRef(insertImage)
   insertImageRef.current = insertImage
 
-  const [internalMode, setInternalMode] = useState<EditorMode>('wysiwyg')
-  const mode = externalMode ?? internalMode
+  const mode = 'wysiwyg'
 
   const initialHtml = useMemo(() => {
+    if (contentJson) {
+      try {
+        return typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
+      } catch { /* fall through */ }
+    }
     const html = markdownToHtml(content || '')
     return html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
       return open + body.replace(/\n+$/, '') + close
     })
   }, [])
-
-  const handleModeToggle = useCallback(() => {
-    const next = mode === 'wysiwyg' ? 'split' : 'wysiwyg'
-    if (mode === 'split' && next === 'wysiwyg' && splitSourceRef.current) {
-      const md = splitSourceRef.current
-      const html = markdownToHtml(md)
-      // Save to DB and update editor content directly
-      const article = useKnowledgeStore.getState().currentArticle
-      if (article) {
-        invoke('update_knowledge_article', {
-          id: article.id,
-          title: article.title,
-          content: md,
-          contentJson: '{}',
-        }).then((updated: { content: string }) => {
-          useKnowledgeStore.getState().updateArticle(article.id, article.title, updated.content)
-        }).catch(e => console.error('save failed:', e))
-      }
-      // When wysiwyg editor appears, set its content from split source
-      const cleanHtml = html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
-        return open + body.replace(/\n+$/, '') + close
-      })
-      ignoreNextSync.current = true
-      prevContentRef.current = md
-      setTimeout(() => {
-        if (editorRef.current && !editorRef.current.isDestroyed) {
-          editorRef.current.commands.setContent(cleanHtml)
-        }
-      }, 0)
-      onChangeRef.current?.(html, md)
-    }
-    if (onModeChange) {
-      onModeChange(next)
-    } else {
-      setInternalMode(next)
-    }
-  }, [mode, onModeChange])
 
   const ignoreNextSync = useRef(false)
   const editorRef = useRef<ReturnType<typeof useEditor>>(null)
@@ -330,7 +285,7 @@ export function MarkdownEditor({
       ignoreNextSync.current = true
       const html = editor.getHTML()
       const md = htmlToMarkdown(html)
-      onChangeRef.current?.(html, md)
+      onChangeRef.current?.(html, md, editor.getJSON())
     },
     []
   )
@@ -609,29 +564,30 @@ export function MarkdownEditor({
 
   editorRef.current = editor
 
-  // Typewriter mode: keep cursor line centered
-  useEffect(() => {
-    if (!editor || mode !== 'wysiwyg' || !typewriterMode) return
-    const scroll = () => {
-      const { from } = editor.state.selection
-      const coords = editor.view.coordsAtPos(from)
-      if (!coords) return
-      const scrollContainer = editor.view.dom.closest('.overflow-auto') as HTMLElement
-      if (!scrollContainer) return
-      const containerRect = scrollContainer.getBoundingClientRect()
-      const targetScroll = scrollContainer.scrollTop + coords.top - containerRect.top - containerRect.height / 2
-      scrollContainer.scrollTo({ top: targetScroll, behavior: 'smooth' })
-    }
-    editor.on('selectionUpdate', scroll)
-    return () => { editor.off('selectionUpdate', scroll) }
-  }, [editor, mode, typewriterMode])
-
   const prevContentRef = useRef(content)
+  const prevJsonRef = useRef(contentJson)
+
+  // Sync editor content from prop (JSON preferred, Markdown fallback)
   useEffect(() => {
     if (!editor || mode !== 'wysiwyg') return
     if (ignoreNextSync.current) {
       ignoreNextSync.current = false
       prevContentRef.current = content
+      prevJsonRef.current = contentJson
+      return
+    }
+    // Prefer JSON loading when available
+    if (contentJson && contentJson !== prevJsonRef.current) {
+      prevJsonRef.current = contentJson
+      prevContentRef.current = content
+      try {
+        const parsed = typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
+        editor.commands.setContent(parsed)
+      } catch {
+        // fall through to markdown loading
+        const html = markdownToHtml(content || '')
+        editor.commands.setContent(html)
+      }
       return
     }
     if (content !== prevContentRef.current) {
@@ -778,7 +734,7 @@ export function MarkdownEditor({
     if (!ed) return
     const html = ed.getHTML()
     const md = htmlToMarkdown(html)
-    onSave?.(html, md)
+    onSave?.(html, md, editor.getJSON())
     setSaveMessage('✓ 已保存')
     setJustSaved(true)
     setTimeout(() => setJustSaved(false), 2000)
@@ -954,7 +910,7 @@ export function MarkdownEditor({
   return (
     <div className={cn('flex flex-col h-full overflow-hidden bg-white relative', className)}>
       {editable && showToolbar && (
-        <EditorToolbar editor={editor} editorMode={mode} onToggleMode={handleModeToggle} />
+        <EditorToolbar editor={editor} />
       )}
 
       {mode === 'wysiwyg' ? (
@@ -1048,15 +1004,6 @@ export function MarkdownEditor({
               </div>
             )}
           </div>
-          <span className="text-gray-300">|</span>
-          <button
-            type="button"
-            onClick={handleModeToggle}
-            className="hover:text-gray-600 transition-colors cursor-pointer"
-            title="点击切换视图"
-          >
-            {mode === 'wysiwyg' ? '所见即所得' : '分屏模式'}
-          </button>
         </span>
       </div>
 

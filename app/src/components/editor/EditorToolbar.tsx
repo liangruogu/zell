@@ -4,7 +4,6 @@ import {
   List, ListOrdered, Quote, Undo2, Redo2,
   Heading1, Heading2, Heading3, Code2, Minus,
   CheckSquare, Highlighter, Link2, Image, Table2,
-  Eye, Columns2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCallback } from 'react'
@@ -36,11 +35,9 @@ function ToolbarButton({ onClick, isActive, title, children }: ToolbarButtonProp
 
 interface EditorToolbarProps {
   editor: Editor | null
-  editorMode: 'wysiwyg' | 'split'
-  onToggleMode: () => void
 }
 
-export function EditorToolbar({ editor, editorMode, onToggleMode }: EditorToolbarProps) {
+export function EditorToolbar({ editor }: EditorToolbarProps) {
   const addImage = useCallback(() => {
     if (!editor) return
     const url = window.prompt('输入图片 URL')
@@ -113,17 +110,6 @@ export function EditorToolbar({ editor, editorMode, onToggleMode }: EditorToolba
             ))}
           </div>
         ))}
-      </div>
-
-      <div className="flex items-center gap-1">
-        <div className="w-px h-5 bg-gray-300 mx-1" />
-        <ToolbarButton
-          onClick={onToggleMode}
-          isActive={false}
-          title={isWysiwyg ? '切换到分屏模式' : '切换到所见即所得模式'}
-        >
-          {isWysiwyg ? <Columns2 size={16} /> : <Eye size={16} />}
-        </ToolbarButton>
       </div>
     </div>
   )

@@ -123,10 +123,10 @@ MIT
 
 fdasfd
 
-| adsf    | asdfads |      |
-| ------- | ------- | ---- |
-| adsfads | dasfds  |      |
-|         |         |      |
+|  adsf   | asdfads | fasdf |
+| :-----: | :-----: | ----- |
+| adsfads | dasfds  |       |
+|         |         |       |
 
 ```rust
 fn main() {

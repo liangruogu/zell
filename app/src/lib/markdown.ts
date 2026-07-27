@@ -67,6 +67,11 @@ marked.use({
 export function htmlToMarkdown(html: string): string {
   if (!html) return ''
   try {
+    // Strip TipTap task list wrappers for GFM
+    html = html.replace(/<ul data-type="taskList">/g, '<ul>')
+    html = html.replace(/<li><label><input type="checkbox"\s*(checked(?:="true")?)?\s*><\/label><div><p>/g,
+      (_, checked) => `<li><input type="checkbox"${checked ? ' checked' : ''}>`)
+    html = html.replace(/<\/p><\/div><\/li>/g, '</li>')
     let result = turndown.turndown(html)
     result = result.replace(/```(\w*)\n([\s\S]*?)\n+```/g, '```$1\n$2\n```')
     return result
@@ -118,6 +123,9 @@ export function markdownToHtml(md: string): string {
 
     const result = marked.parse(processed, { async: false })
     let html = typeof result === 'string' ? result : ''
+
+    // Restore TipTap task list attribute
+    html = html.replace(/<ul>\s*(?=<li>\s*<input\s+type="checkbox")/g, '<ul data-type="taskList">')
 
     for (const { placeholder, latex } of displayMaths) {
       html = html.replace(placeholder, `<math-display class="math-node">${escapeText(latex)}</math-display>`)

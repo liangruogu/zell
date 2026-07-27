@@ -8,7 +8,7 @@ export function TableToolbar({ editor }: { editor: any }) {
 
   useEffect(() => {
     if (!editor) return
-    const update = () => {
+    const updatePos = () => {
       if (!editor.isActive('table')) {
         setPos(null)
         setShowGrid(false)
@@ -19,42 +19,81 @@ export function TableToolbar({ editor }: { editor: any }) {
       const rect = table.getBoundingClientRect()
       setPos({ x: rect.left, y: rect.top - 22, right: rect.right })
     }
-    editor.on('selectionUpdate', update)
-    return () => { editor.off('selectionUpdate', update) }
+
+    editor.on('selectionUpdate', updatePos)
+
+    const scrollContainer = editor.view.dom.closest('.overflow-auto') as HTMLElement
+    let raf = 0
+    const onScroll = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(updatePos)
+    }
+    if (scrollContainer) scrollContainer.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      editor.off('selectionUpdate', updatePos)
+      cancelAnimationFrame(raf)
+      if (scrollContainer) scrollContainer.removeEventListener('scroll', onScroll)
+    }
   }, [editor])
 
-  const handleGridSelect = useCallback((rows: number, cols: number) => {
+  const setAlign = useCallback((align: 'left' | 'center' | 'right') => {
     if (!editor) return
-    const tableEl = editor.view.dom.querySelector('table')
-    if (!tableEl) return
-    const currentRows = tableEl.rows.length
-    const currentCols = tableEl.rows[0]?.cells.length || 0
+    const { state } = editor
+    const { $from } = state.selection
 
-    if (rows < currentRows) {
-      for (let i = currentRows; i > rows; i--) {
-        if (tableEl.rows.length <= rows) break
-        editor.chain().focus().goToNextCell().run()
-        editor.chain().focus().deleteRow().run()
+    // Find the table cell and its column index
+    let cellNode: any = null
+    let cellPos = -1
+    for (let d = $from.depth; d > 0; d--) {
+      const n = $from.node(d)
+      if (n.type.name === 'tableCell' || n.type.name === 'tableHeader') {
+        cellNode = n
+        cellPos = $from.before(d)
+        break
       }
     }
-    if (cols < currentCols) {
-      for (let i = currentCols; i > cols; i--) {
-        if ((tableEl.rows[0]?.cells.length || 0) <= cols) break
-        editor.chain().focus().goToNextCell().run()
-        editor.chain().focus().deleteColumn().run()
+    if (!cellNode) return
+
+    // Find the row containing this cell
+    let rowNode: any = null
+    let rowPos = -1
+    for (let d = $from.depth; d > 0; d--) {
+      if ($from.node(d).type.name === 'tableRow') {
+        rowNode = $from.node(d)
+        rowPos = $from.before(d)
+        break
       }
     }
-    if (rows > currentRows) {
-      for (let i = currentRows; i < rows; i++) {
-        editor.chain().focus().addRowAfter().run()
+    if (!rowNode) return
+
+    // Find column index
+    let colIdx = 0
+    let pos = rowPos + 1
+    while (pos < cellPos) {
+      const n = state.doc.nodeAt(pos)
+      if (n && (n.type.name === 'tableCell' || n.type.name === 'tableHeader')) {
+        colIdx++
+        pos += n.nodeSize
+      } else {
+        pos++
       }
     }
-    if (cols > currentCols) {
-      for (let i = currentCols; i < cols; i++) {
-        editor.chain().focus().addColumnAfter().run()
+
+    // Apply alignment to all cells in this column
+    const table = editor.view.dom.querySelector('table')
+    if (!table) return
+    const rows = table.rows
+    const chain = editor.chain()
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r]
+      if (colIdx < row.cells.length) {
+        const cell = row.cells[colIdx]
+        const domPos = editor.view.posAtDOM(cell, 0)
+        chain.setTextSelection(domPos + 1).setTextAlign(align)
       }
     }
-    setShowGrid(false)
+    chain.run()
   }, [editor])
 
   if (!pos) return null
@@ -101,13 +140,13 @@ export function TableToolbar({ editor }: { editor: any }) {
           )}
         </div>
 
-        <button onClick={() => editor.chain().focus().setTextAlign('left').run()} className="p-0.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer" title="左对齐">
+        <button onClick={() => setAlign('left')} className="p-0.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer" title="左对齐">
           <AlignLeft size={15} />
         </button>
-        <button onClick={() => editor.chain().focus().setTextAlign('center').run()} className="p-0.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer" title="居中">
+        <button onClick={() => setAlign('center')} className="p-0.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer" title="居中">
           <AlignCenter size={15} />
         </button>
-        <button onClick={() => editor.chain().focus().setTextAlign('right').run()} className="p-0.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer" title="右对齐">
+        <button onClick={() => setAlign('right')} className="p-0.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer" title="右对齐">
           <AlignRight size={15} />
         </button>
       </div>
@@ -119,4 +158,47 @@ export function TableToolbar({ editor }: { editor: any }) {
       </div>
     </>
   )
+
+  function handleGridSelect(rows: number, cols: number) {
+    if (!editor) return
+    const tableEl = editor.view.dom.querySelector('table')
+    if (!tableEl) return
+    const currentRows = tableEl.rows.length
+    const currentCols = tableEl.rows[0]?.cells.length || 0
+
+    // Delete extra rows from bottom-up (preserve data above)
+    while (tableEl.rows.length > rows) {
+      const lastRow = tableEl.rows[tableEl.rows.length - 1]
+      const lastCell = lastRow.cells[lastRow.cells.length - 1]
+      const pos = editor.view.posAtDOM(lastCell, 0)
+      editor.chain().focus().setTextSelection(pos + lastCell.textContent!.length).deleteRow().run()
+    }
+
+    // Delete extra columns from right-to-left
+    while (tableEl.rows[0]?.cells && tableEl.rows[0].cells.length > cols) {
+      const lastCell = tableEl.rows[0].cells[tableEl.rows[0].cells.length - 1]
+      const pos = editor.view.posAtDOM(lastCell, 0)
+      editor.chain().focus().setTextSelection(pos + lastCell.textContent!.length).deleteColumn().run()
+    }
+
+    // Add rows (empty rows at bottom)
+    for (let i = currentRows; i < rows; i++) {
+      if (tableEl.rows.length > 0) {
+        const lastCell = tableEl.rows[tableEl.rows.length - 1].cells[0]
+        const pos = editor.view.posAtDOM(lastCell, 0)
+        editor.chain().focus().setTextSelection(pos).addRowAfter().run()
+      }
+    }
+
+    // Add columns (empty columns at right)
+    for (let i = currentCols; i < cols; i++) {
+      if (tableEl.rows.length > 0 && tableEl.rows[0].cells.length > 0) {
+        const lastCell = tableEl.rows[0].cells[tableEl.rows[0].cells.length - 1]
+        const pos = editor.view.posAtDOM(lastCell, 0)
+        editor.chain().focus().setTextSelection(pos).addColumnAfter().run()
+      }
+    }
+
+    setShowGrid(false)
+  }
 }

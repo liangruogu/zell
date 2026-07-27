@@ -21,11 +21,6 @@ const CATEGORIES: { key: SettingsCategory; label: string; icon: React.ReactNode 
   { key: 'sync', label: '资源同步', icon: <Link2 size={16} /> },
 ]
 
-const EDITOR_MODE_OPTIONS = [
-  { value: 'wysiwyg', label: '所见即所得' },
-  { value: 'split', label: '分屏模式' },
-]
-
 const IMAGE_STORAGE_OPTIONS = [
   { value: 'base64', label: 'Base64 内嵌（Markdown 源码较长）' },
   { value: 'file', label: '文件路径（保存在项目目录，简洁可读）' },
@@ -563,21 +558,17 @@ function EditorSettings({ parsed, setSetting, showToast }: {
 }) {
   const { register, handleSubmit, reset } = useForm({
     defaultValues: {
-      defaultMode: String(parsed.editorPrefs.defaultMode || 'wysiwyg'),
       imageStorage: String(parsed.editorPrefs.imageStorage || 'base64'),
-      typewriterMode: String(parsed.editorPrefs.typewriterMode || 'off'),
     },
   })
 
   useEffect(() => {
     reset({
-      defaultMode: String(parsed.editorPrefs.defaultMode || 'wysiwyg'),
       imageStorage: String(parsed.editorPrefs.imageStorage || 'base64'),
-      typewriterMode: String(parsed.editorPrefs.typewriterMode || 'off'),
     })
-  }, [parsed.editorPrefs.defaultMode, parsed.editorPrefs.imageStorage, parsed.editorPrefs.typewriterMode, reset])
+  }, [parsed.editorPrefs.imageStorage, reset])
 
-  const onSubmit = useCallback(async (data: { defaultMode: string; imageStorage: string; typewriterMode: string }) => {
+  const onSubmit = useCallback(async (data: { imageStorage: string }) => {
     await setSetting('editor_prefs', JSON.stringify({
       ...parsed.editorPrefs,
       ...data,
@@ -589,21 +580,11 @@ function EditorSettings({ parsed, setSetting, showToast }: {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <h3 className="font-semibold text-gray-800">编辑器偏好</h3>
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">默认编辑模式</label>
-        <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400" {...register('defaultMode')}>
-          {EDITOR_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-      <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">图片存储方式</label>
         <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400" {...register('imageStorage')}>
           {IMAGE_STORAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <p className="text-xs text-gray-400 mt-1">Base64 模式：图片直接嵌入 Markdown<br />文件模式：图片保存为独立文件，Markdown 仅存引用</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <input type="checkbox" id="typewriterMode" className="w-4 h-4 accent-zell-500" {...register('typewriterMode')} />
-        <label htmlFor="typewriterMode" className="text-sm text-gray-700 cursor-pointer">打字机模式（光标始终居中）</label>
       </div>
       <Button type="submit" size="sm">保存偏好</Button>
     </form>

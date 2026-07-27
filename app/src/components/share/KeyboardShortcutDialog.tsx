@@ -30,16 +30,14 @@ const markdownFormatShortcuts: ShortcutGroup = {
 const markdownBlockShortcuts: ShortcutGroup = {
   title: '知识库 — 块格式',
   shortcuts: [
-    { keys: 'Ctrl+Alt+1', action: '标题 1' },
-    { keys: 'Ctrl+Alt+2', action: '标题 2' },
-    { keys: 'Ctrl+Alt+3', action: '标题 3' },
-    { keys: 'Ctrl+Shift+8', action: '无序列表' },
+    { keys: 'Ctrl+Alt+数字', action: '标题 1~6' },
     { keys: 'Ctrl+Shift+7', action: '有序列表' },
+    { keys: 'Ctrl+Shift+8', action: '无序列表' },
     { keys: 'Ctrl+Shift+X', action: '任务列表' },
     { keys: 'Ctrl+Shift+B', action: '引用块' },
     { keys: 'Ctrl+Alt+C', action: '代码块' },
     { keys: 'Ctrl+Shift+T', action: '插入表格' },
-    { keys: '$$ + Enter', action: '插入块级公式' },
+    { keys: '$$ + 空格', action: '插入块级公式' },
   ],
 }
 

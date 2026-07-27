@@ -118,12 +118,12 @@ export default function KnowledgeBasePage() {
   }, [projectId, newTitle, createArticle, setCurrentArticle])
 
   const handleEditorChange = useCallback(
-    (_html: string, markdown: string) => {
+    (_html: string, markdown: string, json?: any) => {
       setEditorMd(markdown)
       if (!currentArticle) return
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(() => {
-        updateArticle(currentArticle.id, currentArticle.title, markdown)
+        const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
+        updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
       }, 800)
     },
     [currentArticle, updateArticle]
@@ -398,12 +398,16 @@ export default function KnowledgeBasePage() {
               <MarkdownEditor
                 key={currentArticle.id}
                 content={currentArticle.content}
+                contentJson={
+                  currentArticle.content_json && currentArticle.content_json !== '{}'
+                    ? (() => { try { return JSON.parse(currentArticle.content_json) } catch { return null } })()
+                    : null
+                }
                 onChange={handleEditorChange}
                 onSave={handleImmediateSave}
                 placeholder="开始编辑知识库文档..."
                 autofocus={false}
                 updatedAt={currentArticle.updated_at}
-                projectId={projectId}
               />
             </div>
           ) : (
