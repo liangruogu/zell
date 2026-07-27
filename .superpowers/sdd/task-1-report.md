@@ -1,30 +1,19 @@
-### Task 1 Report: Install Vercel AI SDK dependencies
+# Task 1 Report: Type definitions — PublishSettings
 
-**Status:** DONE
+## Status: DONE
 
-**Step 1: Add dependencies to package.json** — DONE
-- Added `"@ai-sdk/openai": "^1.3.0"` and `"@ai-sdk/openai-compatible": "^0.2.0"` after the `dependencies` opening brace
-- Added `"ai": "^4.3.0"` before `class-variance-authority`
-- All three inserted in alphabetical order
+## Commits created
+- `5309ad1` — feat: add PublishSettings type to ProjectSettings
 
-**Step 2: Install packages** — DONE
-- Ran `pnpm install` in `app/`
-- 17 new packages added
-- Resolved 455 packages total
+## Summary
+Added `PublishSettings` interface and `publish` field to `ProjectSettings` in `app/src/types/project.ts`.
 
-**Step 3: Verify installation** — DONE
-- `pnpm ls ai @ai-sdk/openai @ai-sdk/openai-compatible` output:
+## Changes
+- New `PublishSettings` interface with fields: `enabled` (boolean), `wiki`, `ppt`, `ui`, `mood` (all `string[]`)
+- Added `publish?: PublishSettings` to the existing `ProjectSettings` interface
 
-```
-Legend: production dependency, optional only, dev only
+## Verification
+- `npx tsc --noEmit` passes with no errors
 
-app@0.0.0 F:\freeMind\bindle\app (PRIVATE)
-
-dependencies:
-@ai-sdk/openai 1.3.24
-@ai-sdk/openai-compatible 0.2.16
-ai 4.3.19
-```
-
-**Issues/Concerns:**
-- Peer dependency warnings: `zod@^3.23.8` required by `ai`, `@ai-sdk/openai`, and `@ai-sdk/openai-compatible`, but the project uses `zod@^4.4.3`. These are warnings only — the packages are installed and functional. The zod v3/v4 mismatch may need attention later if runtime issues arise with AI SDK providers.
+## Concerns
+None.

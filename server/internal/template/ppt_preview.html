@@ -1,0 +1,46 @@
+{{define "content"}}
+<style>
+  .ppt-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #000; position: relative; }
+  .ppt-slide { position: relative; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+  .ppt-nav { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; align-items: center; z-index: 10; }
+  .ppt-nav button { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: background 0.15s; }
+  .ppt-nav button:hover { background: rgba(255,255,255,0.25); }
+  .ppt-nav .page-info { color: rgba(255,255,255,0.6); font-size: 13px; }
+  .ppt-progress { position: fixed; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.1); z-index: 10; }
+  .ppt-progress-bar { height: 100%; background: #6366f1; transition: width 0.3s; }
+</style>
+<div class="ppt-container">
+  <div id="slide" class="ppt-slide" style="width: min(100vw, calc(100vh - 80px) * 1280 / 720); height: calc(min(100vw, calc(100vh - 80px) * 1280 / 720) * 720 / 1280);">
+  </div>
+  <div class="ppt-nav">
+    <button onclick="prevSlide()">← 上一页</button>
+    <span class="page-info"><span id="current">1</span> / {{len .Slides}}</span>
+    <button onclick="nextSlide()">下一页 →</button>
+  </div>
+  <div class="ppt-progress">
+    <div id="progress" class="ppt-progress-bar" style="width: {{progressPercent .Current 1 (len .Slides)}}%"></div>
+  </div>
+</div>
+<script>
+  var slides = {{.SlidesJSON}};
+  var current = 0;
+  function renderSlide(idx) {
+    current = idx;
+    var s = slides[idx];
+    var el = document.getElementById('slide');
+    el.style.background = s.bg || '#ffffff';
+    el.style.opacity = s.bgOpacity !== undefined ? s.bgOpacity : 1;
+    el.innerHTML = s.html || '';
+    document.getElementById('current').textContent = idx + 1;
+    var pct = ((idx + 1) / slides.length) * 100;
+    document.getElementById('progress').style.width = pct + '%';
+  }
+  function nextSlide() { if (current < slides.length - 1) renderSlide(current + 1); }
+  function prevSlide() { if (current > 0) renderSlide(current - 1); }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextSlide(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevSlide(); }
+  });
+  renderSlide(0);
+</script>
+{{end}}

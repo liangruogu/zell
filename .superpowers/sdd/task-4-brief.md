@@ -1,184 +1,92 @@
-﻿### Task 4: Add search_knowledge, search_resources, get_resource_content commands
+﻿### Task 4: Go server — publish models and database migration
 
 **Files:**
-- Modify: `app/src-tauri/src/commands/resource.rs`
-- Modify: `app/src-tauri/src/lib.rs`
+- Create: `server/internal/model/publish.go`
+- Modify: `server/internal/repository/db.go`
 
 **Interfaces:**
-- Produces (Rust commands):
-  - `search_knowledge(project_id: String, query: String, limit: Option<usize>) -> Vec<SearchResult>` 鈥?FTS5 search with source_type='knowledge'
-  - `search_resources(project_id: String, query: String, limit: Option<usize>) -> Vec<SearchResult>` 鈥?FTS5 search with source_type IN ('file','link')
-  - `get_resource_content(resource_type: String, id: String) -> ResourceContent` 鈥?returns full text
-- Produces (structs):
-  - `ResourceContent { id: String, name: String, text: String, resource_type: String, url: Option<String> }`
+- Consumes: Existing `repository.DB` struct
+- Produces: `PublishConfig`, `PublishArticle`, `PublishWhiteboard`, `PublishData` models + migration in `db.go`
 
-- [ ] **Step 1: Add ResourceContent struct and search_knowledge command**
+- [ ] **Step 1: Create publish models**
 
-At the top of `resource.rs`, after the `SearchResult` struct, add:
+Create `server/internal/model/publish.go`:
 
-```rust
-#[derive(Debug, Clone, Serialize)]
-pub struct ResourceContent {
-    pub id: String,
-    pub name: String,
-    pub text: String,
-    pub resource_type: String,
-    pub url: Option<String>,
+```go
+package model
+
+type PublishConfig struct {
+	ProjectID string `json:"project_id"`
+	Data      string `json:"data"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+type PublishArticle struct {
+	ID          string `json:"id"`
+	ProjectID   string `json:"project_id"`
+	Title       string `json:"title"`
+	ContentHTML string `json:"content_html"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type PublishWhiteboard struct {
+	ID        string `json:"id"`
+	ProjectID string `json:"project_id"`
+	Name      string `json:"name"`
+	WbType    string `json:"wb_type"`
+	Snapshot  string `json:"snapshot"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+type PublishData struct {
+	Enabled bool     `json:"enabled"`
+	Wiki    []string `json:"wiki"`
+	PPT     []string `json:"ppt"`
+	UI      []string `json:"ui"`
+	Mood    []string `json:"mood"`
 }
 ```
 
-Add `search_knowledge` command after the `search_documents` command:
+- [ ] **Step 2: Add publish tables migration**
 
-```rust
-#[tauri::command]
-pub fn search_knowledge(
-    db: State<'_, Database>,
-    project_id: String,
-    query: String,
-    limit: Option<usize>,
-) -> Result<Vec<SearchResult>, String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    let limit = limit.unwrap_or(5);
-    let mut stmt = conn
-        .prepare(
-            "SELECT title, snippet(document_search, 2, '<b>', '</b>', '...', 32) as snippet,
-                    source_type, source_id, project_id, rank
-             FROM document_search
-             WHERE document_search MATCH ?1 AND project_id = ?2 AND source_type = 'knowledge'
-             ORDER BY rank
-             LIMIT ?3",
-        )
-        .map_err(|e| e.to_string())?;
+In `server/internal/repository/db.go`, append these queries to the `migrate()` method's `queries` slice (after the last existing query):
 
-    let results = stmt
-        .query_map(params![query, project_id, limit as i64], |row| {
-            Ok(SearchResult {
-                title: row.get(0)?, snippet: row.get(1)?,
-                source_type: row.get(2)?, source_id: row.get(3)?,
-                project_id: row.get(4)?, rank: row.get(5)?,
-            })
-        })
-        .map_err(|e| e.to_string())?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
-
-    Ok(results)
-}
+```go
+`CREATE TABLE IF NOT EXISTS publish_config (
+    project_id TEXT PRIMARY KEY,
+    data       TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT NOT NULL
+)`,
+`CREATE TABLE IF NOT EXISTS publish_articles (
+    id           TEXT PRIMARY KEY,
+    project_id   TEXT NOT NULL,
+    title        TEXT NOT NULL,
+    content_html TEXT NOT NULL DEFAULT '',
+    updated_at   TEXT NOT NULL
+)`,
+`CREATE INDEX IF NOT EXISTS idx_pub_articles_project ON publish_articles(project_id)`,
+`CREATE TABLE IF NOT EXISTS publish_whiteboards (
+    id         TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    wb_type    TEXT NOT NULL,
+    snapshot   TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT NOT NULL
+)`,
+`CREATE INDEX IF NOT EXISTS idx_pub_whiteboards_project ON publish_whiteboards(project_id)`,
 ```
 
-- [ ] **Step 2: Add search_resources command**
-
-```rust
-#[tauri::command]
-pub fn search_resources(
-    db: State<'_, Database>,
-    project_id: String,
-    query: String,
-    limit: Option<usize>,
-) -> Result<Vec<SearchResult>, String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    let limit = limit.unwrap_or(5);
-    let mut stmt = conn
-        .prepare(
-            "SELECT title, snippet(document_search, 2, '<b>', '</b>', '...', 32) as snippet,
-                    source_type, source_id, project_id, rank
-             FROM document_search
-             WHERE document_search MATCH ?1 AND project_id = ?2 AND (source_type = 'file' OR source_type = 'link')
-             ORDER BY rank
-             LIMIT ?3",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let results = stmt
-        .query_map(params![query, project_id, limit as i64], |row| {
-            Ok(SearchResult {
-                title: row.get(0)?, snippet: row.get(1)?,
-                source_type: row.get(2)?, source_id: row.get(3)?,
-                project_id: row.get(4)?, rank: row.get(5)?,
-            })
-        })
-        .map_err(|e| e.to_string())?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
-
-    Ok(results)
-}
-```
-
-- [ ] **Step 3: Add get_resource_content command**
-
-```rust
-#[tauri::command]
-pub fn get_resource_content(
-    db: State<'_, Database>,
-    resource_type: String,
-    id: String,
-) -> Result<ResourceContent, String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-
-    match resource_type.as_str() {
-        "file" => {
-            let (original_name, extracted_text, file_type) = conn
-                .query_row(
-                    "SELECT original_name, extracted_text, file_type FROM project_files WHERE id=?1 AND deleted_at IS NULL",
-                    params![id],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?)),
-                )
-                .map_err(|e| format!("File not found: {}", e))?;
-            Ok(ResourceContent {
-                id, name: original_name, text: extracted_text,
-                resource_type: format!("file/{}", file_type), url: None,
-            })
-        }
-        "link" => {
-            let (title, description, last_snapshot, url) = conn
-                .query_row(
-                    "SELECT title, description, last_snapshot, url FROM external_links WHERE id=?1 AND deleted_at IS NULL",
-                    params![id],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?, row.get::<_, String>(3)?)),
-                )
-                .map_err(|e| format!("Link not found: {}", e))?;
-            let text = if let Some(ref snap) = last_snapshot {
-                if snap.is_empty() { description } else { snap.clone() }
-            } else {
-                description
-            };
-            Ok(ResourceContent {
-                id, name: title, text,
-                resource_type: "link".into(), url: Some(url),
-            })
-        }
-        _ => Err(format!("Unknown resource type: {}", resource_type)),
-    }
-}
-```
-
-- [ ] **Step 4: Register new commands in lib.rs**
-
-In `app/src-tauri/src/lib.rs`, add to the `invoke_handler`:
-
-```rust
-commands::knowledge::get_article_summaries,
-commands::resource::search_knowledge,
-commands::resource::search_resources,
-commands::resource::get_resource_content,
-```
-
-- [ ] **Step 5: Verify build**
+- [ ] **Step 3: Build and verify**
 
 ```bash
-cd app/src-tauri && cargo check 2>&1
+cd server && go build -o zell-server.exe
 ```
 
-Expected: no errors.
+Expected: build succeeds.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add app/src-tauri/src/commands/resource.rs app/src-tauri/src/lib.rs
-git commit -m "feat: add search_knowledge, search_resources, get_resource_content commands"
+git add server/internal/model/publish.go server/internal/repository/db.go
+git commit -m "feat: add publish models and database migration"
 ```
-
----
-
-

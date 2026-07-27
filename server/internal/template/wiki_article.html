@@ -1,0 +1,7 @@
+{{define "content"}}
+<div class="container">
+  <a href="{{.BasePath}}/wiki/" class="back-link">← 返回文章列表</a>
+  <h1 style="font-size: 1.6em; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">{{.Title}}</h1>
+  <div class="prose">{{.ContentHTML}}</div>
+</div>
+{{end}}

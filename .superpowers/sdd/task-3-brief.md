@@ -1,185 +1,60 @@
-﻿### Task 3: Index knowledge articles in FTS5 + add summaries command
+﻿### Task 3: Integrate Publish tab into ProjectPage
 
 **Files:**
-- Modify: `app/src-tauri/src/commands/knowledge.rs`
-- Modify: `app/src-tauri/src/commands/resource.rs`
-- Modify: `app/src-tauri/src/db/migrations.rs`
+- Modify: `app/src/pages/ProjectPage.tsx`
 
 **Interfaces:**
-- Consumes: `index_document()` from `commands/resource.rs` (already `pub fn`)
-- Produces:
-  - `get_article_summaries(project_id: String) -> Vec<ArticleSummary>` 鈥?Tauri command
-  - `ArticleSummary` struct: `{ id, title, preview, updated_at }`
-  - Knowledge articles indexed into FTS5 `document_search` on create/update
-  - Existing knowledge articles re-indexed on migration
+- Consumes: `PublishSettings` component from Task 2 (at `@/components/project/PublishSettings`)
+- Produces: Updated ProjectPage with tabbed settings UI (概览 / 发布)
 
-- [ ] **Step 1: Add FTS5 indexing to create_knowledge_article**
+**Requirements:**
+1. Add `import { PublishSettings } from '@/components/project/PublishSettings'` at the top
+2. Add tab state: `const [settingsTab, setSettingsTab] = useState<'overview' | 'publish'>('overview')`
+3. Replace `<div className="flex-1 overflow-auto p-6 space-y-6">` through the closing `</div>` before `{/* Edit Dialog */}` with a tabbed layout:
+   - Left sidebar with two tab buttons (概览 / 发布)
+   - Right content area that shows either the existing overview content or `<PublishSettings />`
 
-In `app/src-tauri/src/commands/knowledge.rs`, after the `INSERT` statement and before returning `Ok(...)`, add:
+**New content area structure:**
+```tsx
+<div className="flex-1 flex min-h-0">
+  {/* Left: Settings tabs */}
+  <div className="w-36 border-r border-gray-200 p-3 space-y-1 shrink-0">
+    <button onClick={() => setSettingsTab('overview')}
+      className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
+        settingsTab === 'overview' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
+      概览
+    </button>
+    <button onClick={() => setSettingsTab('publish')}
+      className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
+        settingsTab === 'publish' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
+      发布
+    </button>
+  </div>
 
-```rust
-// Index in FTS5
-let _ = crate::commands::resource::index_document(
-    &db, &project_id, "knowledge", &id, &title, &content,
-);
+  {/* Right: Tab content */}
+  <div className="flex-1 overflow-auto">
+    {settingsTab === 'overview' ? (
+      <div className="p-6 space-y-6">
+        {/* EXISTING overview content: 项目信息 Card, 项目背景 Card, 团队协作 Card */}
+        {/* Copy-paste from the current file - keep exactly the same */}
+      </div>
+    ) : (
+      <PublishSettings />
+    )}
+  </div>
+</div>
 ```
 
-- [ ] **Step 2: Add FTS5 indexing to update_knowledge_article**
+**Key points:**
+- The overview tab should contain EXACTLY the same content as current (项目信息, 项目背景, 团队协作 cards)
+- The publish tab renders `<PublishSettings />`
+- The Edit Dialog and Delete Dialog remain unchanged (they're outside the replaced area)
+- `Users` and `Copy` icons are already imported in the current file
 
-In `app/src-tauri/src/commands/knowledge.rs`, after the `UPDATE` statement and before `drop(conn)`, add:
-
-```rust
-let _ = crate::commands::resource::index_document(
-    &db, &project_id, "knowledge", &id, &title, &content,
-);
-```
-
-Note: `project_id` is not directly available in `update_knowledge_article`. First query the article to get `project_id`:
-
-```rust
-let project_id: String = conn.query_row(
-    "SELECT project_id FROM knowledge_articles WHERE id = ?1",
-    rusqlite::params![id],
-    |row| row.get(0),
-).map_err(|e| e.to_string())?;
-```
-
-Then index after update.
-
-- [ ] **Step 3: Add FTS5 cleanup to delete_knowledge_article**
-
-After the soft-delete `UPDATE`, add:
-
-```rust
-let _ = crate::commands::resource::delete_document_index(&db, "knowledge", &id);
-```
-
-- [ ] **Step 4: Add ArticleSummary struct and get_article_summaries command**
-
-At the top of `knowledge.rs`, add:
-
-```rust
-use serde::Serialize;
-
-#[derive(Debug, Clone, Serialize)]
-pub struct ArticleSummary {
-    pub id: String,
-    pub title: String,
-    pub preview: String,
-    pub updated_at: String,
-}
-```
-
-Add the command at the bottom of `knowledge.rs`:
-
-```rust
-#[tauri::command]
-pub fn get_article_summaries(
-    db: State<'_, Database>,
-    project_id: String,
-) -> Result<Vec<ArticleSummary>, String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, title, content, updated_at
-             FROM knowledge_articles
-             WHERE project_id = ?1 AND deleted_at IS NULL
-             ORDER BY sort_order ASC",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let summaries = stmt
-        .query_map(rusqlite::params![project_id], |row| {
-            let content: String = row.get(2)?;
-            // Strip common Markdown markers and truncate to 300 chars
-            let plain = content
-                .replace('#', " ")
-                .replace('*', "")
-                .replace('`', "")
-                .replace('[', "")
-                .replace(']', "")
-                .replace('(', "")
-                .replace(')', "")
-                .replace("___", "")
-                .replace("---", "")
-                .replace(">", " ");
-            let preview: String = plain
-                .split_whitespace()
-                .collect::<Vec<_>>()
-                .join(" ")
-                .chars()
-                .take(300)
-                .collect();
-            Ok(ArticleSummary {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                preview: if preview.len() >= 300 {
-                    format!("{}...", preview)
-                } else {
-                    preview
-                },
-                updated_at: row.get(3)?,
-            })
-        })
-        .map_err(|e| e.to_string())?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
-
-    Ok(summaries)
-}
-```
-
-- [ ] **Step 5: Add migration to re-index existing knowledge articles**
-
-In `app/src-tauri/src/db/migrations.rs`, add at the end of `run_migrations` (before `Ok(())`):
-
-```rust
-// Migration: re-index existing knowledge articles into FTS5
-{
-    let mut stmt = conn.prepare(
-        "SELECT id, project_id, title, content FROM knowledge_articles WHERE deleted_at IS NULL",
-    )?;
-    let rows: Vec<(String, String, String, String)> = stmt
-        .query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-            ))
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    for (id, project_id, title, content) in rows {
-        // Delete old entry then insert
-        conn.execute(
-            "DELETE FROM document_search WHERE source_type='knowledge' AND source_id=?1",
-            rusqlite::params![id],
-        ).ok();
-        conn.execute(
-            "INSERT INTO document_search (title, content, source_type, source_id, project_id) VALUES (?1, ?2, 'knowledge', ?3, ?4)",
-            rusqlite::params![title, content, id, project_id],
-        ).ok();
-    }
-}
-```
-
-- [ ] **Step 6: Verify build**
-
-```bash
-cd app/src-tauri && cargo check 2>&1
-```
-
-Expected: no errors.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add app/src-tauri/src/commands/knowledge.rs app/src-tauri/src/db/migrations.rs
-git commit -m "feat: add FTS5 indexing for knowledge articles and get_article_summaries command"
-```
-
----
-
-
+**Steps:**
+1. Read the current file at `app/src/pages/ProjectPage.tsx` to understand the structure
+2. Add the import and state
+3. Replace the main content area with the tabbed layout, preserving all existing overview content
+4. Run `pnpm run lint` (workdir: F:\freeMind\zell\app)
+5. Run `npx tsc --noEmit` (workdir: F:\freeMind\zell\app)
+6. Commit with message "feat: add publish tab to ProjectPage settings"

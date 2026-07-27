@@ -1,38 +1,185 @@
-﻿### Task 2: Relax CSP for AI provider API calls
+﻿### Task 2: PublishSettings UI component
 
 **Files:**
-- Modify: `app/src-tauri/tauri.conf.json`
+- Create: `app/src/components/project/PublishSettings.tsx`
 
 **Interfaces:**
-- Consumes: none
-- Produces: `connect-src` CSP directive allows fetch to external AI provider URLs
+- Consumes: `useKnowledgeStore` (articles list), `useWhiteboardStore` (whiteboards list), `useProjectStore` (currentProject), `useSyncStore` (connected status), `PublishSettings` type from Task 1
+- Produces: `<PublishSettings>` component, exports default
 
-- [ ] **Step 1: Update CSP in tauri.conf.json**
+- [ ] **Step 1: Create PublishSettings component**
 
-Change the `security.csp` line from:
-```
-"csp": "default-src 'self'; img-src * data: blob:; style-src 'self' 'unsafe-inline'"
-```
-To:
-```
-"csp": "default-src 'self'; img-src * data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' http://* https://*"
+Create `app/src/components/project/PublishSettings.tsx`:
+
+```tsx
+import { useState, useEffect, useCallback } from 'react'
+import { useKnowledgeStore } from '@/stores/knowledgeStore'
+import { useWhiteboardStore } from '@/stores/whiteboardStore'
+import { useProjectStore } from '@/stores/projectStore'
+import { useSyncStore } from '@/stores/syncStore'
+import { parseProjectSettings, stringifyProjectSettings } from '@/types/project'
+import type { PublishSettings } from '@/types/project'
+import { Button } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
+import { Globe, ChevronRight, BookOpen, Presentation, Palette, Film } from 'lucide-react'
+
+function getDefaultPublish(articleIds: string[]): PublishSettings {
+  return { enabled: false, wiki: [...articleIds], ppt: [], ui: [], mood: [] }
+}
+
+export function PublishSettings() {
+  const { currentProject, updateProject } = useProjectStore()
+  const { articles, fetchArticles } = useKnowledgeStore()
+  const { whiteboards, fetchWhiteboards } = useWhiteboardStore()
+  const { connected } = useSyncStore()
+
+  const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
+  const [publish, setPublish] = useState<PublishSettings>(ps.publish || getDefaultPublish([]))
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ wiki: true })
+
+  useEffect(() => {
+    if (currentProject) {
+      fetchArticles(currentProject.id)
+      fetchWhiteboards(currentProject.id)
+    }
+  }, [currentProject, fetchArticles, fetchWhiteboards])
+
+  useEffect(() => {
+    if (currentProject) {
+      const cur = parseProjectSettings(currentProject.settings).publish
+      const def = getDefaultPublish(articles.map(a => a.id))
+      setPublish(cur || def)
+    }
+  }, [currentProject, articles])
+
+  const toggleEnabled = useCallback(async (enabled: boolean) => {
+    if (!currentProject) return
+    const next: PublishSettings = { ...publish, enabled }
+    if (enabled && next.wiki.length === 0) {
+      next.wiki = articles.map(a => a.id)
+    }
+    setPublish(next)
+    const cur = parseProjectSettings(currentProject.settings)
+    cur.publish = next
+    await updateProject(currentProject.id, {
+      name: currentProject.name, description: currentProject.description,
+      background: currentProject.background, icon: currentProject.icon,
+      settings: stringifyProjectSettings(cur),
+    })
+  }, [currentProject, publish, articles, updateProject])
+
+  const toggleItem = useCallback(async (category: 'wiki' | 'ppt' | 'ui' | 'mood', id: string) => {
+    if (!currentProject) return
+    const list = publish[category]
+    const next = list.includes(id) ? list.filter(x => x !== id) : [...list, id]
+    const nextPublish = { ...publish, [category]: next }
+    setPublish(nextPublish)
+    const cur = parseProjectSettings(currentProject.settings)
+    cur.publish = nextPublish
+    await updateProject(currentProject.id, {
+      name: currentProject.name, description: currentProject.description,
+      background: currentProject.background, icon: currentProject.icon,
+      settings: stringifyProjectSettings(cur),
+    })
+  }, [currentProject, publish, updateProject])
+
+  const toggleExpand = (key: string) => setExpanded(e => ({ ...e, [key]: !e[key] }))
+
+  if (!connected) {
+    return (
+      <div className="p-6 text-center text-gray-400">
+        <Globe size={32} strokeWidth={1} className="mx-auto mb-3" />
+        <p className="text-sm">发布功能需连接协作服务器</p>
+        <p className="text-xs mt-1">请在设置中配置并连接到 Zell 协作服务器</p>
+      </div>
+    )
+  }
+
+  const wbByType = (type: string) => whiteboards.filter(w => w.wb_type === type)
+
+  const categories = [
+    { key: 'wiki' as const, label: '知识库', icon: BookOpen, items: articles.map(a => ({ id: a.id, name: a.title })) },
+    { key: 'ppt' as const, label: 'PPT', icon: Presentation, items: wbByType('ppt').map(w => ({ id: w.id, name: w.name })) },
+    { key: 'ui' as const, label: 'UI', icon: Palette, items: wbByType('ui').map(w => ({ id: w.id, name: w.name })) },
+    { key: 'mood' as const, label: 'Mood', icon: Film, items: wbByType('mood').map(w => ({ id: w.id, name: w.name })) },
+  ]
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-800">网站部署</h3>
+          <p className="text-xs text-gray-400 mt-0.5">开启后将选中内容发布为可公开访问的网页</p>
+        </div>
+        <button
+          onClick={() => toggleEnabled(!publish.enabled)}
+          className={cn(
+            'relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors',
+            publish.enabled ? 'bg-zell-500' : 'bg-gray-200'
+          )}
+        >
+          <span className={cn(
+            'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
+            publish.enabled ? 'translate-x-4' : 'translate-x-0'
+          )} />
+        </button>
+      </div>
+
+      {publish.enabled && (
+        <div className="space-y-1">
+          {categories.map(cat => (
+            <div key={cat.key}>
+              <button
+                onClick={() => toggleExpand(cat.key)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 text-sm text-gray-700"
+              >
+                <ChevronRight size={14} className={cn('text-gray-400 transition-transform', expanded[cat.key] && 'rotate-90')} />
+                <cat.icon size={15} className="text-gray-400" />
+                <span>{cat.label}</span>
+                <span className="text-xs text-gray-400 ml-auto">{publish[cat.key].length}/{cat.items.length}</span>
+              </button>
+              {expanded[cat.key] && (
+                <div className="ml-6 space-y-0.5">
+                  {cat.items.length === 0 ? (
+                    <p className="text-xs text-gray-400 px-2 py-1">暂无内容</p>
+                  ) : (
+                    cat.items.map(item => (
+                      <label
+                        key={item.id}
+                        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={publish[cat.key].includes(item.id)}
+                          onChange={() => toggleItem(cat.key, item.id)}
+                          className="rounded border-gray-300 text-zell-500 focus:ring-zell-400"
+                        />
+                        <span className="text-gray-600 truncate">{item.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 ```
 
-- [ ] **Step 2: Verify syntax**
+- [ ] **Step 2: Verify lint**
 
 ```bash
-cd app && node -e "JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8'))" && echo "OK"
+pnpm run lint
 ```
 
-Expected: `OK`
+Expected: no new errors.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add app/src-tauri/tauri.conf.json
-git commit -m "fix: relax CSP connect-src for AI provider API calls"
+git add app/src/components/project/PublishSettings.tsx
+git commit -m "feat: add PublishSettings component"
 ```
-
----
-
-

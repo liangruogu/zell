@@ -1,28 +1,55 @@
-﻿### Task 1: Add Rust Dependencies
+﻿### Task 1: Type definitions — PublishSettings
 
 **Files:**
-- Modify: `app/src-tauri/Cargo.toml`
+- Modify: `app/src/types/project.ts`
 
 **Interfaces:**
-- Produces: `reqwest` (HTTP client), `scraper` (HTML parsing) available to all subsequent Rust tasks
+- Produces: `PublishSettings` interface, updated `ProjectSettings` interface
 
-- [ ] **Step 1: Add `reqwest` and `scraper` to Cargo.toml**
+- [ ] **Step 1: Add PublishSettings type and update ProjectSettings**
 
-```toml
-reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
-scraper = "0.21"
+In `app/src/types/project.ts`, add after the existing `ProjectSettings` interface:
+
+```ts
+export interface PublishSettings {
+  enabled: boolean
+  wiki: string[]   // article IDs
+  ppt: string[]    // whiteboard IDs
+  ui: string[]     // whiteboard IDs
+  mood: string[]   // whiteboard IDs
+}
 ```
 
-Add after `uuid` dependency line in `Cargo.toml`.
+Update `ProjectSettings` to include the new field:
 
-- [ ] **Step 2: Verify compilation**
+```ts
+export interface ProjectSettings {
+  status?: ProjectStatus
+  ai?: {
+    text_provider?: string
+    text_model?: string
+    text_api_key?: string
+    image_provider?: string
+    image_model?: string
+    local_ollama_url?: string
+    local_ollama_model?: string
+    fallback_to_local?: boolean
+  }
+  publish?: PublishSettings
+}
+```
 
-Run: `cargo check --manifest-path app/src-tauri/Cargo.toml`
-Expected: `Finished dev profile ...` (no errors)
+- [ ] **Step 2: Run typecheck**
+
+```bash
+npx tsc --noEmit
+```
+
+Expected: no new type errors.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add app/src-tauri/Cargo.toml app/src-tauri/Cargo.lock
-git commit -m "chore: add reqwest and scraper dependencies"
+git add app/src/types/project.ts
+git commit -m "feat: add PublishSettings type to ProjectSettings"
 ```

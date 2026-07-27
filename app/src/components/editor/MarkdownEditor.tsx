@@ -25,7 +25,6 @@ import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml, markdownToPreviewHtml } from '@/lib/markdown'
 import { MathExtension } from '@/lib/mathExtension'
 import { MathInlineNode, MathDisplayNode } from '@/lib/mathNodes'
-import { BlockDrag } from '@/lib/blockDragPlugin'
 import { useAIStore } from '@/stores/aiStore'
 import { Sparkles, Download } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -318,7 +317,6 @@ export function MarkdownEditor({
       MathInlineNode,
       MathDisplayNode,
       MathExtension,
-      BlockDrag,
       // ProseMirror plugin: auto-trim trailing newlines from code blocks
       new Plugin({
         key: new PluginKey('trimCodeBlockTrailingNewline'),

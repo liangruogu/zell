@@ -1,0 +1,18 @@
+{{define "content"}}
+<div class="container">
+  <h1 style="font-size: 1.6em; margin-bottom: 24px;">{{.ProjectName}} — 知识库</h1>
+  <ul class="article-list">
+    {{range .Articles}}
+    <li>
+      <a href="{{$.BasePath}}/wiki/{{.ID}}">
+        <div class="title">{{.Title}}</div>
+        <div class="time">{{.UpdatedAt}}</div>
+      </a>
+    </li>
+    {{end}}
+  </ul>
+  {{if not .Articles}}
+  <p style="color: #9ca3af; text-align: center; padding: 40px 0;">暂无已发布的文章</p>
+  {{end}}
+</div>
+{{end}}

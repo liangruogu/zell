@@ -1,31 +1,23 @@
-### Task 3 Report: Index knowledge articles in FTS5 + add summaries command
+### Task 3 Report: Integrate Publish tab into ProjectPage
 
-**Status:** DONE
+**Status:** Complete
 
-**Cargo check output:**
-```
-warning: struct `Vault` is never constructed
-warning: associated function `new` is never used
-warning: struct `AiConversation` is never constructed
-warning: struct `InviteCode` is never constructed
-warning: struct `AppSetting` is never constructed
-warning: associated function `resource_type` is never used
-Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.42s
-```
+**Commit:** `62efd82` - "feat: add publish tab to ProjectPage settings"
+- 1 file changed: `app/src/pages/ProjectPage.tsx` (104 insertions, 79 deletions)
 
-All warnings are pre-existing. No errors introduced.
+**Changes:**
+1. Added `import { PublishSettings } from '@/components/project/PublishSettings'` at line 15
+2. Added tab state at line 36: `const [settingsTab, setSettingsTab] = useState<'overview' | 'publish'>('overview')`
+3. Replaced the flat `<div className="flex-1 overflow-auto p-6 space-y-6">` content area (lines 174-256) with a tabbed layout:
+   - Left sidebar (w-36) with 概览 and 发布 tab buttons using `bg-zell-50/text-zell-700` active styling
+   - Right content area that conditionally renders either the existing overview cards or `<PublishSettings />`
+   - All existing overview content (项目信息, 项目背景, 团队协作 cards) preserved exactly
+   - The Edit Dialog and Delete Dialog remain unchanged (outside the replaced area)
 
-**Changes made:**
+**Lint/TypeCheck:**
+- `pnpm run lint`: No new errors introduced in ProjectPage.tsx. The 4 pre-existing warnings/errors (lines 46, 72, 94, 122) are unchanged.
+- `npx tsc --noEmit`: Passed with no type errors.
 
-1. **`commands/knowledge.rs`**:
-   - Added `use serde::Serialize;` and `ArticleSummary` struct (id, title, preview, updated_at)
-   - `create_knowledge_article`: drops `conn` before calling `index_document()` to avoid Mutex deadlock (since `index_document` internally locks the same `db.conn` Mutex)
-   - `update_knowledge_article`: queries `project_id` before the UPDATE, drops `conn`, then calls `index_document()` — same deadlock avoidance
-   - `delete_knowledge_article`: drops `conn` before calling `delete_document_index()` — same deadlock avoidance
-   - Added `get_article_summaries` Tauri command — queries articles, strips Markdown markers, truncates to 300 chars, returns `Vec<ArticleSummary>` sorted by `sort_order ASC`
+**Concerns:** None.
 
-2. **`db/migrations.rs`**: Added migration block to re-index existing knowledge_articles into the `document_search` FTS5 table (delete old + insert fresh for each non-deleted article)
-
-3. **`lib.rs`**: Registered `commands::knowledge::get_article_summaries` in invoke_handler
-
-**Concerns:** None — the deadlock risk was addressed by dropping `conn` before all FTS5 helper calls.
+**Report path:** F:\freeMind\zell\.superpowers\sdd\task-3-report.md
