@@ -35,6 +35,15 @@ export interface ProjectSettings {
     local_ollama_model?: string
     fallback_to_local?: boolean
   }
+  publish?: PublishSettings
+}
+
+export interface PublishSettings {
+  enabled: boolean
+  wiki: string[]
+  ppt: string[]
+  ui: string[]
+  mood: string[]
 }
 
 export function parseProjectSettings(settings: string): ProjectSettings {
