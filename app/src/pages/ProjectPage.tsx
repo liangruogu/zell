@@ -12,6 +12,7 @@ import { format } from '@/lib/format'
 import { Trash2, Edit3, Users, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { EmojiPicker } from '@/components/project/EmojiPicker'
+import { PublishSettings } from '@/components/project/PublishSettings'
 import { PROJECT_STATUS, parseProjectSettings, stringifyProjectSettings, type ProjectStatus } from '@/types/project'
 
 export default function ProjectPage() {
@@ -32,6 +33,7 @@ export default function ProjectPage() {
   const [inviteCode, setInviteCode] = useState('')
   const [copied, setCopied] = useState(false)
   const rotateTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
+  const [settingsTab, setSettingsTab] = useState<'overview' | 'publish'>('overview')
 
   useEffect(() => {
     if (id) fetchProject(id)
@@ -171,88 +173,111 @@ export default function ProjectPage() {
           </>
         }
       />
-      <div className="flex-1 overflow-auto p-6 space-y-6">
-        <Card className="p-5">
-          <h3 className="font-semibold text-gray-800 mb-3">项目信息</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-400">名称</span>
-              <p className="text-gray-700 mt-1 font-medium">{currentProject.name}</p>
-            </div>
-            <div>
-              <span className="text-gray-400">图标</span>
-              <p className="text-2xl mt-1">{currentProject.icon || '📁'}</p>
-            </div>
-            <div>
-              <span className="text-gray-400">状态</span>
-              <p className="mt-1">
-                <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border', statusInfo?.color)}>
-                  {statusInfo?.label}
-                </span>
-              </p>
-            </div>
-            <div>
-              <span className="text-gray-400">描述</span>
-              <p className="text-gray-700 mt-1">{currentProject.description || '无'}</p>
-            </div>
-            <div className="col-span-2 grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-gray-400">创建时间</span>
-                <p className="text-gray-700 mt-1">{format.dateTime(currentProject.created_at)}</p>
-              </div>
-              <div>
-                <span className="text-gray-400">最后更新</span>
-                <p className="text-gray-700 mt-1">{format.dateTime(currentProject.updated_at)}</p>
-              </div>
-            </div>
-          </div>
-        </Card>
+      <div className="flex-1 flex min-h-0">
+        {/* Left: Settings tabs */}
+        <div className="w-36 border-r border-gray-200 p-3 space-y-1 shrink-0">
+          <button onClick={() => setSettingsTab('overview')}
+            className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
+              settingsTab === 'overview' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
+            概览
+          </button>
+          <button onClick={() => setSettingsTab('publish')}
+            className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
+              settingsTab === 'publish' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
+            发布
+          </button>
+        </div>
 
-        <Card className="p-5">
-          <h3 className="font-semibold text-gray-800 mb-3">项目背景</h3>
-          {currentProject.background ? (
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentProject.background}</p>
-          ) : (
-            <p className="text-sm text-gray-400 italic">暂无背景信息，点击「编辑」添加</p>
-          )}
-        </Card>
-
-        {/* Team Collaboration */}
-        {connected && (
-          <Card className="p-5">
-            <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <Users size={18} /> 团队协作
-              {collabEnabled && (
-                <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">已开启</span>
-              )}
-            </h3>
-
-            {collabEnabled ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <code className="text-sm bg-gray-100 px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-700">
-                    {inviteCode}
-                  </code>
-                  <Button size="sm" variant="outline" onClick={handleCopyCode}>
-                    <Copy size={14} className="mr-1" />
-                    {copied ? '已复制' : '复制'}
-                  </Button>
+        {/* Right: Tab content */}
+        <div className="flex-1 overflow-auto">
+          {settingsTab === 'overview' ? (
+            <div className="p-6 space-y-6">
+              <Card className="p-5">
+                <h3 className="font-semibold text-gray-800 mb-3">项目信息</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-400">名称</span>
+                    <p className="text-gray-700 mt-1 font-medium">{currentProject.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">图标</span>
+                    <p className="text-2xl mt-1">{currentProject.icon || '📁'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">状态</span>
+                    <p className="mt-1">
+                      <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border', statusInfo?.color)}>
+                        {statusInfo?.label}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">描述</span>
+                    <p className="text-gray-700 mt-1">{currentProject.description || '无'}</p>
+                  </div>
+                  <div className="col-span-2 grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-gray-400">创建时间</span>
+                      <p className="text-gray-700 mt-1">{format.dateTime(currentProject.created_at)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">最后更新</span>
+                      <p className="text-gray-700 mt-1">{format.dateTime(currentProject.updated_at)}</p>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-400">每 30 分钟自动更新，已连接的用户不受影响</p>
-                <Button size="sm" variant="destructive" onClick={() => handleToggleCollab(false)}>
-                  关闭协作
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-400">开启后将自动生成邀请码，其他人可凭码加入。</p>
-                <Button size="sm" onClick={() => handleToggleCollab(true)}>
-                  开启团队协作
-                </Button>
-              </div>
-            )}
-          </Card>
-        )}
+              </Card>
+
+              <Card className="p-5">
+                <h3 className="font-semibold text-gray-800 mb-3">项目背景</h3>
+                {currentProject.background ? (
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentProject.background}</p>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">暂无背景信息，点击「编辑」添加</p>
+                )}
+              </Card>
+
+              {/* Team Collaboration */}
+              {connected && (
+                <Card className="p-5">
+                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <Users size={18} /> 团队协作
+                    {collabEnabled && (
+                      <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">已开启</span>
+                    )}
+                  </h3>
+
+                  {collabEnabled ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <code className="text-sm bg-gray-100 px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-700">
+                          {inviteCode}
+                        </code>
+                        <Button size="sm" variant="outline" onClick={handleCopyCode}>
+                          <Copy size={14} className="mr-1" />
+                          {copied ? '已复制' : '复制'}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-400">每 30 分钟自动更新，已连接的用户不受影响</p>
+                      <Button size="sm" variant="destructive" onClick={() => handleToggleCollab(false)}>
+                        关闭协作
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-400">开启后将自动生成邀请码，其他人可凭码加入。</p>
+                      <Button size="sm" onClick={() => handleToggleCollab(true)}>
+                        开启团队协作
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              )}
+            </div>
+          ) : (
+            <PublishSettings />
+          )}
+        </div>
       </div>
 
       {/* Edit Dialog */}
