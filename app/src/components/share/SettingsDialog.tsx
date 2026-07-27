@@ -21,13 +21,6 @@ const CATEGORIES: { key: SettingsCategory; label: string; icon: React.ReactNode 
   { key: 'sync', label: '资源同步', icon: <Link2 size={16} /> },
 ]
 
-const FONT_SIZE_OPTIONS = [
-  { value: '14', label: '14px (较小)' },
-  { value: '15', label: '15px (中等)' },
-  { value: '16', label: '16px (默认)' },
-  { value: '18', label: '18px (较大)' },
-]
-
 const EDITOR_MODE_OPTIONS = [
   { value: 'wysiwyg', label: '所见即所得' },
   { value: 'split', label: '分屏模式' },
@@ -151,10 +144,9 @@ function parseSettings(settings: Record<string, string>) {
 
 // ---- Appearance Settings ----
 const DEFAULT_THEMES = [
-  { value: 'zell', label: 'Zell 默认' },
+  { value: 'zell', label: 'Zell' },
   { value: 'github', label: 'GitHub' },
-  { value: 'notion', label: 'Notion' },
-  { value: 'minimal', label: '报告' },
+  { value: 'report', label: 'Report' },
 ]
 const DEFAULT_THEME_KEYS = new Set(DEFAULT_THEMES.map(t => t.value))
 
@@ -263,22 +255,19 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
 
   const { register, handleSubmit, reset } = useForm({
     defaultValues: {
-      fontSize: String(parsed.appearance.fontSize || '16'),
       showToolbar: showToolbarVal,
     },
   })
 
   useEffect(() => {
     reset({
-      fontSize: String(parsed.appearance.fontSize || '16'),
       showToolbar: parsed.appearance.showToolbar !== false,
     })
-  }, [parsed.appearance.fontSize, parsed.appearance.showToolbar, reset])
+  }, [parsed.appearance.showToolbar, reset])
 
-  const onSubmit = useCallback(async (data: { fontSize: string; showToolbar: boolean }) => {
+  const onSubmit = useCallback(async (data: { showToolbar: boolean }) => {
     await setSetting('appearance', JSON.stringify({
       ...parsed.appearance,
-      fontSize: data.fontSize,
       showToolbar: data.showToolbar,
       theme: currentTheme,
     }))
@@ -409,14 +398,8 @@ function AppearanceSettings({ parsed, setSetting, showToast }: {
         )}
       </div>
 
-      {/* Font size + toolbar */}
+      {/* Toolbar toggle */}
       <div className="space-y-4">
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">编辑器字号</label>
-          <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400 appearance-none bg-white" {...register('fontSize')}>
-            {FONT_SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" className="w-4 h-4 accent-zell-500" {...register('showToolbar')} />
           <span className="text-sm text-gray-700">显示编辑器工具栏</span>
@@ -582,6 +565,7 @@ function EditorSettings({ parsed, setSetting, showToast }: {
     defaultValues: {
       defaultMode: String(parsed.editorPrefs.defaultMode || 'wysiwyg'),
       imageStorage: String(parsed.editorPrefs.imageStorage || 'base64'),
+      typewriterMode: String(parsed.editorPrefs.typewriterMode || 'off'),
     },
   })
 
@@ -589,10 +573,11 @@ function EditorSettings({ parsed, setSetting, showToast }: {
     reset({
       defaultMode: String(parsed.editorPrefs.defaultMode || 'wysiwyg'),
       imageStorage: String(parsed.editorPrefs.imageStorage || 'base64'),
+      typewriterMode: String(parsed.editorPrefs.typewriterMode || 'off'),
     })
-  }, [parsed.editorPrefs.defaultMode, parsed.editorPrefs.imageStorage, reset])
+  }, [parsed.editorPrefs.defaultMode, parsed.editorPrefs.imageStorage, parsed.editorPrefs.typewriterMode, reset])
 
-  const onSubmit = useCallback(async (data: { defaultMode: string; imageStorage: string }) => {
+  const onSubmit = useCallback(async (data: { defaultMode: string; imageStorage: string; typewriterMode: string }) => {
     await setSetting('editor_prefs', JSON.stringify({
       ...parsed.editorPrefs,
       ...data,
@@ -615,6 +600,10 @@ function EditorSettings({ parsed, setSetting, showToast }: {
           {IMAGE_STORAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <p className="text-xs text-gray-400 mt-1">Base64 模式：图片直接嵌入 Markdown<br />文件模式：图片保存为独立文件，Markdown 仅存引用</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="typewriterMode" className="w-4 h-4 accent-zell-500" {...register('typewriterMode')} />
+        <label htmlFor="typewriterMode" className="text-sm text-gray-700 cursor-pointer">打字机模式（光标始终居中）</label>
       </div>
       <Button type="submit" size="sm">保存偏好</Button>
     </form>

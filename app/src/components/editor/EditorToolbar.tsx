@@ -3,7 +3,7 @@ import {
   Bold, Italic, Strikethrough, Code,
   List, ListOrdered, Quote, Undo2, Redo2,
   Heading1, Heading2, Heading3, Code2, Minus,
-  CheckSquare, Highlighter, Link2, Image,
+  CheckSquare, Highlighter, Link2, Image, Table2,
   Eye, Columns2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -59,6 +59,11 @@ export function EditorToolbar({ editor, editorMode, onToggleMode }: EditorToolba
     }
   }, [editor])
 
+  const addTable = useCallback(() => {
+    if (!editor) return
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+  }, [editor])
+
   const isWysiwyg = editorMode === 'wysiwyg'
 
   if (!editor) return null
@@ -87,6 +92,7 @@ export function EditorToolbar({ editor, editorMode, onToggleMode }: EditorToolba
       { action: () => editor.chain().focus().setHorizontalRule().run(), active: false, title: '分隔线', icon: <Minus size={16} /> },
       { action: addImage, active: false, title: '插入图片', icon: <Image size={16} /> },
       { action: setLink, active: editor.isActive('link'), title: '插入链接', icon: <Link2 size={16} /> },
+      { action: addTable, active: false, title: '插入表格', icon: <Table2 size={16} /> },
     ],
     [
       { action: () => editor.chain().focus().undo().run(), active: false, title: '撤销', icon: <Undo2 size={16} /> },

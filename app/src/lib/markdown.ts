@@ -1,5 +1,7 @@
 import TurndownService from 'turndown'
+import { gfm } from 'turndown-plugin-gfm'
 import { marked } from 'marked'
+import katex from 'katex'
 
 const turndown = new TurndownService({
   headingStyle: 'atx',
@@ -7,6 +9,9 @@ const turndown = new TurndownService({
   emDelimiter: '*',
   bulletListMarker: '-',
 })
+
+// GFM support: tables, strikethrough, task lists
+turndown.use(gfm)
 
 // Preserve image width and zell-img refs
 turndown.addRule('imageWithSize', {
@@ -18,39 +23,34 @@ turndown.addRule('imageWithSize', {
     const imgRef = el.getAttribute('data-zell-ref')
     const width = el.getAttribute('width')
 
-    // If resolved from zell-img, use the original ref
     if (imgRef) {
       const titleAttr = width ? ` "width=${width}"` : ''
       return `![${alt}](${imgRef}${titleAttr})`
     }
-
     if (src.startsWith('zell-img:')) {
       const titleAttr = width ? ` "width=${width}"` : ''
       return `![${alt}](${src}${titleAttr})`
     }
-
     if (src.startsWith('data:')) {
       return `![${alt}](${src})`
     }
-
     return `![${alt}](${src})`
   },
 })
 
-// Preserve image-group: output <!-- zell-group:captions --> marker before images
-turndown.addRule('imageGroup', {
-  filter: (node) => {
-    const el = node as HTMLElement
-    return el.nodeName === 'DIV' && el.hasAttribute('data-image-group')
-  },
-  replacement: (content, node) => {
-    const el = node as HTMLElement
-    const captions = el.getAttribute('data-captions') || '[]'
-    return `\n<!-- zell-group:${captions} -->\n${content.trim()}\n`
-  },
+// Math inline -> $latex$
+turndown.addRule('mathInline', {
+  filter: (node) => (node as HTMLElement).nodeName === 'MATH-INLINE',
+  replacement: (_content, node) => `$${(node as HTMLElement).textContent || ''}$`,
 })
 
-// Custom image renderer: keep zell-img refs as-is (resolved later)
+// Math display -> $$latex$$
+turndown.addRule('mathDisplay', {
+  filter: (node) => (node as HTMLElement).nodeName === 'MATH-DISPLAY',
+  replacement: (_content, node) => `\n$$\n${(node as HTMLElement).textContent || ''}\n$$\n`,
+})
+
+// Custom image renderer
 marked.use({
   renderer: {
     image({ href, title, text }: { href: string; title: string | null; text: string }) {
@@ -75,26 +75,98 @@ export function htmlToMarkdown(html: string): string {
   }
 }
 
-/**
- * Parse zell-group markers from Markdown and wrap images in group divs.
- * Format: <!-- zell-group:[...] --> \n ![img1] \n ![img2]
- */
-export function restoreImageGroups(md: string): string {
-  return md.replace(
-    /<!-- zell-group:(\[.*?\]) -->\s*\n((?:\s*!\[[^\]]*\]\([^)]+\)\s*\n?)+)/g,
-    (_match, captions: string, imagesBlock: string) => {
-      const imgTags = imagesBlock.trim().split('\n').map((line) => line.trim()).join('')
-      return `\n<div data-image-group data-captions='${captions}'>${imgTags}</div>\n`
-    },
-  )
+// ── Math placeholder helpers ──────────────────────────────────────────
+
+let _mathId = 0
+function mathPlaceholder(type: string, latex: string): string {
+  _mathId++
+  return `\x00MATH_${type}_${_mathId}_${latex}\x00`
 }
+
+function escapeText(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function renderKatex(latex: string, display: boolean): string {
+  try {
+    return katex.renderToString(latex, { displayMode: display, throwOnError: false })
+  } catch {
+    return `<span style="color:#ef4444">${escapeText(latex)}</span>`
+  }
+}
+
+// ── For TipTap editor (outputs <math-inline>/<math-display> elements) ──
 
 export function markdownToHtml(md: string): string {
   if (!md) return ''
   try {
-    const restored = restoreImageGroups(md)
-    const result = marked.parse(restored, { async: false })
-    return typeof result === 'string' ? result : ''
+    _mathId = 0
+
+    const displayMaths: { placeholder: string; latex: string }[] = []
+    let processed = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m, latex) => {
+      const ph = mathPlaceholder('display', latex.trim())
+      displayMaths.push({ placeholder: ph, latex: latex.trim() })
+      return ph
+    })
+
+    const inlineMaths: { placeholder: string; latex: string }[] = []
+    processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_m, latex) => {
+      const ph = mathPlaceholder('inline', latex.trim())
+      inlineMaths.push({ placeholder: ph, latex: latex.trim() })
+      return ph
+    })
+
+    const result = marked.parse(processed, { async: false })
+    let html = typeof result === 'string' ? result : ''
+
+    for (const { placeholder, latex } of displayMaths) {
+      html = html.replace(placeholder, `<math-display class="math-node">${escapeText(latex)}</math-display>`)
+    }
+    for (const { placeholder, latex } of inlineMaths) {
+      html = html.replace(placeholder, `<math-inline class="math-node">${escapeText(latex)}</math-inline>`)
+    }
+
+    return html
+  } catch {
+    return md
+  }
+}
+
+// ── For split mode preview (renders katex inline) ─────────────────────
+
+export function markdownToPreviewHtml(md: string): string {
+  if (!md) return ''
+  try {
+    _mathId = 0
+
+    // Protect display math
+    const displayMaths: { placeholder: string; html: string }[] = []
+    let processed = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m, latex) => {
+      const ph = mathPlaceholder('display', latex.trim())
+      displayMaths.push({ placeholder: ph, html: renderKatex(latex.trim(), true) })
+      return ph
+    })
+
+    // Protect inline math
+    const inlineMaths: { placeholder: string; html: string }[] = []
+    processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_m, latex) => {
+      const ph = mathPlaceholder('inline', latex.trim())
+      inlineMaths.push({ placeholder: ph, html: renderKatex(latex.trim(), false) })
+      return ph
+    })
+
+    const result = marked.parse(processed, { async: false })
+    let html = typeof result === 'string' ? result : ''
+
+    // Restore display math with rendered katex
+    for (const { placeholder, html: kh } of displayMaths) {
+      html = html.replace(placeholder, `<div class="math-display-preview">${kh}</div>`)
+    }
+    for (const { placeholder, html: kh } of inlineMaths) {
+      html = html.replace(placeholder, `<span class="math-inline-preview">${kh}</span>`)
+    }
+
+    return html
   } catch {
     return md
   }

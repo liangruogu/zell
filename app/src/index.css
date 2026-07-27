@@ -52,40 +52,57 @@ html, body, #root {
 }
 
 .prose.zell-prose h1 {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #0f172a;
-  margin-top: 2rem;
-  margin-bottom: 0.75rem;
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid #e2e8f0;
 }
 .prose.zell-prose h2 {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: #1e293b;
-  margin-top: 1.75rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
 }
 .prose.zell-prose h3 {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #334155;
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 .prose.zell-prose h4 {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: #475569;
-  margin-top: 1.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.prose.zell-prose h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 0.375rem;
   margin-bottom: 0.375rem;
+}
+.prose.zell-prose h6 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 .prose.zell-prose h1:first-child,
 .prose.zell-prose h2:first-child,
-.prose.zell-prose h3:first-child {
+.prose.zell-prose h3:first-child,
+.prose.zell-prose h4:first-child,
+.prose.zell-prose h5:first-child,
+.prose.zell-prose h6:first-child {
   margin-top: 0;
 }
 
@@ -101,10 +118,9 @@ html, body, #root {
 .ProseMirror ul { list-style-type: disc !important; }
 .ProseMirror ol { list-style-type: decimal !important; }
 .ProseMirror li { margin: 0 !important; display: list-item !important; }
-.ProseMirror h1, .ProseMirror h2, .ProseMirror h3 { margin: 0 !important; line-height: 1.3; }
+.ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6 { line-height: 1.3; }
 
 .ProseMirror img.ProseMirror-selectednode { outline: 2px solid #6366f1; outline-offset: 3px; border-radius: 4px; }
-.ProseMirror img.zell-img-multi-selected { outline: 2px dashed #6366f1; outline-offset: 2px; background: rgba(99, 102, 241, 0.06); }
 
 /* Strong / bold */
 .prose.zell-prose :where(strong) { color: #0f172a; font-weight: 600; }
@@ -231,7 +247,7 @@ html, body, #root {
   text-transform: lowercase;
 }
 
-/* ======== Task List (TipTap) ======== */
+/* ======== Task List (default / Zell) ======== */
 .prose.zell-prose ul[data-type="taskList"] {
   list-style: none !important;
   padding-left: 0 !important;
@@ -265,6 +281,39 @@ html, body, #root {
 .prose.zell-prose ul[data-type="taskList"] li p {
   margin: 0;
 }
+/* GitHub: task list — custom checkbox */
+[data-zell-theme="github"] .prose.zell-prose ul[data-type="taskList"] li > label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #d0d7de;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  position: relative;
+  margin-top: 2px;
+  accent-color: unset;
+}
+[data-zell-theme="github"] .prose.zell-prose ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background: #0969da;
+  border-color: #0969da;
+}
+[data-zell-theme="github"] .prose.zell-prose ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 6px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+/* Report: task list checkbox */
+[data-zell-theme="report"] .prose.zell-prose ul[data-type="taskList"] li > label input[type="checkbox"] {
+  accent-color: #000;
+}
 
 /* Markdown rendered checkboxes (split preview via marked) */
 .prose.zell-prose li:has(> input[type="checkbox"]) {
@@ -285,7 +334,70 @@ html, body, #root {
   accent-color: #4c6ef5;
 }
 
-/* ======== Code Highlight (Dark Theme for Zell Default) ======== */
+[data-zell-theme="github"] .prose.zell-prose li > input[type="checkbox"]:first-child {
+  appearance: none;
+  -webkit-appearance: none;
+  accent-color: unset;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #d0d7de;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  position: relative;
+  margin-top: 2px;
+}
+[data-zell-theme="github"] .prose.zell-prose li > input[type="checkbox"]:first-child:checked {
+  background: #0969da;
+  border-color: #0969da;
+}
+[data-zell-theme="github"] .prose.zell-prose li > input[type="checkbox"]:first-child:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 6px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* ======== Code Highlight: Zell Default (Dark) ======== */
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-keyword,
+[data-zell-theme="zell"] .prose pre code .hljs-keyword  { color: #c084fc; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-string,
+[data-zell-theme="zell"] .prose pre code .hljs-string   { color: #86efac; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-number,
+[data-zell-theme="zell"] .prose pre code .hljs-number   { color: #fde68a; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-comment,
+[data-zell-theme="zell"] .prose pre code .hljs-comment  { color: #64748b; font-style: italic; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-function,
+[data-zell-theme="zell"] .prose pre code .hljs-function { color: #93c5fd; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-built_in,
+[data-zell-theme="zell"] .prose pre code .hljs-built_in { color: #93c5fd; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-title,
+[data-zell-theme="zell"] .prose pre code .hljs-title    { color: #93c5fd; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-type,
+[data-zell-theme="zell"] .prose pre code .hljs-type     { color: #fde68a; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-attr,
+[data-zell-theme="zell"] .prose pre code .hljs-attr     { color: #cbd5e1; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-params,
+[data-zell-theme="zell"] .prose pre code .hljs-params   { color: #e2e8f0; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-meta,
+[data-zell-theme="zell"] .prose pre code .hljs-meta     { color: #c084fc; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-literal,
+[data-zell-theme="zell"] .prose pre code .hljs-literal  { color: #fde68a; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-variable,
+[data-zell-theme="zell"] .prose pre code .hljs-variable { color: #e2e8f0; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-selector-class,
+[data-zell-theme="zell"] .prose pre code .hljs-selector-class { color: #86efac; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-selector-tag,
+[data-zell-theme="zell"] .prose pre code .hljs-selector-tag   { color: #c084fc; }
+[data-zell-theme="zell"] .prose.zell-prose pre code .hljs-property,
+[data-zell-theme="zell"] .prose pre code .hljs-property { color: #e2e8f0; }
+
+/* No theme set = same as zell default */
 .prose.zell-prose pre code .hljs-keyword,
 .prose pre code .hljs-keyword  { color: #c084fc; }
 .prose.zell-prose pre code .hljs-string,
@@ -319,33 +431,53 @@ html, body, #root {
 .prose.zell-prose pre code .hljs-property,
 .prose pre code .hljs-property { color: #e2e8f0; }
 
-/* Image group layout */
-.image-group {
-  display: flex !important;
-  gap: 8px;
-  margin: 1em 0;
-}
-.image-group > img {
-  flex: 1 1 0;
-  min-width: 0;
-  display: block;
-  max-width: 100%;
-  height: auto;
-  border-radius: 4px;
-}
+/* ======== Code Highlight: GitHub (Light) ======== */
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-keyword,
+[data-zell-theme="github"] .prose pre code .hljs-keyword  { color: #cf222e; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-string,
+[data-zell-theme="github"] .prose pre code .hljs-string   { color: #0a3069; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-number,
+[data-zell-theme="github"] .prose pre code .hljs-number   { color: #0550ae; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-comment,
+[data-zell-theme="github"] .prose pre code .hljs-comment  { color: #6e7781; font-style: italic; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-function,
+[data-zell-theme="github"] .prose pre code .hljs-function,
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-title,
+[data-zell-theme="github"] .prose pre code .hljs-title    { color: #8250df; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-built_in,
+[data-zell-theme="github"] .prose pre code .hljs-built_in { color: #0550ae; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-type,
+[data-zell-theme="github"] .prose pre code .hljs-type     { color: #0550ae; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-attr,
+[data-zell-theme="github"] .prose pre code .hljs-attr     { color: #0a3069; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-params,
+[data-zell-theme="github"] .prose pre code .hljs-params   { color: #24292f; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-meta,
+[data-zell-theme="github"] .prose pre code .hljs-meta     { color: #8250df; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-literal,
+[data-zell-theme="github"] .prose pre code .hljs-literal  { color: #0550ae; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-variable,
+[data-zell-theme="github"] .prose pre code .hljs-variable { color: #cf222e; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-selector-class,
+[data-zell-theme="github"] .prose pre code .hljs-selector-class { color: #0a3069; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-selector-tag,
+[data-zell-theme="github"] .prose pre code .hljs-selector-tag   { color: #cf222e; }
+[data-zell-theme="github"] .prose.zell-prose pre code .hljs-property,
+[data-zell-theme="github"] .prose pre code .hljs-property { color: #0550ae; }
 
-/* ProseMirror-specific: override prose centering for grouped images */
-.ProseMirror .image-group {
-  display: flex !important;
-  gap: 8px;
-  margin: 1em 0;
-}
-.ProseMirror .image-group > img {
-  flex: 1 1 0;
-  min-width: 0;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
+/* ======== Code Highlight: Report (monochrome) ======== */
+[data-zell-theme="report"] .prose.zell-prose pre code .hljs-keyword,
+[data-zell-theme="report"] .prose pre code .hljs-keyword  { color: #000; font-weight: bold; }
+[data-zell-theme="report"] .prose.zell-prose pre code .hljs-string,
+[data-zell-theme="report"] .prose pre code .hljs-string   { color: #444; }
+[data-zell-theme="report"] .prose.zell-prose pre code .hljs-comment,
+[data-zell-theme="report"] .prose pre code .hljs-comment  { color: #888; font-style: italic; }
+[data-zell-theme="report"] .prose.zell-prose pre code .hljs-number,
+[data-zell-theme="report"] .prose pre code .hljs-number   { color: #333; }
+[data-zell-theme="report"] .prose.zell-prose pre code .hljs-function,
+[data-zell-theme="report"] .prose pre code .hljs-function,
+[data-zell-theme="report"] .prose.zell-prose pre code .hljs-title,
+[data-zell-theme="report"] .prose pre code .hljs-title    { color: #000; font-weight: bold; }
 
 /* Keyboard shortcut kbd style */
 kbd {
@@ -354,119 +486,162 @@ kbd {
 
 /* ======== Theme: GitHub ======== */
 [data-zell-theme="github"] .prose.zell-prose {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #24292f;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  color: #1f2328;
   line-height: 1.6;
+  font-size: 16px;
 }
-[data-zell-theme="github"] .prose.zell-prose h1 { font-size: 2em; border-bottom: 1px solid #d8dee4; padding-bottom: 0.3em; }
-[data-zell-theme="github"] .prose.zell-prose h2 { font-size: 1.5em; border-bottom: 1px solid #d8dee4; padding-bottom: 0.3em; }
-[data-zell-theme="github"] .prose.zell-prose h3 { font-size: 1.25em; }
-[data-zell-theme="github"] .prose.zell-prose pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; }
-[data-zell-theme="github"] .prose.zell-prose code:not(pre code) { background: #afb8c133; border-radius: 6px; padding: 0.2em 0.4em; }
+[data-zell-theme="github"] .prose.zell-prose h1 {
+  font-size: 2em;
+  font-weight: 600;
+  border-bottom: 1px solid #d8dee4;
+  padding-bottom: 0.3em;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+[data-zell-theme="github"] .prose.zell-prose h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  border-bottom: 1px solid #d8dee4;
+  padding-bottom: 0.3em;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+[data-zell-theme="github"] .prose.zell-prose h3 { font-size: 1.25em; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.75rem; }
+[data-zell-theme="github"] .prose.zell-prose h4 { font-size: 1em; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.75rem; }
+[data-zell-theme="github"] .prose.zell-prose h5, [data-zell-theme="github"] .prose.zell-prose h6 {
+  font-size: 0.875em; font-weight: 600; color: #656d76; margin-top: 1rem; margin-bottom: 0.5rem;
+}
+[data-zell-theme="github"] .prose.zell-prose p { margin-top: 0; margin-bottom: 1rem; }
+[data-zell-theme="github"] .prose.zell-prose pre {
+  background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem;
+}
+[data-zell-theme="github"] .prose.zell-prose code:not(pre code) {
+  background: #afb8c133; border-radius: 6px; padding: 0.2em 0.4em; font-size: 0.875em; color: #1f2328;
+}
 [data-zell-theme="github"] .prose.zell-prose table { border-collapse: collapse; }
 [data-zell-theme="github"] .prose.zell-prose th, [data-zell-theme="github"] .prose.zell-prose td { border: 1px solid #d0d7de; padding: 6px 13px; }
-[data-zell-theme="github"] .prose.zell-prose th { background: #f6f8fa; }
-[data-zell-theme="github"] .prose.zell-prose blockquote { border-left-color: #d0d7de; color: #656d76; }
-
-/* ======== Theme: Notion ======== */
-[data-zell-theme="notion"] .prose.zell-prose {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #37352f;
-  line-height: 1.7;
+[data-zell-theme="github"] .prose.zell-prose th { background: #f6f8fa; font-weight: 600; }
+[data-zell-theme="github"] .prose.zell-prose tr:nth-child(2n) td { background: #f6f8fa; }
+[data-zell-theme="github"] .prose.zell-prose blockquote { border-left: 4px solid #d0d7de; color: #656d76; padding: 0 1em; }
+[data-zell-theme="github"] .prose.zell-prose :where(a) { color: #0969da; }
+[data-zell-theme="github"] .prose.zell-prose :where(ul), [data-zell-theme="github"] .prose.zell-prose :where(ol),
+[data-zell-theme="github"] .prose.zell-prose :where(li) {
+  color: #1f2328;
 }
-[data-zell-theme="notion"] .prose.zell-prose h1 { font-size: 1.875em; font-weight: 700; }
-[data-zell-theme="notion"] .prose.zell-prose h2 { font-size: 1.5em; font-weight: 600; }
-[data-zell-theme="notion"] .prose.zell-prose h3 { font-size: 1.25em; font-weight: 600; }
-[data-zell-theme="notion"] .prose.zell-prose pre { background: #f7f6f3; border: none; border-radius: 4px; }
-[data-zell-theme="notion"] .prose.zell-prose code:not(pre code) { color: #eb5757; background: #f7f6f3; }
-[data-zell-theme="notion"] .prose.zell-prose blockquote { border-left: 3px solid #2f80ed; background: #f9f9f9; border-radius: 0 4px 4px 0; }
-
-/* ======== Theme: 报告 (Word-style) ======== */
-[data-zell-theme="minimal"] .prose.zell-prose {
-  font-family: 'SimSun', 'Noto Serif CJK SC', 'Source Han Serif SC', 'Songti SC', 'STSong', Georgia, 'Times New Roman', serif;
-  font-size: 15px;
-  color: #1a1a1a;
-  line-height: 1.9;
+[data-zell-theme="github"] .prose.zell-prose li::marker,
+[data-zell-theme="github"] .prose.zell-prose ul::marker,
+[data-zell-theme="github"] .prose.zell-prose ol::marker {
+  color: #1f2328;
 }
-[data-zell-theme="minimal"] .prose.zell-prose h1 {
-  font-size: 1.6em;
+[data-zell-theme="github"] .prose.zell-prose :where(ul) { list-style-type: disc; }
+[data-zell-theme="github"] .prose.zell-prose :where(ul) { list-style-type: disc; }
+[data-zell-theme="github"] .prose.zell-prose :where(pre) {
+  color: #1f2328;
+}
+[data-zell-theme="github"] .prose.zell-prose :where(pre code) {
+  color: #1f2328;
+}
+[data-zell-theme="github"] .prose.zell-prose :where(hr) {
+  height: 2px;
+  background-color: #d8dee4;
+  border: none;
+}
+[data-zell-theme="github"] .prose.zell-prose :where(mark) {
+  background: #fff3cd;
+  color: #1f2328;
+}
+
+/* ======== Theme: Report ======== */
+[data-zell-theme="report"] .prose.zell-prose {
+  font-family: 'Times New Roman', 'SimSun', 'Noto Serif CJK SC', 'Songti SC', serif;
+  font-size: 12pt;
+  color: #000;
+  line-height: 1.8;
+  text-align: justify;
+}
+[data-zell-theme="report"] .prose.zell-prose h1 {
+  font-size: 18pt;
   font-weight: 700;
   text-align: center;
-  color: #000;
+  font-family: 'Times New Roman', 'SimHei', 'Noto Sans CJK SC', 'Heiti SC', sans-serif;
   border-bottom: none;
-  margin-bottom: 1.5em;
-}
-[data-zell-theme="minimal"] .prose.zell-prose h2 {
-  font-size: 1.3em;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-top: 1.8em;
-  margin-bottom: 0.6em;
-}
-[data-zell-theme="minimal"] .prose.zell-prose h3 {
-  font-size: 1.15em;
-  font-weight: 700;
-  color: #2d2d2d;
   margin-top: 1.5em;
-  margin-bottom: 0.4em;
+  margin-bottom: 1em;
 }
-[data-zell-theme="minimal"] .prose.zell-prose p {
+[data-zell-theme="report"] .prose.zell-prose h2 {
+  font-size: 16pt;
+  font-weight: 700;
+  font-family: 'Times New Roman', 'FangSong', 'Noto Serif CJK SC', 'STFangsong', serif;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+[data-zell-theme="report"] .prose.zell-prose h3 {
+  font-size: 14pt;
+  font-weight: 700;
+  font-family: 'Times New Roman', 'SimHei', 'Noto Sans CJK SC', 'Heiti SC', sans-serif;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+[data-zell-theme="report"] .prose.zell-prose h4 {
+  font-size: 14pt;
+  font-weight: 700;
+  font-family: 'Times New Roman', 'KaiTi', 'Noto Serif CJK SC', 'STKaiti', serif;
+  margin-top: 0.75em;
+  margin-bottom: 0.5em;
+}
+[data-zell-theme="report"] .prose.zell-prose p {
   text-indent: 2em;
   margin-top: 0;
   margin-bottom: 0.4em;
 }
-[data-zell-theme="minimal"] .prose.zell-prose p:first-of-type {
-  text-indent: 0;
-}
-[data-zell-theme="minimal"] .prose.zell-prose :where(blockquote) {
-  font-family: 'SimSun', 'Noto Serif CJK SC', 'STSong', Georgia, serif;
-  border-left: 3px solid #555;
-  background: transparent;
-  padding: 0.5em 1.25em;
-  font-style: normal;
-  color: #444;
-}
-[data-zell-theme="minimal"] .prose.zell-prose :where(pre) {
-  background: #fafafa;
-  border: 1px solid #d4d4d4;
-  border-radius: 0;
-  font-family: 'Consolas', 'Courier New', 'SimSun', monospace;
-}
-[data-zell-theme="minimal"] .prose.zell-prose :where(pre code) {
-  color: #333;
-}
-[data-zell-theme="minimal"] .prose.zell-prose :where(code):not(pre code) {
-  background: transparent;
-  font-family: 'Consolas', 'Courier New', monospace;
-  color: #1a1a1a;
-  padding: 0;
-}
-[data-zell-theme="minimal"] .prose.zell-prose :where(table) {
+[data-zell-theme="report"] .prose.zell-prose p:first-of-type { text-indent: 0; }
+[data-zell-theme="report"] .prose.zell-prose :where(table) {
+  border-top: 1.5pt solid #000;
+  border-bottom: 1.5pt solid #000;
   border-collapse: collapse;
   width: 100%;
+  font-family: 'SimSun', 'Noto Serif CJK SC', 'Songti SC', serif;
+  font-size: 10.5pt;
 }
-[data-zell-theme="minimal"] .prose.zell-prose :where(th) {
-  background: #f0f0f0;
+[data-zell-theme="report"] .prose.zell-prose :where(th) {
+  border-bottom: 0.75pt solid #000;
+  font-family: 'SimHei', 'Noto Sans CJK SC', 'Heiti SC', sans-serif;
+  font-size: 10.5pt;
   font-weight: 700;
-  border: 1px solid #999;
-  padding: 0.4em 0.75em;
+  padding: 4px 6px;
   text-align: center;
 }
-[data-zell-theme="minimal"] .prose.zell-prose :where(td) {
-  border: 1px solid #999;
-  padding: 0.35em 0.75em;
+[data-zell-theme="report"] .prose.zell-prose :where(td) { padding: 3px 6px; text-align: center; border: none; }
+[data-zell-theme="report"] .prose.zell-prose :where(blockquote) {
+  font-family: 'KaiTi', 'Noto Serif CJK SC', 'STKaiti', serif;
+  border-left: 3px solid #333;
+  background: transparent;
+  padding: 0.3em 1em;
+  color: #333;
 }
-[data-zell-theme="minimal"] .prose.zell-prose :where(a) {
-  color: #1a56db;
-  border-bottom: 1px solid #1a56db;
+[data-zell-theme="report"] .prose.zell-prose :where(code):not(pre code) {
+  background: #f5f5f5;
+  font-family: 'Consolas', 'Courier New', monospace;
+  color: #000;
+  padding: 1px 4px;
+  border-radius: 2px;
 }
-[data-zell-theme="minimal"] .prose.zell-prose :where(ul), 
-[data-zell-theme="minimal"] .prose.zell-prose :where(ol) {
-  padding-left: 2em;
+[data-zell-theme="report"] .prose.zell-prose :where(pre) {
+  background: #fafafa;
+  border-top: 1.5pt solid #000;
+  border-bottom: 1.5pt solid #000;
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  padding: 8pt;
 }
-[data-zell-theme="minimal"] .prose.zell-prose :where(hr) {
-  border-top: 1px solid #999;
-}
+[data-zell-theme="report"] .prose.zell-prose :where(pre code) { color: #000; }
+[data-zell-theme="report"] .prose.zell-prose :where(a) { color: #000; text-decoration: underline; border-bottom: none; }
+[data-zell-theme="report"] .prose.zell-prose :where(ul), [data-zell-theme="report"] .prose.zell-prose :where(ol) { padding-left: 2em; }
+[data-zell-theme="report"] .prose.zell-prose :where(hr) { border-top: 1pt solid #000; }
+[data-zell-theme="report"] .prose.zell-prose :where(strong) { color: #000; }
+[data-zell-theme="report"] .prose.zell-prose :where(mark) { background: #ffeb3b; }
 
 /* Rich text (tldraw-style, used by PPT RichTextEditor) */
 .tl-rich-text .ProseMirror {
@@ -519,4 +694,35 @@ body.previewing [data-el-id]:hover {
 }
 body.marqueeing [data-el-id]:hover {
   outline: none;
+}
+
+/* Fix katex html output in inline context */
+.math-inline .katex-html {
+  display: inline !important;
+}
+
+/* Math node editing area — thinner border */
+.math-node .math-src .ProseMirror {
+  outline: none !important;
+  border: 1px solid #d4d4d8 !important;
+  border-radius: 3px !important;
+  padding: 2px 4px !important;
+}
+math-display .math-src .ProseMirror {
+  padding: 4px 8px !important;
+}
+.math-node.ProseMirror-selectednode {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Split mode preview math */
+.math-display-preview {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+}
+.math-inline-preview {
+  display: inline;
 }

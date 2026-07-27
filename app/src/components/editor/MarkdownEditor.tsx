@@ -5,6 +5,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { Image } from '@tiptap/extension-image'
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
+import TextAlign from '@tiptap/extension-text-align'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Highlight from '@tiptap/extension-highlight'
@@ -19,9 +20,11 @@ import { common, createLowlight } from 'lowlight'
 import hljs from 'highlight.js'
 import { EditorToolbar } from './EditorToolbar'
 import { FloatingImageMenu } from './FloatingImageMenu'
-import { ImageGroupNode } from './ImageGroupNode'
+import { TableToolbar } from './TableToolbar'
 import { cn } from '@/lib/utils'
-import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
+import { htmlToMarkdown, markdownToHtml, markdownToPreviewHtml } from '@/lib/markdown'
+import { MathExtension } from '@/lib/mathExtension'
+import { MathInlineNode, MathDisplayNode } from '@/lib/mathNodes'
 import { useAIStore } from '@/stores/aiStore'
 import { Sparkles, Download } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -86,7 +89,7 @@ export function MarkdownEditor({
         }
         const parsed = JSON.parse(appearanceSettings)
         const theme = parsed.theme || ''
-        const DEFAULT_THEME_KEYS = ['zell', 'github', 'notion', 'minimal']
+        const DEFAULT_THEME_KEYS = ['zell', 'github', 'report']
         if (DEFAULT_THEME_KEYS.includes(theme) || !theme) {
           document.documentElement.removeAttribute('data-zell-custom-theme')
           if (theme) {
@@ -205,6 +208,14 @@ export function MarkdownEditor({
       if (parsed.imageStorage === 'base64' || parsed.imageStorage === 'file') {
         imageStorage = parsed.imageStorage
       }
+    }
+  } catch { /* use default */ }
+
+  let typewriterMode = false
+  try {
+    if (editorPrefs) {
+      const parsed = JSON.parse(editorPrefs)
+      typewriterMode = parsed.typewriterMode === 'on'
     }
   } catch { /* use default */ }
 
@@ -333,6 +344,7 @@ export function MarkdownEditor({
       Image.configure({ allowBase64: true, inline: false }),
       Table.configure({ resizable: true }),
       TableRow, TableCell, TableHeader,
+      TextAlign.configure({ types: ['heading', 'paragraph', 'tableCell'] }),
       TaskList,
       TaskItem.configure({ nested: true }),
       Highlight,
@@ -343,7 +355,9 @@ export function MarkdownEditor({
       Placeholder.configure({ placeholder }),
       CharacterCount,
       CodeBlockLowlight.configure({ lowlight }),
-      ImageGroupNode,
+      MathInlineNode,
+      MathDisplayNode,
+      MathExtension,
       // ProseMirror plugin: auto-trim trailing newlines from code blocks
       new Plugin({
         key: new PluginKey('trimCodeBlockTrailingNewline'),
@@ -364,6 +378,28 @@ export function MarkdownEditor({
           return changed ? tr : null
         },
       }),
+      // ProseMirror plugin: convert [text](url) to markdown link
+      new Plugin({
+        key: new PluginKey('markdownLink'),
+        props: {
+          handleTextInput: (view, from, to, text) => {
+            if (text !== ')') return false
+            const { state } = view
+            const startPos = Math.max(0, from - 500)
+            const before = state.doc.textBetween(startPos, from)
+            const match = before.match(/\[([^\]]+)\]\((\S+)$/)
+            if (!match) return false
+            const href = match[2]
+            const matchStart = startPos + (match.index || 0)
+            const { tr } = state
+            const linkMark = state.schema.marks.link.create({ href })
+            tr.delete(matchStart, from)
+            tr.insertText(match[1], matchStart, [linkMark])
+            view.dispatch(tr)
+            return true
+          },
+        },
+      }),
     ],
     content: collabYDocRef.current ? undefined : initialHtml,
     editable: editable,
@@ -374,6 +410,110 @@ export function MarkdownEditor({
         class: 'prose zell-prose focus:outline-none min-h-[300px]',
       },
       handleKeyDown: (_view, event) => {
+        // Smart bracket skip: when typing closing bracket and next char matches, just move cursor
+        const closeBrackets: Record<string, string> = { '}': '{', ']': '[', ')': '(' }
+        if (!event.ctrlKey && !event.metaKey && !event.altKey && event.key in closeBrackets) {
+          const ed = editorRef.current
+          if (ed) {
+            const { from } = ed.state.selection
+            if (from < ed.state.doc.content.size) {
+              const nextChar = ed.state.doc.textBetween(from, from + 1)
+              if (nextChar === event.key) {
+                event.preventDefault()
+                ed.chain().focus().setTextSelection(from + 1).run()
+                return true
+              }
+            }
+          }
+        }
+        // Bracket auto-pairing: {} () []
+        const pairs: Record<string, string> = { '{': '}', '(': ')', '[': ']' }
+        if (!event.ctrlKey && !event.metaKey && !event.altKey && event.key in pairs) {
+          const ed = editorRef.current
+          if (ed) {
+            const { from, to, empty } = ed.state.selection
+            event.preventDefault()
+            const open = event.key
+            const close = pairs[open]
+            if (!empty) {
+              // Wrap selection
+              ed.chain().focus().insertContentAt(from, open, { updateSelection: false })
+                .insertContentAt(to + 1, close, { updateSelection: false })
+                .setTextSelection({ from: from + 1, to: to + 1 }).run()
+            } else {
+              ed.chain().focus().insertContent(open + close).run()
+              ed.commands.setTextSelection(from + 1)
+              return true
+            }
+            return true
+          }
+        }
+        // Quote auto-pairing: " '
+        if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.key === '"' || event.key === "'")) {
+          const ed = editorRef.current
+          if (ed) {
+            const { from, to, empty } = ed.state.selection
+            // If next character is same quote, just skip over it
+            if (empty && from < ed.state.doc.content.size) {
+              const nextChar = ed.state.doc.textBetween(from, from + 1)
+              if (nextChar === event.key) {
+                event.preventDefault()
+                ed.chain().focus().setTextSelection(from + 1).run()
+                return true
+              }
+            }
+            event.preventDefault()
+            const ch = event.key
+            if (!empty) {
+              ed.chain().focus().insertContentAt(from, ch, { updateSelection: false })
+                .insertContentAt(to + 1, ch, { updateSelection: false })
+                .setTextSelection({ from: from + 1, to: to + 1 }).run()
+            } else {
+              ed.chain().focus().insertContent(ch + ch).run()
+              ed.commands.setTextSelection(from + 1)
+              return true
+            }
+            return true
+          }
+        }
+        // Auto-indent in code blocks (Enter key)
+        if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
+          const ed = editorRef.current
+          if (!ed) return false
+          const { $from } = ed.state.selection
+          // Check if inside a code block
+          const codeBlock = $from.node($from.depth)
+          if (codeBlock && codeBlock.type.name === 'codeBlock') {
+            event.preventDefault()
+            const fullText = $from.parent.textContent || ''
+            const textBefore = fullText.slice(0, $from.parentOffset)
+            const textAfter = fullText.slice($from.parentOffset)
+            const lastNewline = textBefore.lastIndexOf('\n')
+            const currentLine = textBefore.slice(lastNewline + 1)
+            const indent = currentLine.match(/^(\s*)/)?.[1] || ''
+
+            // Expand {} block: typing Enter after { with } right after
+            const afterTrimmed = textAfter.trimStart()
+            if (afterTrimmed.startsWith('}')) {
+              const spaces = '    '
+              const tr = ed.state.tr
+              // Replace cursor-to-} range with expanded block
+              const closePos = $from.pos + textAfter.indexOf('}')
+              tr.replaceWith($from.pos, closePos + 1,
+                ed.state.schema.text('\n' + indent + spaces + '\n' + indent + '}'))
+              tr.setSelection(TextSelection.create(tr.doc, $from.pos + 1 + indent.length + spaces.length))
+              ed.view.dispatch(tr)
+              return true
+            }
+
+            // Normal auto-indent
+            const trimmed = currentLine.trimEnd()
+            const extraIndent = (trimmed.endsWith(':') && !trimmed.startsWith('http')) ? '    ' : ''
+            ed.chain().focus().insertContent('\n' + indent + extraIndent).run()
+            return true
+          }
+          return false
+        }
         if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {
           event.preventDefault()
           editorRef.current?.chain().focus().insertContent('\t').run()
@@ -388,6 +528,44 @@ export function MarkdownEditor({
           event.preventDefault()
           handleSave()
           return true
+        }
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && (event.key === 'T' || event.key === 't')) {
+          event.preventDefault()
+          editorRef.current?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+          return true
+        }
+        if ((event.ctrlKey || event.metaKey) && !event.shiftKey && (event.key === 'a' || event.key === 'A')) {
+          const ed = editorRef.current
+          if (!ed) return false
+          const { $from } = ed.state.selection
+          // If in a table cell, select cell content only
+          const cell = $from.node(-1)
+          if (cell && (cell.type.name === 'tableCell' || cell.type.name === 'tableHeader')) {
+            event.preventDefault()
+            const cellStart = $from.start(-1)
+            const cellEnd = $from.end(-1)
+            ed.chain().focus().setTextSelection({ from: cellStart, to: cellEnd }).run()
+            return true
+          }
+          // If in a code block, select code block content only
+          let codeBlockNode = null
+          let codeBlockDepth = 0
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === 'codeBlock') {
+              codeBlockNode = $from.node(d)
+              codeBlockDepth = d
+              break
+            }
+          }
+          if (codeBlockNode) {
+            event.preventDefault()
+            const start = $from.start(codeBlockDepth)
+            const end = $from.end(codeBlockDepth)
+            ed.chain().focus().setTextSelection({ from: start, to: end }).run()
+            return true
+          }
+          // Otherwise let default Ctrl+A (select all) handle it
+          return false
         }
         return false
       },
@@ -430,6 +608,23 @@ export function MarkdownEditor({
   })
 
   editorRef.current = editor
+
+  // Typewriter mode: keep cursor line centered
+  useEffect(() => {
+    if (!editor || mode !== 'wysiwyg' || !typewriterMode) return
+    const scroll = () => {
+      const { from } = editor.state.selection
+      const coords = editor.view.coordsAtPos(from)
+      if (!coords) return
+      const scrollContainer = editor.view.dom.closest('.overflow-auto') as HTMLElement
+      if (!scrollContainer) return
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const targetScroll = scrollContainer.scrollTop + coords.top - containerRect.top - containerRect.height / 2
+      scrollContainer.scrollTo({ top: targetScroll, behavior: 'smooth' })
+    }
+    editor.on('selectionUpdate', scroll)
+    return () => { editor.off('selectionUpdate', scroll) }
+  }, [editor, mode, typewriterMode])
 
   const prevContentRef = useRef(content)
   useEffect(() => {
@@ -693,7 +888,7 @@ export function MarkdownEditor({
       setResolvedPreviewHtml('')
       return
     }
-    const raw = markdownToHtml(splitSource)
+    const raw = markdownToPreviewHtml(splitSource)
     const refs = [...raw.matchAll(/zell-img:([^\s")<]+)/g)].map(m => m[0])
     if (refs.length === 0) {
       // Process code highlighting
@@ -770,6 +965,7 @@ export function MarkdownEditor({
             </div>
           </div>
           <FloatingImageMenu editor={editor} />
+          <TableToolbar editor={editor} />
         </>
       ) : (
         <div ref={splitContainerRef} className="flex-1 flex min-h-0">

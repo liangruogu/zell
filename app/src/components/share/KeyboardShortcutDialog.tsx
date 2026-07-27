@@ -16,11 +16,38 @@ const globalShortcuts: ShortcutGroup = {
   ],
 }
 
-const knowledgeShortcuts: ShortcutGroup = {
-  title: '知识库',
+const markdownFormatShortcuts: ShortcutGroup = {
+  title: '知识库 — 行内格式',
+  shortcuts: [
+    { keys: 'Ctrl+B', action: '加粗' },
+    { keys: 'Ctrl+I', action: '斜体' },
+    { keys: 'Ctrl+Shift+S', action: '删除线' },
+    { keys: 'Ctrl+Shift+H', action: '高亮' },
+    { keys: 'Ctrl+Space', action: '插入行内公式' },
+  ],
+}
+
+const markdownBlockShortcuts: ShortcutGroup = {
+  title: '知识库 — 块格式',
+  shortcuts: [
+    { keys: 'Ctrl+Alt+1', action: '标题 1' },
+    { keys: 'Ctrl+Alt+2', action: '标题 2' },
+    { keys: 'Ctrl+Alt+3', action: '标题 3' },
+    { keys: 'Ctrl+Shift+8', action: '无序列表' },
+    { keys: 'Ctrl+Shift+7', action: '有序列表' },
+    { keys: 'Ctrl+Shift+X', action: '任务列表' },
+    { keys: 'Ctrl+Shift+B', action: '引用块' },
+    { keys: 'Ctrl+Alt+C', action: '代码块' },
+    { keys: 'Ctrl+Shift+T', action: '插入表格' },
+    { keys: '$$ + Enter', action: '插入块级公式' },
+  ],
+}
+
+const markdownEditorShortcuts: ShortcutGroup = {
+  title: '知识库 — 编辑器',
   shortcuts: [
     { keys: 'Ctrl+S', action: '保存文章' },
-    { keys: 'Ctrl+Shift+X', action: '切换任务列表' },
+    { keys: 'Ctrl+Z / Ctrl+Shift+Z', action: '撤销 / 重做' },
     { keys: 'Ctrl+F', action: '编辑器内搜索' },
     { keys: 'Ctrl+Shift+F', action: '搜索文章列表' },
     { keys: 'Escape', action: '关闭搜索（搜索框打开时）' },
@@ -47,7 +74,7 @@ const whiteboardShortcuts: ShortcutGroup = {
 }
 
 function getShortcuts(pathname: string): ShortcutGroup[] {
-  if (pathname.includes('/knowledge')) return [globalShortcuts, knowledgeShortcuts]
+  if (pathname.includes('/knowledge')) return [globalShortcuts, markdownFormatShortcuts, markdownBlockShortcuts, markdownEditorShortcuts]
   if (pathname.includes('/whiteboard')) return [globalShortcuts, whiteboardShortcuts]
   return [globalShortcuts]
 }
@@ -78,7 +105,7 @@ export function useKeyboardShortcutDialog() {
       onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
     >
       <div className="fixed inset-0 bg-black/30" />
-      <div className="relative z-10 w-[560px] bg-white rounded-xl shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-[640px] bg-white rounded-xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <h3 className="font-semibold text-gray-800 text-sm">快捷键帮助</h3>
           <button
@@ -88,7 +115,8 @@ export function useKeyboardShortcutDialog() {
             <X size={16} className="text-gray-400" />
           </button>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
           {shortcuts.map((group) => (
             <div key={group.title}>
               <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
@@ -109,7 +137,8 @@ export function useKeyboardShortcutDialog() {
               </div>
             </div>
           ))}
-          <p className="text-xs text-gray-400 pt-2 border-t border-gray-100">
+          </div>
+          <p className="text-xs text-gray-400 pt-4 mt-4 border-t border-gray-100">
             按 <kbd className="px-1.5 py-0.5 text-[11px] font-mono bg-gray-100 border border-gray-200 rounded text-gray-500">Ctrl+/</kbd> 打开/关闭此面板
           </p>
         </div>
