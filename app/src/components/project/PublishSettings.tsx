@@ -16,7 +16,7 @@ export function PublishSettings() {
   const { currentProject, updateProject } = useProjectStore()
   const { articles, fetchArticles } = useKnowledgeStore()
   const { whiteboards, fetchWhiteboards } = useWhiteboardStore()
-  const { connected } = useSyncStore()
+  const { connected, serverUrl } = useSyncStore()
 
   const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
   const [publish, setPublish] = useState<PublishSettings>(ps.publish || getDefaultPublish([]))
@@ -68,6 +68,54 @@ export function PublishSettings() {
       settings: stringifyProjectSettings(cur),
     })
   }, [currentProject, publish, updateProject])
+
+  useEffect(() => {
+    if (!currentProject || !serverUrl || !connected) return
+    const cur = parseProjectSettings(currentProject.settings)
+    if (!cur.publish) return
+    const sync = async () => {
+      await fetch(`${serverUrl}/api/v1/projects/${currentProject.id}/publish`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: JSON.stringify(cur.publish),
+          updated_at: new Date().toISOString(),
+        }),
+      })
+      for (const aid of cur.publish.wiki) {
+        const article = useKnowledgeStore.getState().articles.find(a => a.id === aid)
+        if (!article) continue
+        await fetch(`${serverUrl}/api/v1/projects/${currentProject.id}/publish/articles/${aid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: article.id,
+            title: article.title,
+            content_html: article.content,
+            updated_at: new Date().toISOString(),
+          }),
+        })
+      }
+      for (const type of ['ppt', 'ui', 'mood'] as const) {
+        for (const wid of cur.publish[type]) {
+          const wb = useWhiteboardStore.getState().whiteboards.find(w => w.id === wid)
+          if (!wb) continue
+          await fetch(`${serverUrl}/api/v1/projects/${currentProject.id}/publish/whiteboards/${wid}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: wb.id,
+              name: wb.name,
+              wb_type: wb.wb_type,
+              snapshot: wb.snapshot || '{}',
+              updated_at: new Date().toISOString(),
+            }),
+          })
+        }
+      }
+    }
+    sync()
+  }, [currentProject, serverUrl, connected, publish.enabled])
 
   const toggleExpand = (key: string) => setExpanded(e => ({ ...e, [key]: !e[key] }))
 
