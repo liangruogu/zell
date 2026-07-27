@@ -162,9 +162,9 @@ export function CanvasViewport() {
       setMarqueeTick(t => t + 1)
     }
     const onUp = (e: MouseEvent) => {
+      document.body.classList.remove('marqueeing')
       if (!dragging || !marqueeRef.current) { dragging = false; return }
       dragging = false
-      document.body.classList.remove('marqueeing')
       const m = marqueeRef.current
       marqueeRef.current = null
       setMarqueeTick(t => t + 1)

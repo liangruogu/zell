@@ -121,6 +121,7 @@ export default function KnowledgeBasePage() {
     (_html: string, markdown: string, json?: any) => {
       setEditorMd(markdown)
       if (!currentArticle) return
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(() => {
         const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
         updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
@@ -129,10 +130,11 @@ export default function KnowledgeBasePage() {
     [currentArticle, updateArticle]
   )
 
-  const handleImmediateSave = useCallback((_html: string, markdown: string) => {
+  const handleImmediateSave = useCallback((_html: string, markdown: string, json?: any) => {
     if (!currentArticle) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    updateArticle(currentArticle.id, currentArticle.title, markdown)
+    const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
+    updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
   }, [currentArticle, updateArticle])
 
   const handleExport = useCallback(async (article: KnowledgeArticle, format: 'pdf' | 'docx') => {

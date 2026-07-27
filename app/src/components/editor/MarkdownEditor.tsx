@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml, markdownToPreviewHtml } from '@/lib/markdown'
 import { MathExtension } from '@/lib/mathExtension'
 import { MathInlineNode, MathDisplayNode } from '@/lib/mathNodes'
+import { BlockDrag } from '@/lib/blockDragPlugin'
 import { useAIStore } from '@/stores/aiStore'
 import { Sparkles, Download } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -267,14 +268,18 @@ export function MarkdownEditor({
   const initialHtml = useMemo(() => {
     if (contentJson) {
       try {
-        return typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
+        const parsed = typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
+        return parsed
       } catch { /* fall through */ }
     }
     const html = markdownToHtml(content || '')
     return html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
       return open + body.replace(/\n+$/, '') + close
     })
-  }, [])
+  }, [contentJson, content])
+
+  // Prevent saves during content initialization (markdown→JSON race)
+  const initLockRef = useRef(true)
 
   const ignoreNextSync = useRef(false)
   const editorRef = useRef<ReturnType<typeof useEditor>>(null)
@@ -292,7 +297,9 @@ export function MarkdownEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: false }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      StarterKit      .configure({ codeBlock: false, link: false }),
       ...(collabYDocRef.current
         ? [Collaboration.configure({ document: collabYDocRef.current, field: 'content' })]
         : []),
@@ -300,8 +307,6 @@ export function MarkdownEditor({
       Table.configure({ resizable: true }),
       TableRow, TableCell, TableHeader,
       TextAlign.configure({ types: ['heading', 'paragraph', 'tableCell'] }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
       Highlight,
       Link.configure({
         openOnClick: true,
@@ -313,6 +318,7 @@ export function MarkdownEditor({
       MathInlineNode,
       MathDisplayNode,
       MathExtension,
+      BlockDrag,
       // ProseMirror plugin: auto-trim trailing newlines from code blocks
       new Plugin({
         key: new PluginKey('trimCodeBlockTrailingNewline'),
@@ -564,72 +570,16 @@ export function MarkdownEditor({
 
   editorRef.current = editor
 
-  const prevContentRef = useRef(content)
-  const prevJsonRef = useRef(contentJson)
-
-  // Sync editor content from prop (JSON preferred, Markdown fallback)
+  // Prevent saves during content init (1s lock after mount)
   useEffect(() => {
-    if (!editor || mode !== 'wysiwyg') return
-    if (ignoreNextSync.current) {
-      ignoreNextSync.current = false
-      prevContentRef.current = content
-      prevJsonRef.current = contentJson
-      return
-    }
-    // Prefer JSON loading when available
-    if (contentJson && contentJson !== prevJsonRef.current) {
-      prevJsonRef.current = contentJson
-      prevContentRef.current = content
-      try {
-        const parsed = typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
-        editor.commands.setContent(parsed)
-      } catch {
-        // fall through to markdown loading
-        const html = markdownToHtml(content || '')
-        editor.commands.setContent(html)
-      }
-      return
-    }
-    if (content !== prevContentRef.current) {
-      prevContentRef.current = content
-      const html = markdownToHtml(content || '')
-      // Strip trailing newlines from code blocks (TipTap adds \n on render)
-      const cleaned = html.replace(/(<code[^>]*>)([\s\S]*?)(\n*)(<\/code>)/gi, (_, open, body, trail, close) => {
-        return open + body.replace(/\n+$/, '') + close
-      })
-      // Pre-resolve zell-img refs before rendering to avoid broken image flash
-      const refs = [...cleaned.matchAll(/zell-img:([^\s")<]+)/g)].map(m => m[1])
-      if (refs.length === 0) {
-        editor.commands.setContent(cleaned)
-        return
-      }
-      const uniqueRefs = [...new Set(refs)]
-      Promise.all(uniqueRefs.map(async (ref) => {
-        const [projId, fileName] = ref.split('/')
-        try {
-          const dataUrl = await invoke<string>('resolve_project_image', { projectId: projId, fileName })
-          return { ref, dataUrl }
-        } catch { return { ref, dataUrl: '' } }
-      })).then((results) => {
-        let resolved = cleaned
-        for (const { ref, dataUrl } of results) {
-          if (dataUrl) {
-            const imgRef = `zell-img:${ref}`
-            // Replace zell-img src with resolved data URL, but keep zell ref as attribute
-            const escapedRef = imgRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            resolved = resolved.replace(
-              new RegExp(`src="${escapedRef}"`, 'g'),
-              `src="${dataUrl}" data-zell-ref="${imgRef}" data-zell-resolved="${dataUrl}"`
-            )
-          }
-        }
-        if (!editor.isDestroyed) editor.commands.setContent(resolved)
-      })
-    }
-  }, [content, editor, mode])
+    if (!editor) return
+    initLockRef.current = true
+    const timer = setTimeout(() => { initLockRef.current = false }, 1000)
+    return () => clearTimeout(timer)
+  }, [editor])
 
-  // Resolve zell-img refs for display without corrupting the src attribute.
-  // We store the resolved URL in a data- attribute so turndown preserves zell-img: refs.
+  const prevContentRef = useRef(content)
+
   useEffect(() => {
     if (!editor || mode !== 'wysiwyg') return
     const resolve = () => {
