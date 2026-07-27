@@ -71,6 +71,28 @@ func (db *DB) migrate() error {
 			state      BLOB NOT NULL,
 			updated_at TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS publish_config (
+			project_id TEXT PRIMARY KEY,
+			data       TEXT NOT NULL DEFAULT '{}',
+			updated_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS publish_articles (
+			id           TEXT PRIMARY KEY,
+			project_id   TEXT NOT NULL,
+			title        TEXT NOT NULL,
+			content_html TEXT NOT NULL DEFAULT '',
+			updated_at   TEXT NOT NULL
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_pub_articles_project ON publish_articles(project_id)`,
+		`CREATE TABLE IF NOT EXISTS publish_whiteboards (
+			id         TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL,
+			name       TEXT NOT NULL,
+			wb_type    TEXT NOT NULL,
+			snapshot   TEXT NOT NULL DEFAULT '{}',
+			updated_at TEXT NOT NULL
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_pub_whiteboards_project ON publish_whiteboards(project_id)`,
 	}
 	for _, q := range queries {
 		if _, err := db.conn.Exec(q); err != nil {
