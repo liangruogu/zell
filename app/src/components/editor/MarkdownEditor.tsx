@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Plugin, PluginKey, NodeSelection } from '@tiptap/pm/state'
 import { TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { Image } from '@tiptap/extension-image'
@@ -22,6 +22,7 @@ import { FloatingImageMenu } from './FloatingImageMenu'
 import { TableToolbar } from './TableToolbar'
 import { cn } from '@/lib/utils'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
+import { extractImagePaths } from '@/lib/clipboard'
 import { MathExtension } from '@/lib/mathExtension'
 import { MathInlineNode, MathDisplayNode } from '@/lib/mathNodes'
 import { useAIStore } from '@/stores/aiStore'
@@ -33,6 +34,7 @@ import { useSyncStore } from '@/stores/syncStore'
 import { format } from '@/lib/format'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { readFile } from '@tauri-apps/plugin-fs'
+import { readText, readImage } from '@tauri-apps/plugin-clipboard-manager'
 import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
 
@@ -497,22 +499,51 @@ export function MarkdownEditor({
             },
             handlePaste: (_view, event) => {
                 const items = event.clipboardData?.items
-                if (!items) return false
-                for (const item of Array.from(items)) {
-                    if (item.type.startsWith('image/')) {
-                        const file = item.getAsFile()
-                        if (file) {
-                            const reader = new FileReader()
-                            reader.onload = (e) => {
-                                const dataUrl = e.target?.result as string
-                                insertImageRef.current(dataUrl)
+                if (items) {
+                    for (const item of Array.from(items)) {
+                        if (item.type.startsWith('image/')) {
+                            const file = item.getAsFile()
+                            if (file) {
+                                const reader = new FileReader()
+                                reader.onload = (e) => {
+                                    const dataUrl = e.target?.result as string
+                                    insertImageRef.current(dataUrl)
+                                }
+                                reader.readAsDataURL(file)
+                                return true
                             }
-                            reader.readAsDataURL(file)
-                            return true
                         }
                     }
                 }
-                return false
+                // Fallback: file managers paste file paths as text.
+                // Read system clipboard via Rust (bypasses broken webview clipboard API).
+                event.preventDefault()
+                event.stopPropagation()
+                const toBase64 = (bytes: Uint8Array): string => {
+                    let binary = ''
+                    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+                    return btoa(binary)
+                }
+                readText().then((text) => {
+                    console.log(text)
+                    const refs = extractImagePaths(text)
+                    if (refs.length > 0) {
+                        for (const ref of refs) {
+                            readFile(ref.path).then((bytes) => {
+                                const ext = ref.path.split('.').pop()?.toLowerCase() || 'png'
+                                const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
+                                const dataUrl = `data:${mime};base64,${toBase64(bytes)}`
+                                insertImageRef.current(dataUrl, ref.path)
+                            }).catch(() => { })
+                        }
+                    } else if (text) {
+                        // Plain text paste: insert it ourselves since we prevented default
+                        const { tr } = _view.state
+                        tr.insertText(text, _view.state.selection.from, _view.state.selection.to)
+                        _view.dispatch(tr)
+                    }
+                }).catch(() => { })
+                return true
             },
             handleDrop: (_view, event, _moved, _supported) => {
                 const files = event.dataTransfer?.files
@@ -531,41 +562,37 @@ export function MarkdownEditor({
                 }
                 // Fallback: Desktop file managers often send file:// URIs via
                 // various MIME types. Scan ALL of them for image paths.
-                const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']
                 const toBase64 = (bytes: Uint8Array): string => {
                     let binary = ''
                     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
                     return btoa(binary)
                 }
                 const types = event.dataTransfer?.types || []
+                let allText = ''
                 for (const mimeType of types) {
-                    const data = event.dataTransfer?.getData(mimeType) || ''
-                    // Find all file:// URIs in this data (works for HTML, text/plain, text/uri-list, etc.)
-                    const uris = [...data.matchAll(/file:\/{1,3}([^\s"'<>\n\r]+)/gi)].map(m => m[0])
-                    for (const uri of uris) {
-                        let filePath = uri.replace(/^file:\/\//, '')
-                        try { filePath = decodeURIComponent(filePath) } catch { /* keep as-is */ }
-                        const ext = filePath.split('.').pop()?.toLowerCase() || ''
-                        if (!imageExts.includes(ext)) continue
-                        event.preventDefault()
-                        event.stopPropagation()
-                        const dropPos = _view.posAtCoords({ left: event.clientX, top: event.clientY })
-                        readFile(filePath).then((bytes) => {
-                            const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
-                            const dataUrl = `data:${mime};base64,${toBase64(bytes)}`
-                            if (dropPos) {
-                                const { tr } = _view.state
-                                const img = _view.state.schema.nodes.image.create({ src: dataUrl })
-                                tr.insert(dropPos.pos, img)
-                                _view.dispatch(tr)
-                            } else {
-                                insertImageRef.current(dataUrl, filePath)
-                            }
-                        }).catch(() => { })
-                        return true
-                    }
+                    allText += (event.dataTransfer?.getData(mimeType) || '') + '\n'
                 }
-                return false
+                const refs = extractImagePaths(allText)
+                if (refs.length === 0) return false
+                event.preventDefault()
+                event.stopPropagation()
+                const dropPos = _view.posAtCoords({ left: event.clientX, top: event.clientY })
+                for (const ref of refs) {
+                    readFile(ref.path).then((bytes) => {
+                        const ext = ref.path.split('.').pop()?.toLowerCase() || 'png'
+                        const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
+                        const dataUrl = `data:${mime};base64,${toBase64(bytes)}`
+                        if (dropPos) {
+                            const { tr } = _view.state
+                            const img = _view.state.schema.nodes.image.create({ src: dataUrl })
+                            tr.insert(dropPos.pos, img)
+                            _view.dispatch(tr)
+                        } else {
+                            insertImageRef.current(dataUrl, ref.path)
+                        }
+                    }).catch(() => { })
+                }
+                return true
             },
         },
     })
