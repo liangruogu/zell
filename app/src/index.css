@@ -120,7 +120,10 @@ html, body, #root {
 .ProseMirror li { margin: 0 !important; display: list-item !important; }
 .ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6 { line-height: 1.3; }
 
-.ProseMirror img.ProseMirror-selectednode { outline: 2px solid #6366f1; outline-offset: 3px; border-radius: 4px; }
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid #6366f1;
+  border-radius: 4px;
+}
 
 /* Strong / bold */
 .prose.zell-prose :where(strong) { color: #0f172a; font-weight: 600; }
@@ -302,7 +305,7 @@ html, body, #root {
 .prose.zell-prose ul[data-type="taskList"] li p {
   margin: 0;
 }
-/* GitHub: task list â€?custom checkbox */
+/* GitHub: task list ï¿½?custom checkbox */
 [data-zell-theme="github"] .prose.zell-prose ul[data-type="taskList"] li > label input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;

@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSyncStore } from '@/stores/syncStore'
-import { useSettingsStore } from '@/stores/settingsStore'
 import { AppShell } from '@/components/layout/AppShell'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
@@ -458,20 +457,14 @@ function SettingsTab() {
     const app = (ps as any).appearance || {}
     const sync = (ps as any).sync || { policy: 'manual', intervalHours: '24' }
     const currentTheme = app.theme || 'zell'
-    const showToolbar = app.showToolbar !== false
     const [toast, setToast] = useState<string | null>(null)
     const showToast = useCallback((msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2000) }, [])
 
     const save = useCallback(async (key: string, value: any) => {
         if (!currentProject) return
         const s = parseProjectSettings(currentProject.settings)
-        if (['theme', 'showToolbar'].includes(key)) {
+        if (key === 'theme') {
             (s as any).appearance = { ...app, [key]: value }
-            const globalAppearance = useSettingsStore.getState().settings['appearance']
-            let parsed: Record<string, any> = {}
-            try { if (globalAppearance) parsed = JSON.parse(globalAppearance) } catch { }
-            parsed[key] = value
-            await useSettingsStore.getState().setSetting('appearance', JSON.stringify(parsed))
         } else {
             (s as any).sync = { ...sync, policy: key === 'scheduled' ? 'scheduled' : key, intervalHours: value === 'scheduled' ? sync.intervalHours : sync.intervalHours }
         }
@@ -503,11 +496,6 @@ function SettingsTab() {
                         ))}
                     </div>
                 </div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 accent-zell-500"
-                        checked={showToolbar} onChange={e => save('showToolbar', e.target.checked)} />
-                    <span className="text-sm text-gray-700">显示编辑器工具栏</span>
-                </label>
             </div>
 
             <div className="border-t border-gray-100" />

@@ -29,7 +29,6 @@ const FONT_SIZE_OPTIONS = [
 
 const EDITOR_MODE_OPTIONS = [
   { value: 'wysiwyg', label: '所见即所得' },
-  { value: 'split', label: '分屏模式' },
 ]
 
 export default function SettingsPage() {

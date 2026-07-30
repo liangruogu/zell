@@ -9,9 +9,17 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+type TabKey = 'ai' | 'appearance'
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'ai', label: 'AI 服务' },
+  { key: 'appearance', label: '外观' },
+]
+
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { settings, loadSettings, setSetting } = useSettingsStore()
   const [toast, setToast] = useState<string | null>(null)
+  const [tab, setTab] = useState<TabKey>('ai')
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
@@ -42,14 +50,38 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false) }}>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative z-10 w-[600px] h-[520px] bg-white rounded-xl shadow-2xl overflow-hidden">
-        <h2 className="px-6 pt-5 font-semibold text-gray-800 text-sm">AI 服务设置</h2>
-        <button onClick={() => onOpenChange(false)}
-          className="absolute top-3 right-3 z-20 p-1 rounded hover:bg-gray-100 transition-colors">
-          <X size={18} className="text-gray-400" />
-        </button>
-        <div className="overflow-auto p-6 h-[calc(100%-44px)] relative">
-          <AISettings parsed={parsed} setSetting={setSetting} showToast={showToast} />
+      <div className="relative z-10 w-[600px] h-[520px] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
+        {/* Tabs */}
+        <div className="flex shrink-0 px-6 pt-4 gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className="px-4 py-1.5 text-sm rounded-md transition-colors cursor-pointer border-none"
+              style={{
+                background: tab === t.key ? '#eef2ff' : 'transparent',
+                color: tab === t.key ? '#4338ca' : '#6b7280',
+                fontWeight: tab === t.key ? 600 : 400,
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+          <div className="flex-1" />
+          <button onClick={() => onOpenChange(false)}
+            className="p-1 rounded hover:bg-gray-100 transition-colors">
+            <X size={18} className="text-gray-400" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-6 relative">
+          {tab === 'ai' && (
+            <AISettings parsed={parsed} setSetting={setSetting} showToast={showToast} />
+          )}
+          {tab === 'appearance' && (
+            <AppearanceSettings settings={settings} setSetting={setSetting} />
+          )}
           {toast && (
             <div className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 text-green-700 rounded-lg shadow text-sm">
               <CheckCircle size={14} />{toast}
@@ -57,6 +89,54 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function AppearanceSettings({ settings, setSetting }: {
+  settings: Record<string, string>
+  setSetting: (k: string, v: string) => Promise<void>
+}) {
+  const [typewriter, setTypewriter] = useState(settings['editor_typewriter'] === 'true')
+  const [showToolbar, setShowToolbar] = useState(settings['show_toolbar'] !== 'false')
+
+  useEffect(() => {
+    setTypewriter(settings['editor_typewriter'] === 'true')
+    setShowToolbar(settings['show_toolbar'] !== 'false')
+  }, [settings])
+
+  const toggleTypewriter = useCallback(async () => {
+    const next = !typewriter
+    setTypewriter(next)
+    await setSetting('editor_typewriter', String(next))
+  }, [typewriter, setSetting])
+
+  const toggleToolbar = useCallback(async () => {
+    const next = !showToolbar
+    setShowToolbar(next)
+    await setSetting('show_toolbar', String(next))
+  }, [showToolbar, setSetting])
+
+  return (
+    <div className="space-y-4">
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          className="w-4 h-4 accent-zell-500"
+          checked={showToolbar}
+          onChange={toggleToolbar}
+        />
+        <span className="text-sm text-gray-700">显示编辑器工具栏</span>
+      </label>
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          className="w-4 h-4 accent-zell-500"
+          checked={typewriter}
+          onChange={toggleTypewriter}
+        />
+        <span className="text-sm text-gray-700">打字机模式 (光标始终居中)</span>
+      </label>
     </div>
   )
 }
