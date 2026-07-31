@@ -176,8 +176,9 @@ export default function KnowledgeBasePage() {
                     window.location.href = '/'
                     return
                 }
-                if (!res.ok) { setServerOnline(false); return }
+                if (!res.ok) { setServerOnline(false); useSyncStore.getState().setReadOnly(true); return }
                 setServerOnline(true)
+                useSyncStore.getState().setReadOnly(false)
                 const serverArticles: { id: string }[] = await res.json()
                 const store = useKnowledgeStore.getState()
                 const localArticles = store.articles
