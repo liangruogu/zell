@@ -27,7 +27,7 @@ export default function ProjectPage() {
 
     // Server management
     const { serverUrl, setServerUrl, setConnected, connected, readOnly } = useSyncStore()
-    const [settingsTab, setSettingsTab] = useState<'overview' | 'publish'>('overview')
+    const [settingsTab, setSettingsTab] = useState<'overview' | 'publish' | 'members'>('overview')
 
     const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
     const hasServer = !!(ps.serverUrl && ps.serverKey)
@@ -345,8 +345,15 @@ export default function ProjectPage() {
                             settingsTab === 'publish' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
                         发布
                     </button>
-                    )}
-                    {!isMember && (
+                     )}
+                     {sharingEnabled && !isMember && (
+                     <button onClick={() => setSettingsTab('members')}
+                         className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
+                             settingsTab === 'members' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
+                         成员
+                     </button>
+                     )}
+                     {!isMember && (
                     <button onClick={() => setSettingsTab('settings')}
                         className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
                             settingsTab === 'settings' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
@@ -522,6 +529,33 @@ export default function ProjectPage() {
                         </div>
                     ) : settingsTab === 'publish' ? (
                         <PublishSettings />
+                    ) : settingsTab === 'members' ? (
+                        <div className="p-6 space-y-4">
+                            <h3 className="font-semibold text-gray-800">项目成员</h3>
+                            {members.length === 0 ? (
+                                <p className="text-sm text-gray-400">暂无成员</p>
+                            ) : (
+                                <div className="space-y-1">
+                                    {members.map(m => (
+                                        <div key={m.client_id} className="flex items-center justify-between py-2 px-3 rounded bg-gray-50 text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <div className={m.online ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-gray-300'} />
+                                                <span className="text-gray-700">{m.display_name}</span>
+                                                <span className={cn('text-xs', m.online ? 'text-green-500' : 'text-gray-400')}>
+                                                    {m.online ? '在线' : '离线'}
+                                                </span>
+                                            </div>
+                                            {serverOnline && (
+                                                <button onClick={() => handleKick(m.client_id, m.display_name)}
+                                                    className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500" title="踢出">
+                                                    <X size={13} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <SettingsTab />
                     )}
