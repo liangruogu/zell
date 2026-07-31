@@ -8,6 +8,7 @@ import (
 	"zell-server/internal/ws"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	gorillaWs "github.com/gorilla/websocket"
 )
 
@@ -65,6 +66,16 @@ func (h *WSHandler) Handle(c *gin.Context) {
 				clientID = session.DisplayName
 			}
 		}
+		// Try JWT parsing for owner identification
+		if clientID == "" || clientID == "client-"+pid {
+			if jwtToken, _, err := new(jwt.Parser).ParseUnverified(token, jwt.MapClaims{}); err == nil {
+				if claims, ok := jwtToken.Claims.(jwt.MapClaims); ok {
+					if sub, ok := claims["sub"].(string); ok {
+						clientID = sub
+					}
+				}
+			}
+		}
 	}
 
 	// State check: verify project and member status
@@ -75,8 +86,13 @@ func (h *WSHandler) Handle(c *gin.Context) {
 	}
 	memberStatus, err := h.db.GetMemberStatus(pid, clientID)
 	if err != nil || memberStatus != "active" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
-		return
+		// Owner bypass
+		if clientID == proj.OwnerToken && proj.OwnerToken != "" {
+			// owner OK
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
+			return
+		}
 	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)

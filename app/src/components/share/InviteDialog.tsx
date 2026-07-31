@@ -130,7 +130,16 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim() }),
         })
-        if (!res.ok) return
+        if (!res.ok) {
+          if (res.status === 403) {
+            if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null }
+            clearJoinState(joinCode)
+            setJoinStatus('idle')
+            setJoinMessage('申请已被拒绝')
+            setJoinCode('')
+          }
+          return
+        }
         const data = await res.json()
         if (data.status !== 'pending') {
           if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null }

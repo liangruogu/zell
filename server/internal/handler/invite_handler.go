@@ -221,6 +221,14 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		return
 	}
 
+	// Check if previously rejected
+	isRejected, err := h.db.IsRejected(realPID, req.ClientID)
+	if err == nil && isRejected {
+		log.Printf("[join] client=%s was previously rejected", displayName)
+		c.JSON(http.StatusForbidden, gin.H{"error": "申请已被拒绝"})
+		return
+	}
+
 	// Add to pending — owner must approve
 	log.Printf("[join] adding client=%s to pending for project=%s", displayName, realPID)
 	if err := h.db.AddPending(realPID, req.ClientID, displayName); err != nil {
@@ -340,6 +348,8 @@ func (h *InviteHandler) RejectPending(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	h.db.AddRejected(pid, clientID)
 
 	h.hub.BroadcastProject(pid, "member_rejected", gin.H{"client_id": clientID, "display_name": displayName})
 	c.JSON(http.StatusOK, gin.H{"ok": true})

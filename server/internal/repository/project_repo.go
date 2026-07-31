@@ -28,6 +28,12 @@ func (db *DB) migrateProjects() error {
 			created_at   TEXT NOT NULL,
 			PRIMARY KEY (project_id, client_id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS rejected_clients (
+			project_id TEXT NOT NULL,
+			client_id  TEXT NOT NULL,
+			rejected_at TEXT NOT NULL,
+			PRIMARY KEY (project_id, client_id)
+		)`,
 	}
 	for _, q := range queries {
 		if _, err := db.conn.Exec(q); err != nil {
@@ -195,7 +201,7 @@ func (db *DB) ListMembers(projectID string) ([]struct {
 	Online      bool   `json:"online"`
 	Status      string `json:"status"`
 }, error) {
-	rows, err := db.conn.Query(`SELECT client_id, display_name, online, COALESCE(status,'active') FROM project_members WHERE project_id = ?`, projectID)
+	rows, err := db.conn.Query(`SELECT client_id, display_name, online, COALESCE(status,'active') FROM project_members WHERE project_id = ? AND COALESCE(status,'active') = 'active'`, projectID)
 	if err != nil { return nil, err }
 	defer rows.Close()
 	var list []struct {
@@ -245,6 +251,23 @@ func (db *DB) IsPending(projectID, clientID string) (bool, error) {
 	return count > 0, err
 }
 
+func (db *DB) AddRejected(projectID, clientID string) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := db.conn.Exec(
+		`INSERT OR REPLACE INTO rejected_clients (project_id, client_id, rejected_at) VALUES (?, ?, ?)`,
+		projectID, clientID, now,
+	)
+	return err
+}
+
+func (db *DB) IsRejected(projectID, clientID string) (bool, error) {
+	var count int
+	err := db.conn.QueryRow(
+		`SELECT COUNT(*) FROM rejected_clients WHERE project_id = ? AND client_id = ?`,
+		projectID, clientID).Scan(&count)
+	return count > 0, err
+}
+
 func (db *DB) IsDisplayNameTaken(projectID, displayName string) (bool, error) {
 	var count int
 	err := db.conn.QueryRow(
@@ -255,6 +278,11 @@ func (db *DB) IsDisplayNameTaken(projectID, displayName string) (bool, error) {
 		) WHERE display_name = ?`,
 		projectID, projectID, displayName).Scan(&count)
 	return count > 0, err
+}
+
+func (db *DB) RemoveRejected(projectID, clientID string) error {
+	_, err := db.conn.Exec(`DELETE FROM rejected_clients WHERE project_id = ? AND client_id = ?`, projectID, clientID)
+	return err
 }
 
 func (db *DB) ListPending(projectID string) ([]struct {

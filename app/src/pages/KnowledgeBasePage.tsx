@@ -12,7 +12,7 @@ import { ResizablePanel, useResizablePanel } from '@/components/layout/Resizable
 import type { KnowledgeArticle } from '@/types/knowledge'
 import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
-import { Plus, FileText, Trash2, FileOutput, Search, X, ListTree, ChevronRight, Upload, LogOut } from 'lucide-react'
+import { Plus, FileText, Trash2, FileOutput, Search, X, ListTree, ChevronRight, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type ListTab = 'files' | 'outline'
@@ -67,7 +67,6 @@ export default function KnowledgeBasePage() {
     const [editorMd, setEditorMd] = useState('')
     const psCollab = parseProjectSettings(useProjectStore(s => s.currentProject?.settings) || '{}')
     const isCollab = !!(psCollab.token || psCollab.serverKey)
-    const isMemberRole = !!(psCollab.token && !psCollab.serverKey)
     const [serverOnline, setServerOnline] = useState(!isCollab)
 
     useEffect(() => {
@@ -204,7 +203,7 @@ export default function KnowledgeBasePage() {
 
         // WebSocket listener for live updates — auto-reconnect
         const wsBase = serverUrl.replace(/^http/, 'ws')
-        const wsUrl = `${wsBase}/ws/${projectId}/__notifications__`
+        const wsUrl = `${wsBase}/ws/${projectId}/__notifications__${token ? '?token=' + encodeURIComponent(token) : ''}`
         let ws: WebSocket
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null
         let stopped = false
@@ -555,28 +554,6 @@ export default function KnowledgeBasePage() {
                                 >
                                     <Plus size={14} />
                                     新建文章
-                                </button>
-                            )}
-
-                            {isMemberRole && (
-                                <button
-                                    onClick={async () => {
-                                        if (!confirm('确定退出此项目吗？你将失去访问权限。')) return
-                                        const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
-                                        const serverUrl = ps.serverUrl
-                                        const token = ps.token
-                                        if (serverUrl && token && projectId) {
-                                            await fetch(`${serverUrl}/api/v1/projects/${projectId}/leave`, {
-                                                method: 'POST',
-                                                headers: { 'Authorization': `Bearer ${token}` }
-                                            })
-                                        }
-                                        window.location.href = '/'
-                                    }}
-                                    className="flex items-center gap-2 w-full px-2.5 py-1.5 text-sm text-red-500 hover:bg-red-50 rounded transition-colors"
-                                >
-                                    <LogOut size={14} />
-                                    退出项目
                                 </button>
                             )}
 
