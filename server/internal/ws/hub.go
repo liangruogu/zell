@@ -1,7 +1,9 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -10,19 +12,21 @@ import (
 type roomKey string
 
 type Hub struct {
-	rooms      map[roomKey]map[*Client]bool
-	register   chan *Client
-	unregister chan *Client
-	mu         sync.RWMutex
-	onSnapshot func(docID string, state []byte) // callback to persist snapshot
+	rooms         map[roomKey]map[*Client]bool
+	register      chan *Client
+	unregister    chan *Client
+	mu            sync.RWMutex
+	onSnapshot    func(docID string, state []byte)
+	onMemberEvent func(projectID, clientID string, online bool)
 }
 
-func NewHub(onSnapshot func(docID string, state []byte)) *Hub {
+func NewHub(onSnapshot func(docID string, state []byte), onMemberEvent func(projectID, clientID string, online bool)) *Hub {
 	return &Hub{
-		rooms:      make(map[roomKey]map[*Client]bool),
-		register:   make(chan *Client, 256),
-		unregister: make(chan *Client, 256),
-		onSnapshot: onSnapshot,
+		rooms:         make(map[roomKey]map[*Client]bool),
+		register:      make(chan *Client, 256),
+		unregister:    make(chan *Client, 256),
+		onSnapshot:    onSnapshot,
+		onMemberEvent: onMemberEvent,
 	}
 }
 
@@ -37,6 +41,10 @@ func (h *Hub) Run() {
 			}
 			h.rooms[key][client] = true
 			h.mu.Unlock()
+
+			if h.onMemberEvent != nil {
+				h.onMemberEvent(client.projectID, client.clientID, true)
+			}
 			log.Printf("[hub] client joined room %s (%d clients)", client.room, len(h.rooms[key]))
 
 		case client := <-h.unregister:
@@ -49,6 +57,10 @@ func (h *Hub) Run() {
 				}
 			}
 			h.mu.Unlock()
+
+			if h.onMemberEvent != nil {
+				h.onMemberEvent(client.projectID, client.clientID, false)
+			}
 			close(client.send)
 			log.Printf("[hub] client left room %s", client.room)
 		}
@@ -71,18 +83,12 @@ func (h *Hub) broadcast(room string, sender *Client, msg []byte) {
 		if client == sender {
 			continue
 		}
-		switch msgType {
-		case MsgSyncStep1:
-			client.Send(EncodeSyncStep1(payload))
-		case MsgSyncStep2:
-			client.Send(EncodeSyncStep2(payload))
-		case MsgUpdate:
-			client.Send(EncodeUpdate(payload))
-			// Periodically save snapshot
-			if h.onSnapshot != nil {
-				h.onSnapshot(room, payload)
-			}
-		}
+		client.Send(msg)
+	}
+
+	// Save snapshot periodically on updates
+	if msgType == MsgUpdate && h.onSnapshot != nil {
+		h.onSnapshot(room, payload)
 	}
 }
 
@@ -92,9 +98,29 @@ func (h *Hub) GetClientCount(room string) int {
 	return len(h.rooms[roomKey(room)])
 }
 
-func (h *Hub) HandleWebSocket(conn *websocket.Conn, room, clientID string) {
-	client := NewClient(h, conn, room, clientID)
+func (h *Hub) HandleWebSocket(conn *websocket.Conn, room, clientID, projectID string) {
+	client := NewClient(h, conn, room, clientID, projectID)
 	h.register <- client
 	go client.WriteLoop()
 	client.ReadLoop()
+}
+
+func (h *Hub) BroadcastProject(projectID string, event string, data interface{}) {
+	msg, _ := json.Marshal(map[string]interface{}{
+		"type":       event,
+		"project_id": projectID,
+		"data":       data,
+	})
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	// Only broadcast to notification rooms, not Yjs editing rooms
+	for key, clients := range h.rooms {
+		if strings.HasPrefix(string(key), projectID+":__notifications__") {
+			for client := range clients {
+				client.Send(msg)
+			}
+		}
+	}
 }

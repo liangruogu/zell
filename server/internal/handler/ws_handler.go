@@ -21,11 +21,23 @@ type WSHandler struct {
 }
 
 func NewWSHandler(db *repository.DB) *WSHandler {
-	hub := ws.NewHub(func(docID string, state []byte) {
-		if err := db.SaveSnapshot(docID, state); err != nil {
-			log.Printf("[ws] snapshot save error: %v", err)
-		}
-	})
+	var hub *ws.Hub
+	hub = ws.NewHub(
+		func(docID string, state []byte) {
+			if err := db.SaveSnapshot(docID, state); err != nil {
+				log.Printf("[ws] snapshot save error: %v", err)
+			}
+		},
+		func(projectID, clientID string, online bool) {
+			if online {
+				db.SetMemberOnline(projectID, clientID, true)
+				hub.BroadcastProject(projectID, "member_online", gin.H{"client_id": clientID})
+			} else {
+				db.SetMemberOnline(projectID, clientID, false)
+				hub.BroadcastProject(projectID, "member_offline", gin.H{"client_id": clientID})
+			}
+		},
+	)
 	return &WSHandler{db: db, hub: hub}
 }
 
@@ -55,6 +67,18 @@ func (h *WSHandler) Handle(c *gin.Context) {
 		}
 	}
 
+	// State check: verify project and member status
+	proj, err := h.db.GetProject(pid)
+	if err != nil || proj == nil || proj.Status == "deleted" || !proj.CollabEnabled {
+		c.JSON(http.StatusForbidden, gin.H{"error": "project unavailable"})
+		return
+	}
+	memberStatus, err := h.db.GetMemberStatus(pid, clientID)
+	if err != nil || memberStatus != "active" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
+		return
+	}
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("[ws] upgrade error: %v", err)
@@ -62,7 +86,7 @@ func (h *WSHandler) Handle(c *gin.Context) {
 	}
 
 	log.Printf("[ws] client %s connecting to room %s", clientID, room)
-	h.hub.HandleWebSocket(conn, room, clientID)
+	h.hub.HandleWebSocket(conn, room, clientID, pid)
 }
 
 func (h *WSHandler) Start() {
