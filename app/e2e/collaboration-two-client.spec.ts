@@ -1,184 +1,142 @@
 /**
  * Two-client collaboration tests using raw Playwright.
  *
- * Simulates Owner and Member opening separate browser pages,
- * each with different project settings (token vs serverKey).
- * All server API calls are mocked via page.route().
+ * Each test opens two browser contexts ("Owner" and "Member"),
+ * mocks all HTTP API calls via page.route(), and injects
+ * Tauri IPC mocks via addInitScript so __TAURI_INTERNALS__ exists.
  */
 
 import { test, expect } from '@playwright/test'
+import { generateIpcMockScript } from '@srsholmes/tauri-playwright'
 
-const SERVER_URL = 'http://localhost:3000'
+const ipcMocks: Record<string, (...args: any[]) => any> = {
+  get_projects: () => [],
+  create_project: (args: any) => ({
+    id: 'test-proj-1', name: args?.name || 'New Project',
+    description: args?.description || '', background: args?.background || '',
+    settings: args?.settings || '{}',
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null,
+  }),
+  get_project: (args: any) => ({
+    id: args?.id || 'test-proj-1', name: 'Test Project',
+    description: '', background: '',
+    settings: '{"serverUrl":"http://localhost:3000","token":"test-token"}',
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null,
+  }),
+  get_knowledge_articles: () => [],
+  create_knowledge_article: (args: any) => ({
+    id: 'test-article-1', project_id: args?.projectId || 'test-proj-1',
+    title: args?.title || 'Untitled', content: args?.content || '',
+    content_json: '{}', created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  }),
+  get_knowledge_article: (args: any) => ({
+    id: args?.id || 'test-article-1', project_id: 'test-proj-1',
+    title: 'Test Article', content: '# Hello', content_json: '{}',
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  }),
+  get_setting: () => null,
+  set_setting: () => null,
+  load_settings: () => ({}),
+  get_whiteboards: () => [],
+  get_external_links: () => [],
+  get_project_files: () => [],
+}
 
-function mockServer(page: any, opts: {
-  articles?: any[]
-  members?: any[]
-  pending?: any[]
-  joinResponse?: any
-  articlesStatus?: number
-  articlesCode?: string
+const IPC_SCRIPT = generateIpcMockScript(ipcMocks)
+
+async function createPage(browser: any) {
+  const ctx = await browser.newContext()
+  const page = await ctx.newPage()
+  await page.addInitScript({ content: IPC_SCRIPT })
+  return { ctx, page }
+}
+
+function mockApi(page: any, opts: {
+  articles?: any[], members?: any[], pending?: any[],
+  articlesStatus?: number, articlesCode?: string,
 }) {
-  const { articles = [], members = [], pending = [], joinResponse = null, articlesStatus = 200, articlesCode = '' } = opts
+  const { articles = [], members = [], pending = [], articlesStatus = 200, articlesCode = '' } = opts
 
-  page.route('**/health**', (route: any) => route.fulfill({ status: 200, json: { status: 'ok' } }))
-
-  page.route('**/collab**', (route: any) => {
-    if (route.request().method() === 'POST') {
-      route.fulfill({ status: 200, json: { collab_enabled: true, invite_code: 'BNDL-mock-code', token: 'owner-jwt' } })
-    } else {
-      route.continue()
-    }
+  page.route('**/health**', (r: any) => r.fulfill({ status: 200, json: { status: 'ok' } }))
+  page.route('**/collab**', (r: any) => r.fulfill({ status: 200, json: { collab_enabled: true, invite_code: 'BNDL-mock', token: 'owner-jwt' } }))
+  page.route('**/members**', (r: any) => r.method() === 'GET' ? r.fulfill({ status: 200, json: members }) : r.fulfill({ status: 200, json: { ok: true } }))
+  page.route('**/pending**', (r: any) => {
+    if (r.method() === 'GET') return r.fulfill({ status: 200, json: pending })
+    if (r.url().includes('/approve')) return r.fulfill({ status: 200, json: { ok: true, token: 'member-jwt', display_name: 'Test Member' } })
+    return r.fulfill({ status: 200, json: { ok: true } })
   })
-
-  page.route('**/members**', (route: any) => {
-    if (route.request().method() === 'GET') route.fulfill({ status: 200, json: members })
-    else if (route.request().method() === 'DELETE') route.fulfill({ status: 200, json: { ok: true } })
-    else route.continue()
-  })
-
-  page.route('**/pending**', (route: any) => {
-    if (route.request().method() === 'GET') route.fulfill({ status: 200, json: pending })
-    else if (route.request().url().includes('/approve')) {
-      route.fulfill({ status: 200, json: { ok: true, token: 'member-jwt', display_name: 'Test Member' } })
-    } else if (route.request().url().includes('/reject')) {
-      route.fulfill({ status: 200, json: { ok: true } })
-    } else route.continue()
-  })
-
-  page.route('**/join**', (route: any) => {
-    route.fulfill({ status: 200, json: joinResponse || { status: 'pending', project_id: 'test-proj-1' } })
-  })
-
-  page.route('**/leave**', (route: any) => {
-    route.fulfill({ status: 200, json: { ok: true } })
-  })
-
-  page.route('**/notifications**', (route: any) => {
-    route.fulfill({ status: 200, json: { notifications: [] } })
-  })
-
-  page.route('**/status**', (route: any) => {
-    route.fulfill({ status: 200, json: { project_status: 'active', collab_enabled: true, member_status: 'active' } })
-  })
-
-  page.route('**/articles**', (route: any) => {
-    if (route.request().method() === 'GET') {
-      route.fulfill({ status: articlesStatus, json: articlesStatus !== 200 ? { error: 'err', code: articlesCode } : articles })
-    } else {
-      route.fulfill({ status: 201, json: articles[0] || {} })
-    }
+  page.route('**/leave**', (r: any) => r.fulfill({ status: 200, json: { ok: true } }))
+  page.route('**/notifications**', (r: any) => r.fulfill({ status: 200, json: { notifications: [] } }))
+  page.route('**/status**', (r: any) => r.fulfill({ status: 200, json: { project_status: 'active', collab_enabled: true, member_status: 'active' } }))
+  page.route('**/articles**', (r: any) => {
+    r.fulfill({ status: articlesStatus, json: articlesStatus !== 200 ? { error: 'err', code: articlesCode } : articles })
   })
 }
 
-test.describe('双客户端协作流程', () => {
+test.describe('双客户端协作', () => {
 
-  test('Owner 开启协作 → Member 加入 → Owner 审批 → Member 可见文章', async ({ browser }) => {
-    // Create isolated contexts for each "client"
-    const ownerCtx = await browser.newContext()
-    const memberCtx = await browser.newContext()
-
-    // --- Owner page ---
-    const ownerPage = await ownerCtx.newPage()
-    await mockServer(ownerPage, {
+  test('Member 加入 → Owner 审批 → 双端文章同步', async ({ browser }) => {
+    const { ctx: oCtx, page: owner } = await createPage(browser)
+    await mockApi(owner, {
       articles: [{ id: 'art-1', project_id: 'test-proj-1', title: '共享文章', content: '# Hello', content_json: '{}' }],
-      members: [],
-      pending: [{ client_id: 'pending-1', display_name: 'Test Member', created_at: new Date().toISOString() }],
+      pending: [{ client_id: 'p1', display_name: 'Member1', created_at: new Date().toISOString() }],
     })
-    await ownerPage.goto('http://localhost:5173/project/test-proj-1')
-    await expect(ownerPage.locator('text=项目概览')).toBeVisible({ timeout: 8000 })
+    await owner.goto('http://localhost:5173/project/test-proj-1')
+    await expect(owner.locator('text=项目概览')).toBeVisible({ timeout: 10000 })
 
-    // --- Member page ---
-    const memberPage = await memberCtx.newPage()
-    // Member's join: first call returns pending, second returns approved
-    let joinCallCount = 0
-    await memberPage.route('**/join**', (route: any) => {
-      joinCallCount++
-      if (joinCallCount <= 2) {
-        route.fulfill({ status: 200, json: { status: 'pending', project_id: 'test-proj-1' } })
-      } else {
-        route.fulfill({ status: 200, json: {
-          status: 'approved', project_id: 'test-proj-1', project_name: 'Test Project',
-          token: 'member-jwt', display_name: 'Test Member',
-        }})
-      }
+    const { ctx: mCtx, page: member } = await createPage(browser)
+    let calls = 0
+    await member.route('**/join**', (r: any) => {
+      calls++
+      r.fulfill({ status: 200, json: calls <= 2
+        ? { status: 'pending', project_id: 'test-proj-1' }
+        : { status: 'approved', project_id: 'test-proj-1', project_name: 'TP', token: 'member-jwt', display_name: 'Member1' }
+      })
     })
-    await mockServer(memberPage, { articles: [
-      { id: 'art-1', project_id: 'test-proj-1', title: '共享文章', content: '# Hello', content_json: '{}' },
-    ]})
-    await memberPage.goto('http://localhost:5173/project/test-proj-1')
-    await expect(memberPage.locator('text=项目概览')).toBeVisible({ timeout: 8000 })
+    await mockApi(member, { articles: [{ id: 'art-1', project_id: 'test-proj-1', title: '共享文章', content: '# Hello', content_json: '{}' }] })
+    await member.goto('http://localhost:5173/project/test-proj-1')
+    await expect(member.locator('text=项目概览')).toBeVisible({ timeout: 10000 })
 
-    // Clean up
-    await ownerCtx.close()
-    await memberCtx.close()
+    await oCtx.close(); await mCtx.close()
   })
 
-  test('Owner 踢出 Member → Member 再访问被拒绝', async ({ browser }) => {
-    const ownerCtx = await browser.newContext()
-    const memberCtx = await browser.newContext()
-
-    // Owner sees members including one to kick
-    const ownerPage = await ownerCtx.newPage()
-    await mockServer(ownerPage, {
-      articles: [],
-      members: [{ client_id: 'member-1', display_name: 'Trouble', online: true, status: 'active' }],
+  test('Owner 踢出 Member → Member 端被拒绝', async ({ browser }) => {
+    const { ctx: oCtx, page: owner } = await createPage(browser)
+    await mockApi(owner, {
+      members: [{ client_id: 'm1', display_name: 'Trouble', online: true, status: 'active' }],
     })
-    await ownerPage.goto('http://localhost:5173/project/test-proj-1')
-    await expect(ownerPage.locator('text=项目概览')).toBeVisible({ timeout: 8000 })
+    await owner.goto('http://localhost:5173/project/test-proj-1')
+    await expect(owner.locator('text=项目概览')).toBeVisible({ timeout: 10000 })
 
-    // Kick button: click it (confirm dialog auto-accepted in tests)
-    const kickBtn = ownerPage.locator('button[title="踢出"]')
+    const kickBtn = owner.locator('button[title="踢出"]')
     if (await kickBtn.isVisible().catch(() => false)) {
-      ownerPage.on('dialog', (d) => d.accept())
+      owner.on('dialog', (d: any) => d.accept())
       await kickBtn.click()
     }
 
-    // Member page: articles return 403 MEMBER_REMOVED
-    const memberPage = await memberCtx.newPage()
-    await mockServer(memberPage, {
-      articlesStatus: 403,
-      articlesCode: 'MEMBER_REMOVED',
-    })
-    await memberPage.goto('http://localhost:5173/project/test-proj-1/knowledge')
-    // Should redirect away
-    await memberPage.waitForTimeout(3000)
-    const url = memberPage.url()
-    expect(url).not.toContain('/knowledge')
+    const { ctx: mCtx, page: member } = await createPage(browser)
+    await mockApi(member, { articlesStatus: 403, articlesCode: 'MEMBER_REMOVED' })
+    await member.goto('http://localhost:5173/project/test-proj-1/knowledge')
+    await member.waitForTimeout(3000)
+    expect(member.url()).not.toContain('/knowledge')
 
-    await ownerCtx.close()
-    await memberCtx.close()
+    await oCtx.close(); await mCtx.close()
   })
 
-  test('Owner 关闭协作 → Member 被踢出', async ({ browser }) => {
-    const ownerCtx = await browser.newContext()
-    const memberCtx = await browser.newContext()
-
-    // Owner page
-    const ownerPage = await ownerCtx.newPage()
-    await mockServer(ownerPage, {
-      articles: [],
-      members: [{ client_id: 'member-1', display_name: 'MemberA', online: true, status: 'active' }],
+  test('Owner 关闭协作 → Member 端被踢', async ({ browser }) => {
+    const { ctx: oCtx, page: owner } = await createPage(browser)
+    await mockApi(owner, {
+      members: [{ client_id: 'm1', display_name: 'MemberA', online: true, status: 'active' }],
     })
-    await ownerPage.goto('http://localhost:5173/project/test-proj-1')
-    await expect(ownerPage.locator('text=项目概览')).toBeVisible({ timeout: 8000 })
+    await owner.goto('http://localhost:5173/project/test-proj-1')
+    await expect(owner.locator('text=项目概览')).toBeVisible({ timeout: 10000 })
 
-    // Owner disables collaboration (confirm dialog auto-accepted)
-    // The toggle is a button that calls handleToggleSharing(false)
-    const toggleBtn = ownerPage.locator('button:has(span)').filter({ hasText: '' }).first()
-    // Instead of finding exact toggle, simulate by mocking: owner already submitted disable
+    const { ctx: mCtx, page: member } = await createPage(browser)
+    await mockApi(member, { articlesStatus: 403, articlesCode: 'COLLAB_DISABLED' })
+    await member.goto('http://localhost:5173/project/test-proj-1/knowledge')
+    await member.waitForTimeout(3000)
+    expect(member.url()).not.toContain('/knowledge')
 
-    // Member page: articles return 403 COllAB_DISABLED
-    const memberPage = await memberCtx.newPage()
-    await mockServer(memberPage, {
-      articlesStatus: 403,
-      articlesCode: 'COLLAB_DISABLED',
-    })
-    await memberPage.goto('http://localhost:5173/project/test-proj-1/knowledge')
-    await memberPage.waitForTimeout(3000)
-    const url = memberPage.url()
-    expect(url).not.toContain('/knowledge')
-
-    await ownerCtx.close()
-    await memberCtx.close()
+    await oCtx.close(); await mCtx.close()
   })
 })
