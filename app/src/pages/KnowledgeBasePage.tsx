@@ -270,6 +270,16 @@ export default function KnowledgeBasePage() {
                     if (msg.type && msg.type.startsWith('article_')) {
                         syncFromServer()
                     }
+                    if (msg.type === 'project_updated') {
+                        const proj = useProjectStore.getState().currentProject
+                        if (proj && msg.data) {
+                            useProjectStore.getState().setCurrentProject({
+                                ...proj,
+                                name: msg.data.name || proj.name,
+                                description: msg.data.description || proj.description,
+                            })
+                        }
+                    }
                 } catch { /* not JSON */ }
             }
         }
