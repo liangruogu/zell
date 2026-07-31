@@ -89,7 +89,6 @@ export default function ProjectPage() {
         } catch {
             setServerOnline(false)
             setConnected(false)
-            useSyncStore.getState().setReadOnly(true)
             if (wasOnlineRef.current === true) {
                 setServerToast('服务器连接已断开，编辑已锁定')
             }
@@ -102,7 +101,6 @@ export default function ProjectPage() {
         setServerOnline(true)
         setConnected(true)
         setShowDisconnected(false)
-        useSyncStore.getState().setReadOnly(false)
         if (wasPrev === false) setServerToast('服务器已恢复连接')
 
         // Fetch collab data
@@ -117,7 +115,6 @@ export default function ProjectPage() {
             if (invRes.ok) setInviteCode((await invRes.json()).invite_code || '')
             if (memRes.ok) setMembers((await memRes.json()) || [])
             if (penRes.ok) setPending((await penRes.json()) || [])
-            useSyncStore.getState().setReadOnly(false)
         } catch { /* collab API might fail, but health passed */ }
     }, [sharingEnabled, serverUrl, id, serverKey, isMember, navigate])
 
@@ -183,7 +180,6 @@ export default function ProjectPage() {
             setPending([])
             setInviteCode('')
             setServerOnline(false)
-            useSyncStore.getState().setReadOnly(false)
             const ps = parseProjectSettings(currentProject!.settings)
             ps.collabEnabled = false
             ps.token = undefined

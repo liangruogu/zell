@@ -102,13 +102,13 @@ export function AppShell({ children }: AppShellProps) {
       </div>
 
       {/* Read-only overlay for joined projects when server is offline */}
-      {readOnly && !isOnOverview && (
+      {readOnly && !isOnOverview && location.pathname.startsWith('/project/') && (
         <div className="fixed inset-0 z-[999] bg-white/90 backdrop-blur-sm flex items-center justify-center">
           <div className="text-center space-y-4 max-w-sm">
             <AlertTriangle size={48} className="mx-auto text-amber-500" strokeWidth={1} />
             <h2 className="text-lg font-semibold text-gray-800">与服务器断开连接</h2>
             <p className="text-sm text-gray-500">你已加入的项目服务器已离线，在恢复连接前无法编辑内容。</p>
-            <Button onClick={() => navigate(-1)}>返回项目概览</Button>
+            <Button onClick={() => navigate('/')}>返回首页</Button>
           </div>
         </div>
       )}
