@@ -72,13 +72,14 @@ func (db *DB) GetProject(projectID string) (*struct {
 	InviteCode      string
 	InviteUpdatedAt string
 	OwnerToken      string
+	Status          string
 }, error) {
 	db.EnsureProject(projectID)
 	var enabled int
-	var code, updatedAt, ownerToken, name string
+	var code, updatedAt, ownerToken, name, status string
 	err := db.conn.QueryRow(
-		`SELECT COALESCE(name,''), collab_enabled, invite_code, invite_updated_at, COALESCE(owner_token,'') FROM projects WHERE id = ?`, projectID,
-	).Scan(&name, &enabled, &code, &updatedAt, &ownerToken)
+		`SELECT COALESCE(name,''), collab_enabled, invite_code, invite_updated_at, COALESCE(owner_token,''), COALESCE(status,'active') FROM projects WHERE id = ?`, projectID,
+	).Scan(&name, &enabled, &code, &updatedAt, &ownerToken, &status)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +89,16 @@ func (db *DB) GetProject(projectID string) (*struct {
 		InviteCode      string
 		InviteUpdatedAt string
 		OwnerToken      string
-	}{name, enabled == 1, code, updatedAt, ownerToken}, nil
+		Status          string
+	}{name, enabled == 1, code, updatedAt, ownerToken, status}, nil
+}
+
+func (db *DB) SetCollabDeleted(projectID string) error {
+	if err := db.EnsureProject(projectID); err != nil {
+		return err
+	}
+	_, err := db.conn.Exec(`UPDATE projects SET status = 'deleted', collab_enabled = 0, invite_code = '' WHERE id = ?`, projectID)
+	return err
 }
 
 func (db *DB) RotateInviteCode(projectID string) (string, error) {
@@ -107,7 +117,7 @@ func (db *DB) RotateInviteCode(projectID string) (string, error) {
 func (db *DB) ValidateInviteCode(code string) (string, error) {
 	var projectID string
 	err := db.conn.QueryRow(
-		`SELECT id FROM projects WHERE invite_code = ? AND collab_enabled = 1`, code,
+		`SELECT id FROM projects WHERE invite_code = ? AND collab_enabled = 1 AND COALESCE(status,'active') = 'active'`, code,
 	).Scan(&projectID)
 	if err != nil {
 		return "", err
@@ -135,8 +145,41 @@ func (db *DB) IsMember(projectID, clientID string) (bool, error) {
 }
 
 func (db *DB) RemoveMember(projectID, clientID string) error {
-	_, err := db.conn.Exec(`DELETE FROM project_members WHERE project_id = ? AND client_id = ?`, projectID, clientID)
+	_, err := db.conn.Exec(`UPDATE project_members SET status = 'removed' WHERE project_id = ? AND client_id = ?`, projectID, clientID)
 	return err
+}
+
+func (db *DB) GetMemberStatus(projectID, clientID string) (string, error) {
+	var status string
+	err := db.conn.QueryRow(
+		`SELECT COALESCE(status,'active') FROM project_members WHERE project_id = ? AND client_id = ?`,
+		projectID, clientID).Scan(&status)
+	if err != nil {
+		return "", err
+	}
+	return status, nil
+}
+
+func (db *DB) RemoveAllMembers(projectID string) error {
+	_, err := db.conn.Exec(`UPDATE project_members SET status = 'removed' WHERE project_id = ? AND status = 'active'`, projectID)
+	return err
+}
+
+func (db *DB) ListMemberIDs(projectID string) ([]string, error) {
+	rows, err := db.conn.Query(`SELECT client_id FROM project_members WHERE project_id = ? AND status = 'active'`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (db *DB) SetMemberOnline(projectID, clientID string, online bool) error {
@@ -150,24 +193,29 @@ func (db *DB) ListMembers(projectID string) ([]struct {
 	ClientID    string `json:"client_id"`
 	DisplayName string `json:"display_name"`
 	Online      bool   `json:"online"`
+	Status      string `json:"status"`
 }, error) {
-	rows, err := db.conn.Query(`SELECT client_id, display_name, online FROM project_members WHERE project_id = ?`, projectID)
+	rows, err := db.conn.Query(`SELECT client_id, display_name, online, COALESCE(status,'active') FROM project_members WHERE project_id = ?`, projectID)
 	if err != nil { return nil, err }
 	defer rows.Close()
 	var list []struct {
 		ClientID    string `json:"client_id"`
 		DisplayName string `json:"display_name"`
 		Online      bool   `json:"online"`
+		Status      string `json:"status"`
 	}
 	for rows.Next() {
 		var m struct {
 			ClientID    string `json:"client_id"`
 			DisplayName string `json:"display_name"`
 			Online      bool   `json:"online"`
+			Status      string `json:"status"`
 		}
 		var o int
-		if err := rows.Scan(&m.ClientID, &m.DisplayName, &o); err != nil { return nil, err }
+		var s string
+		if err := rows.Scan(&m.ClientID, &m.DisplayName, &o, &s); err != nil { return nil, err }
 		m.Online = o == 1
+		m.Status = s
 		list = append(list, m)
 	}
 	return list, nil
