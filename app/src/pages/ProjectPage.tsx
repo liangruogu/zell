@@ -42,7 +42,6 @@ export default function ProjectPage() {
     const [copied, setCopied] = useState(false)
     const [members, setMembers] = useState<{ client_id: string; display_name: string; online: boolean }[]>([])
     const [serverOnline, setServerOnline] = useState(false)
-    const [serverOnline, setServerOnline] = useState(false)
     const wasOnlineRef = useRef<boolean | null>(null)
     const [showDisconnected, setShowDisconnected] = useState(false)
     const [serverToast, setServerToast] = useState<string | null>(null)
