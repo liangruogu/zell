@@ -42,6 +42,10 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
     setJoinMessage('')
     const clientId = getJoinClientId()
     try {
+      if (serverUrl) {
+        try { await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) }) }
+        catch { setJoinMessage('无法连接到服务器'); setJoining(false); return }
+      }
       const res = await fetch(`${serverUrl}/api/v1/projects/${projectId || '0'}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
