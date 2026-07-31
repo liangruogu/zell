@@ -30,6 +30,7 @@ export default function ProjectPage() {
     const [settingsTab, setSettingsTab] = useState<'overview' | 'publish'>('overview')
 
     const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
+    const hasServer = !!(ps.serverUrl && ps.serverKey)
     const isMember = ps.role === 'member'
     const [sharingEnabled, setSharingEnabled] = useState(false)
     const [serverInputUrl, setServerInputUrl] = useState('http://localhost:3000')
@@ -56,16 +57,17 @@ export default function ProjectPage() {
     useEffect(() => {
         if (id) {
             fetchProject(id).then(() => {
-                // Restore collab state after project loads
                 const proj = useProjectStore.getState().currentProject
                 if (!proj) return
                 const ps = parseProjectSettings(proj.settings)
-                if (ps.collabEnabled && ps.serverKey && ps.serverUrl) {
+                if (ps.serverKey && ps.serverUrl) {
                     setServerInputUrl(ps.serverUrl)
                     setServerKey(ps.serverKey)
                     setServerUrl(ps.serverUrl)
-                    setSharingEnabled(true)
-                    setConnected(true)
+                    if (ps.collabEnabled) {
+                        setSharingEnabled(true)
+                        setConnected(true)
+                    }
                 }
             })
         }
@@ -152,7 +154,6 @@ export default function ProjectPage() {
                 const status = res.status
                 setConnecting(false); setConnectFailed(true)
                 if (status === 403) {
-                    // Server key changed — clear saved key, let user re-enter
                     const ps = parseProjectSettings(currentProject!.settings)
                     delete ps.serverKey
                     delete ps.token
@@ -163,6 +164,7 @@ export default function ProjectPage() {
                         settings: stringifyProjectSettings(ps),
                     })
                     setServerKey('')
+                    setSharingEnabled(false)
                     setConnectFailed(true)
                 } else {
                     alert('开启共享失败：服务器拒绝连接')
@@ -212,7 +214,7 @@ export default function ProjectPage() {
                 settings: stringifyProjectSettings(ps),
             })
         }
-    }, [serverInputUrl, id, currentProject, serverUrl, serverKey, setServerUrl, setConnected, updateProject, fetchCollabData])
+    }, [serverInputUrl, id, currentProject, serverUrl, serverKey, setServerUrl, setConnected, setSharingEnabled, updateProject, fetchCollabData])
 
     const handleApprove = useCallback(async (clientId: string) => {
         if (!serverUrl || !id) return
@@ -237,6 +239,39 @@ export default function ProjectPage() {
         })
         fetchCollabData()
     }, [serverUrl, id, serverKey, fetchCollabData])
+
+    const handleDeleteServer = useCallback(async () => {
+        if (!currentProject || !id) return
+        if (serverUrl && serverKey) {
+            await fetch(`${serverUrl}/api/v1/projects/${id}/collab`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Server-Key': serverKey },
+                body: JSON.stringify({ enabled: false }),
+            }).catch(() => {})
+        }
+        const ps = parseProjectSettings(currentProject.settings)
+        delete ps.serverUrl
+        delete ps.serverKey
+        delete ps.token
+        ps.collabEnabled = false
+        await updateProject(currentProject.id, {
+            name: currentProject.name,
+            description: currentProject.description,
+            background: currentProject.background,
+            settings: stringifyProjectSettings(ps),
+        })
+        setConnected(false)
+        setSharingEnabled(false)
+        setServerOnline(false)
+        setServerInputUrl('http://localhost:3000')
+        setServerKey('')
+        setInviteCode('')
+        setMembers([])
+        setPending([])
+        setConnectFailed(false)
+        setServerUrl('')
+        useSyncStore.getState().setReadOnly(false)
+    }, [currentProject, id, serverUrl, serverKey, updateProject, setConnected, setSharingEnabled, setServerUrl])
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(inviteCode)
@@ -378,7 +413,7 @@ export default function ProjectPage() {
                                                 连接中...
                                             </span>
                                         )}
-                                        {!connecting && sharingEnabled && (
+                                        {!connecting && hasServer && sharingEnabled && (
                                             <span className={cn(
                                                 'text-xs px-2 py-0.5 rounded-full font-medium',
                                                 serverOnline ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
@@ -386,30 +421,27 @@ export default function ProjectPage() {
                                                 {serverOnline ? '已连接' : (connectFailed ? '连接失败' : '已断开')}
                                             </span>
                                         )}
+                                        {!connecting && hasServer && !sharingEnabled && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full font-medium text-gray-500 bg-gray-100">
+                                                未共享
+                                            </span>
+                                        )}
                                     </h3>
                                     <button
                                         onClick={() => {
-                                            if (!sharingEnabled) {
-                                                const proj = useProjectStore.getState().currentProject
-                                                const ps = proj ? parseProjectSettings(proj.settings) : {}
-                                                if (ps.serverUrl && ps.serverKey) {
-                                                    setServerInputUrl(ps.serverUrl)
-                                                    setServerKey(ps.serverKey)
-                                                    setSharingEnabled(true)
-                                                    // Auto-connect since we have saved credentials
-                                                    handleToggleSharing(true)
-                                                    return
-                                                }
-                                                setSharingEnabled(true)
-                                            } else {
+                                            if (!hasServer) return
+                                            if (sharingEnabled) {
                                                 if (!confirm('确定关闭协作吗？所有成员将被移出项目。')) return
                                                 handleToggleSharing(false)
                                                 setSharingEnabled(false)
+                                            } else {
+                                                setSharingEnabled(true)
+                                                handleToggleSharing(true)
                                             }
                                         }}
                                         className={cn(
                                             'relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors',
-                                            sharingEnabled ? 'bg-green-500' : 'bg-gray-200'
+                                            !hasServer ? 'bg-gray-200 opacity-50 cursor-not-allowed' : sharingEnabled ? 'bg-green-500' : 'bg-gray-200'
                                         )}
                                     >
                                         <span className={cn(
@@ -419,22 +451,16 @@ export default function ProjectPage() {
                                     </button>
                                 </div>
 
-                                {sharingEnabled && (
-                                    <div className="mt-4 space-y-4 animate-slideDown overflow-hidden">
+                                {!hasServer && (
+                                    <div className="mt-4 space-y-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">服务器地址</label>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    value={serverInputUrl}
-                                                    onChange={(e) => setServerInputUrl(e.target.value)}
-                                                    placeholder="http://localhost:3000"
-                                                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
-                                                    disabled={!!inviteCode}
-                                                />
-                                                <Button size="sm" onClick={() => handleToggleSharing(true)} disabled={connecting || !serverInputUrl.trim() || !serverKey.trim()}>
-                                                    {connecting ? '连接中...' : '连接'}
-                                                </Button>
-                                            </div>
+                                            <input
+                                                value={serverInputUrl}
+                                                onChange={(e) => setServerInputUrl(e.target.value)}
+                                                placeholder="http://localhost:3000"
+                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
+                                            />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">服务器密钥</label>
@@ -443,16 +469,58 @@ export default function ProjectPage() {
                                                 onChange={(e) => setServerKey(e.target.value.trim())}
                                                 placeholder="启动 zell-server 时控制台输出的密钥"
                                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
-                                                disabled={!!inviteCode}
                                             />
                                             <p className="text-xs text-gray-400 mt-1">启动 zell-server 时控制台输出的密钥</p>
+                                        </div>
+                                        <Button size="sm" onClick={() => {
+                                            if (!serverInputUrl.trim() || !serverKey.trim()) return
+                                            setSharingEnabled(true)
+                                            handleToggleSharing(true)
+                                        }} disabled={connecting || !serverInputUrl.trim() || !serverKey.trim()}>
+                                            {connecting ? '连接中...' : '连接'}
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {hasServer && !sharingEnabled && (
+                                    <div className="mt-4 space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">服务器地址</label>
+                                            <input
+                                                value={serverInputUrl}
+                                                readOnly
+                                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button size="sm" onClick={() => {
+                                                setSharingEnabled(true)
+                                                handleToggleSharing(true)
+                                            }} disabled={connecting}>
+                                                开启共享
+                                            </Button>
+                                            <Button size="sm" variant="outline" onClick={handleDeleteServer}>
+                                                删除服务器
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {hasServer && sharingEnabled && (
+                                    <div className="mt-4 space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">服务器地址</label>
+                                            <input
+                                                value={serverInputUrl}
+                                                readOnly
+                                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
+                                            />
                                         </div>
 
                                         {serverOnline && (
                                             <>
                                                 <div className="flex items-center gap-2 text-sm">
-                                                    <div className={cn('w-2.5 h-2.5 rounded-full',
-                                                        connecting ? 'bg-yellow-400' : serverOnline ? 'bg-green-500' : 'bg-red-400')} />
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
                                                     <span className="text-gray-600">{serverUrl}</span>
                                                 </div>
 
@@ -531,6 +599,19 @@ export default function ProjectPage() {
                                                 )}
                                             </>
                                         )}
+
+                                        <div className="flex gap-2 pt-2 border-t border-gray-100">
+                                            <Button size="sm" variant="outline" onClick={() => {
+                                                if (!confirm('确定关闭协作吗？所有成员将被移出项目。')) return
+                                                handleToggleSharing(false)
+                                                setSharingEnabled(false)
+                                            }}>
+                                                关闭共享
+                                            </Button>
+                                            <Button size="sm" variant="outline" onClick={handleDeleteServer}>
+                                                删除服务器
+                                            </Button>
+                                        </div>
                                     </div>
                                 )}
                             </Card>
