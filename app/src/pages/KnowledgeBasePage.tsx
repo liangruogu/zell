@@ -199,6 +199,12 @@ export default function KnowledgeBasePage() {
                 }
 
                 fetchArticles(projectId)
+
+                // If current article was deleted, clear it
+                const cur = useKnowledgeStore.getState().currentArticle
+                if (cur && !serverArticles.some((a: any) => a.id === cur.id)) {
+                    useKnowledgeStore.getState().setCurrentArticle(null)
+                }
             } catch { setServerOnline(false) }
         }
         syncFromServer()

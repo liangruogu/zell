@@ -36,6 +36,7 @@ import { useEditorPlugins } from './useEditorPlugins'
 import { useEditorHandlers } from './useEditorHandlers'
 import { useEditorDragDrop } from './useEditorDragDrop'
 import { useTypewriter } from './useTypewriter'
+import { createCursorExtension } from '@/lib/cursorExtension'
 
 const lowlight = createLowlight(common)
 
@@ -260,6 +261,10 @@ export function MarkdownEditor({
             MathInlineNode,
             MathDisplayNode,
             MathExtension,
+            createCursorExtension(
+                () => collabProviderRef.current?.awareness,
+                () => collabYDocRef.current?.clientID ?? 0
+            ),
             trimCodeBlockPlugin,
             markdownLinkPlugin,
             keyboardPlugin,
