@@ -8,6 +8,7 @@ func (db *DB) migrateProjects() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS projects (
 			id                TEXT PRIMARY KEY,
+			name              TEXT DEFAULT '',
 			collab_enabled    INTEGER DEFAULT 0,
 			invite_code       TEXT DEFAULT '',
 			invite_updated_at TEXT DEFAULT '',
@@ -33,8 +34,11 @@ func (db *DB) migrateProjects() error {
 			return err
 		}
 	}
-	// Add columns that may be missing from older DBs (SQLite has no ADD COLUMN IF NOT EXISTS)
+	// Add columns that may be missing from older DBs
+	db.conn.Exec(`ALTER TABLE projects ADD COLUMN name TEXT DEFAULT ''`)
 	db.conn.Exec(`ALTER TABLE projects ADD COLUMN owner_token TEXT DEFAULT ''`)
+	db.conn.Exec(`ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'`)
+	db.conn.Exec(`ALTER TABLE project_members ADD COLUMN status TEXT DEFAULT 'active'`)
 	return nil
 }
 
@@ -45,8 +49,10 @@ func (db *DB) EnsureProject(projectID string) error {
 	return err
 }
 
-func (db *DB) SetCollabEnabled(projectID string, enabled bool, ownerToken string) error {
-	db.EnsureProject(projectID)
+func (db *DB) SetCollabEnabled(projectID string, enabled bool, ownerToken string, name string) error {
+	if err := db.EnsureProject(projectID); err != nil {
+		return err
+	}
 	inviteCode := ""
 	inviteUpdatedAt := ""
 	if enabled {
@@ -54,13 +60,14 @@ func (db *DB) SetCollabEnabled(projectID string, enabled bool, ownerToken string
 		inviteUpdatedAt = time.Now().UTC().Format(time.RFC3339)
 	}
 	_, err := db.conn.Exec(
-		`UPDATE projects SET collab_enabled = ?, invite_code = ?, invite_updated_at = ?, owner_token = ? WHERE id = ?`,
-		boolToInt(enabled), inviteCode, inviteUpdatedAt, ownerToken, projectID,
+		`UPDATE projects SET name = ?, collab_enabled = ?, invite_code = ?, invite_updated_at = ?, owner_token = ? WHERE id = ?`,
+		name, boolToInt(enabled), inviteCode, inviteUpdatedAt, ownerToken, projectID,
 	)
 	return err
 }
 
 func (db *DB) GetProject(projectID string) (*struct {
+	Name            string
 	CollabEnabled   bool
 	InviteCode      string
 	InviteUpdatedAt string
@@ -68,19 +75,20 @@ func (db *DB) GetProject(projectID string) (*struct {
 }, error) {
 	db.EnsureProject(projectID)
 	var enabled int
-	var code, updatedAt, ownerToken string
+	var code, updatedAt, ownerToken, name string
 	err := db.conn.QueryRow(
-		`SELECT collab_enabled, invite_code, invite_updated_at, COALESCE(owner_token,'') FROM projects WHERE id = ?`, projectID,
-	).Scan(&enabled, &code, &updatedAt, &ownerToken)
+		`SELECT COALESCE(name,''), collab_enabled, invite_code, invite_updated_at, COALESCE(owner_token,'') FROM projects WHERE id = ?`, projectID,
+	).Scan(&name, &enabled, &code, &updatedAt, &ownerToken)
 	if err != nil {
 		return nil, err
 	}
 	return &struct {
+		Name            string
 		CollabEnabled   bool
 		InviteCode      string
 		InviteUpdatedAt string
 		OwnerToken      string
-	}{enabled == 1, code, updatedAt, ownerToken}, nil
+	}{name, enabled == 1, code, updatedAt, ownerToken}, nil
 }
 
 func (db *DB) RotateInviteCode(projectID string) (string, error) {
@@ -116,6 +124,14 @@ func (db *DB) AddMember(projectID, clientID, displayName string) error {
 		projectID, clientID, displayName,
 	)
 	return err
+}
+
+func (db *DB) IsMember(projectID, clientID string) (bool, error) {
+	var count int
+	err := db.conn.QueryRow(
+		`SELECT COUNT(*) FROM project_members WHERE project_id = ? AND client_id = ?`,
+		projectID, clientID).Scan(&count)
+	return count > 0, err
 }
 
 func (db *DB) RemoveMember(projectID, clientID string) error {
