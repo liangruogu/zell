@@ -18,15 +18,33 @@ pub fn create_project(
     let id = id.unwrap_or_else(|| Uuid::now_v7().to_string());
     let now = Utc::now().to_rfc3339();
 
+    // Auto-suffix duplicate names
+    let mut final_name = name.clone();
+    let mut suffix = 1;
+    loop {
+        let exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) > 0 FROM projects WHERE name = ?1 AND deleted_at IS NULL",
+                rusqlite::params![final_name],
+                |row| row.get(0),
+            )
+            .unwrap_or(false);
+        if !exists {
+            break;
+        }
+        suffix += 1;
+        final_name = format!("{} ({})", name, suffix);
+    }
+
     conn.execute(
         "INSERT INTO projects (id, name, description, background, icon, settings, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        rusqlite::params![id, name, description, background, icon, settings, now, now],
+        rusqlite::params![id, final_name, description, background, icon, settings, now, now],
     )
     .map_err(|e| e.to_string())?;
 
     Ok(Project {
         id,
-        name,
+        name: final_name,
         description,
         background,
         icon,
