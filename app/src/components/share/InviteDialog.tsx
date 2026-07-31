@@ -55,25 +55,38 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
       if (res.ok) {
         const data = await res.json()
         if (data.status === 'approved') {
-          // Use the real project ID from the server response
           const realPid = data.project_id
           let proj = useProjectStore.getState().currentProject
           if (!proj || proj.id !== realPid) {
             await useProjectStore.getState().fetchProject(realPid)
             proj = useProjectStore.getState().currentProject
           }
-          if (!proj) { setJoinMessage('加入成功，请刷新页面'); setJoining(false); return }
-          const ps = parseProjectSettings(proj.settings)
-          ps.token = data.token
-          ps.displayName = data.display_name
-          ps.serverUrl = serverUrl
-          useProjectStore.getState().setCurrentProject({ ...proj, settings: stringifyProjectSettings(ps) })
-          useProjectStore.getState().updateProject(proj.id, {
-            name: proj.name,
-            description: proj.description,
-            background: proj.background,
-            settings: stringifyProjectSettings(ps),
-          })
+          // Create project if it doesn't exist locally
+          if (!proj) {
+            proj = await useProjectStore.getState().createProject({
+              id: realPid,
+              name: data.project_name || realPid.slice(0, 8),
+              settings: JSON.stringify({
+                serverUrl,
+                token: data.token,
+                displayName: data.display_name,
+                role: 'member',
+              }),
+            })
+          }
+          if (proj) {
+            const ps = parseProjectSettings(proj.settings)
+            ps.token = data.token
+            ps.displayName = data.display_name
+            ps.serverUrl = serverUrl
+            useProjectStore.getState().setCurrentProject({ ...proj, settings: stringifyProjectSettings(ps) })
+            useProjectStore.getState().updateProject(proj.id, {
+              name: proj.name,
+              description: proj.description,
+              background: proj.background,
+              settings: stringifyProjectSettings(ps),
+            })
+          }
           setJoinMessage('已加入项目')
           setTimeout(() => {
             setJoinVisible(false)
