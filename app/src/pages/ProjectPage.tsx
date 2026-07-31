@@ -26,7 +26,7 @@ export default function ProjectPage() {
     const [editBg, setEditBg] = useState('')
 
     // Server management
-    const { serverUrl, setServerUrl, setConnected, connected } = useSyncStore()
+    const { serverUrl, setServerUrl, setConnected, connected, readOnly } = useSyncStore()
     const [settingsTab, setSettingsTab] = useState<'overview' | 'publish'>('overview')
 
     const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
@@ -275,7 +275,7 @@ export default function ProjectPage() {
                 actions={
                     <>
                         <Button variant="outline" size="sm" onClick={() => setShowEdit(true)}
-                            disabled={isMember} title={isMember ? '协作者不能修改项目配置' : '编辑项目'}>
+                            disabled={isMember || readOnly} title={isMember ? '协作者不能修改项目配置' : readOnly ? '服务器离线，请关闭共享后编辑' : '编辑项目'}>
                             <Edit3 size={14} /> 编辑
                         </Button>
                         {isMember ? (
@@ -603,6 +603,7 @@ function SettingsTab() {
     const currentTheme = app.theme || 'zell'
     const [toast, setToast] = useState<string | null>(null)
     const showToast = useCallback((msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2000) }, [])
+    const readOnly = useSyncStore(s => s.readOnly)
 
     const save = useCallback(async (key: string, value: any) => {
         if (!currentProject) return
@@ -621,6 +622,11 @@ function SettingsTab() {
 
     return (
         <div className="p-6 space-y-6 relative">
+            {readOnly && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 mb-2">
+                    服务器已离线，设置已锁定。请关闭共享以恢复编辑权限。
+                </div>
+            )}
             {/* Appearance */}
             <div className="space-y-3">
                 <h3 className="font-semibold text-gray-800">外观</h3>
@@ -629,11 +635,13 @@ function SettingsTab() {
                     <div className="flex gap-2">
                         {['zell', 'github', 'report'].map(t => (
                             <button key={t} onClick={() => save('theme', t)}
+                                disabled={readOnly}
                                 className={cn(
                                     'px-3 py-1.5 rounded-md text-sm border transition-colors',
                                     currentTheme === t
                                         ? 'border-zell-400 bg-zell-50 text-zell-700 font-medium'
-                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50',
+                                    readOnly && 'opacity-50 cursor-not-allowed'
                                 )}>
                                 {t === 'zell' ? 'Zell' : t === 'github' ? 'GitHub' : 'Report'}
                             </button>
@@ -655,10 +663,12 @@ function SettingsTab() {
                 ].map((opt) => (
                     <label key={opt.value} className={cn(
                         'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                        sync.policy === opt.value ? 'border-zell-300 bg-zell-50' : 'border-gray-200 hover:bg-gray-50'
+                        sync.policy === opt.value ? 'border-zell-300 bg-zell-50' : 'border-gray-200 hover:bg-gray-50',
+                        readOnly && 'opacity-50 cursor-not-allowed'
                     )}>
                         <input type="radio" name="syncPolicy" checked={sync.policy === opt.value}
-                            onChange={() => save(opt.value, opt.value === 'scheduled' ? 'scheduled' : '')} className="mt-0.5 text-zell-500" />
+                            onChange={() => save(opt.value, opt.value === 'scheduled' ? 'scheduled' : '')} className="mt-0.5 text-zell-500"
+                            disabled={readOnly} />
                         <div className="flex-1">
                             <p className="text-sm font-medium text-gray-700">{opt.label}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{opt.desc}</p>
