@@ -105,6 +105,11 @@ func MemberCheckMiddleware(db *repository.DB) gin.HandlerFunc {
 
 		memberStatus, err := db.GetMemberStatus(pid, session.ClientID)
 		if err != nil || memberStatus != "active" {
+			// Owner bypass: owner is not in project_members table
+			if session.ClientID == proj.OwnerToken && proj.OwnerToken != "" {
+				c.Next()
+				return
+			}
 			log.Printf("[auth] project=%s member=%s status=%s — rejecting", pid, session.ClientID, memberStatus)
 			c.JSON(http.StatusForbidden, gin.H{"error": "you have been removed from this project", "code": "MEMBER_REMOVED"})
 			c.Abort()
