@@ -136,7 +136,7 @@ func (db *DB) ValidateInviteCode(code string) (string, error) {
 func (db *DB) AddMember(projectID, clientID, displayName string) error {
 	_, err := db.conn.Exec(
 		`INSERT INTO project_members (project_id, client_id, display_name, online) VALUES (?, ?, ?, 0)
-		 ON CONFLICT(project_id, client_id) DO UPDATE SET display_name = excluded.display_name`,
+		 ON CONFLICT(project_id, client_id) DO UPDATE SET display_name = excluded.display_name, status = 'active'`,
 		projectID, clientID, displayName,
 	)
 	return err
