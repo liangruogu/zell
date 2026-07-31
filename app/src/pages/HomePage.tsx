@@ -70,6 +70,11 @@ export default function HomePage() {
         return
       }
       const data = await res.json()
+      if (data.status === 'rejected') {
+        setJoinStatus('申请已被拒绝')
+        setJoining(false)
+        return
+      }
       if (data.status === 'pending') {
         setJoinStatus('等待管理员审批...')
         joinPollRef.current = setInterval(async () => {
@@ -81,6 +86,12 @@ export default function HomePage() {
             })
             if (!pollRes.ok) return
             const pollData = await pollRes.json()
+            if (pollData.status === 'rejected') {
+              clearPoll()
+              setJoinStatus('申请已被拒绝')
+              setJoining(false)
+              return
+            }
             if (pollData.status !== 'pending') {
               clearPoll()
               await createProject({
