@@ -31,7 +31,7 @@ export default function ProjectPage() {
 
     const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
     const hasServer = !!(ps.serverUrl && ps.serverKey)
-    const isMember = ps.role === 'member'
+    const isMember = !!(ps.token && !ps.serverKey)
     const [sharingEnabled, setSharingEnabled] = useState(false)
     const [serverInputUrl, setServerInputUrl] = useState('http://localhost:3000')
     const [serverKey, setServerKey] = useState('')
