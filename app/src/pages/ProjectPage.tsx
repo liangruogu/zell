@@ -232,8 +232,9 @@ export default function ProjectPage() {
         fetchCollabData()
     }, [serverUrl, id, serverKey, fetchCollabData])
 
-    const handleKick = useCallback(async (clientId: string) => {
+    const handleKick = useCallback(async (clientId: string, displayName: string) => {
         if (!serverUrl || !id) return
+        if (!confirm(`确定将 ${displayName} 移出项目吗？对方将失去所有编辑权限。`)) return
         await fetch(`${serverUrl}/api/v1/projects/${id}/members/${clientId}`, {
             method: 'DELETE', headers: { 'X-Server-Key': serverKey },
         })
@@ -494,10 +495,7 @@ export default function ProjectPage() {
                                                                         <div className={m.online ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-gray-300'} />
                                                                         <span className="text-gray-700">{m.display_name}</span>
                                                                     </div>
-                                                                    <button onClick={() => {
-                                                                        if (!confirm(`确定将 ${m.display_name} 移出项目吗？对方将失去所有编辑权限。`)) return
-                                                                        handleKick(m.client_id)
-                                                                    }}
+                                                                    <button onClick={() => handleKick(m.client_id, m.display_name)}
                                                                         className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500" title="踢出">
                                                                         <X size={13} />
                                                                     </button>

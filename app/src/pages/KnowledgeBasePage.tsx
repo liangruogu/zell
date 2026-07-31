@@ -45,6 +45,7 @@ function buildHeadingTree(headings: { level: number; text: string; line: number 
 export default function KnowledgeBasePage() {
     const { id: projectId } = useParams<{ id: string }>()
     const { fetchProject } = useProjectStore()
+    const deleteProject = useProjectStore(s => s.deleteProject)
     const {
         articles, currentArticle, loading,
         fetchArticles, createArticle, updateArticle, deleteArticle, setCurrentArticle,
@@ -157,6 +158,7 @@ export default function KnowledgeBasePage() {
                 const res = await fetch(`${serverUrl}/api/v1/projects/${projectId}/articles`, { headers })
                 if (res.status === 410) {
                     alert('项目已被管理员删除，即将返回首页')
+                    deleteProject(projectId!)
                     window.location.href = '/'
                     return
                 }
@@ -171,6 +173,7 @@ export default function KnowledgeBasePage() {
                             alert('访问被拒绝，即将返回首页')
                         }
                     } catch { alert('访问被拒绝，即将返回首页') }
+                    deleteProject(projectId!)
                     window.location.href = '/'
                     return
                 }
@@ -223,6 +226,7 @@ export default function KnowledgeBasePage() {
                                         : n.type === 'collab_disabled' ? '协作已被管理员关闭'
                                         : '你已被移出项目'
                                     alert(msg + '，即将返回首页')
+                                    deleteProject(projectId!)
                                     window.location.href = '/'
                                     return
                                 }
@@ -242,16 +246,19 @@ export default function KnowledgeBasePage() {
                     const msg = JSON.parse(event.data)
                     if (msg.type === 'project_deleted') {
                         alert('项目已被管理员删除，即将返回首页')
+                        deleteProject(projectId!)
                         window.location.href = '/'
                         return
                     }
                     if (msg.type === 'collab_disabled') {
                         alert('协作已被管理员关闭，即将返回首页')
+                        deleteProject(projectId!)
                         window.location.href = '/'
                         return
                     }
                     if (msg.type === 'member_removed' && msg.data?.client_id) {
                         alert('你已被管理员移出项目，即将返回首页')
+                        deleteProject(projectId!)
                         window.location.href = '/'
                         return
                     }
