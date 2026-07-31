@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"zell-server/internal/config"
@@ -89,12 +90,14 @@ func MemberCheckMiddleware(db *repository.DB) gin.HandlerFunc {
 
 		proj, err := db.GetProject(pid)
 		if err != nil || proj == nil || proj.Status == "deleted" {
+			log.Printf("[auth] project=%s status=deleted — rejecting request from client=%s", pid, session.ClientID)
 			c.JSON(http.StatusGone, gin.H{"error": "project deleted", "code": "PROJECT_DELETED"})
 			c.Abort()
 			return
 		}
 
 		if !proj.CollabEnabled {
+			log.Printf("[auth] project=%s collab_disabled — rejecting request from client=%s", pid, session.ClientID)
 			c.JSON(http.StatusForbidden, gin.H{"error": "collaboration disabled", "code": "COLLAB_DISABLED"})
 			c.Abort()
 			return
@@ -102,6 +105,7 @@ func MemberCheckMiddleware(db *repository.DB) gin.HandlerFunc {
 
 		memberStatus, err := db.GetMemberStatus(pid, session.ClientID)
 		if err != nil || memberStatus != "active" {
+			log.Printf("[auth] project=%s member=%s status=%s — rejecting", pid, session.ClientID, memberStatus)
 			c.JSON(http.StatusForbidden, gin.H{"error": "you have been removed from this project", "code": "MEMBER_REMOVED"})
 			c.Abort()
 			return

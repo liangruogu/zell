@@ -1,10 +1,35 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { useProjectStore } from '@/stores/projectStore'
 import { parseProjectSettings, stringifyProjectSettings } from '@/types/project'
 import { Copy, Trash2, Plus, Users } from 'lucide-react'
+
+function getJoinClientId(): string {
+  const key = 'zell_join_client_id'
+  let id = localStorage.getItem(key)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(key, id)
+  }
+  return id
+}
+
+function getJoinState(inviteCode: string): { pending: boolean; projectId: string } | null {
+  const key = `zell_join_${inviteCode}`
+  const raw = localStorage.getItem(key)
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
+}
+
+function setJoinState(inviteCode: string, state: { pending: boolean; projectId: string }) {
+  localStorage.setItem(`zell_join_${inviteCode}`, JSON.stringify(state))
+}
+
+function clearJoinState(inviteCode: string) {
+  localStorage.removeItem(`zell_join_${inviteCode}`)
+}
 
 interface InviteCode {
   id: string
@@ -34,7 +59,24 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
   const [joinVisible, setJoinVisible] = useState(false)
   const [joinStatus, setJoinStatus] = useState<'idle' | 'pending' | 'approved'>('idle')
   const [joinMessage, setJoinMessage] = useState('')
+  const [joinDisplayName, setJoinDisplayName] = useState('')
+  const [joinNameError, setJoinNameError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Check for existing pending join state on dialog open
+  useEffect(() => {
+    if (!open) {
+      if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null }
+      return
+    }
+    const saved = getJoinState(joinCode)
+    if (saved?.pending) {
+      setJoinStatus('pending')
+      setJoinMessage(`申请已提交，等待管理员审批...`)
+      startPolling(saved.projectId)
+    }
+  }, [open])
 
   const fetchInvites = useCallback(async () => {
     if (!serverUrl || !token || !projectId) return
@@ -78,28 +120,74 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
     } catch { /* */ }
   }, [serverUrl, token, projectId, fetchInvites])
 
+  const startPolling = (pid: string) => {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    pollTimerRef.current = setInterval(async () => {
+      const clientId = getJoinClientId()
+      try {
+        const res = await fetch(`${serverUrl}/api/v1/projects/${pid}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim() }),
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.status !== 'pending') {
+          if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null }
+          clearJoinState(joinCode)
+          setJoinStatus('approved')
+          const proj = useProjectStore.getState().currentProject
+          if (proj && data.token) {
+            const ps = parseProjectSettings(proj.settings)
+            ps.token = data.token
+            ps.displayName = data.display_name
+            ps.role = 'member'
+            useProjectStore.getState().updateProject(proj.id, {
+              name: proj.name,
+              description: proj.description,
+              background: proj.background,
+              settings: stringifyProjectSettings(ps),
+            })
+          }
+          setJoinVisible(false)
+          setJoinCode('')
+        }
+      } catch { /* keep polling */ }
+    }, 3000)
+  }
+
   const handleJoin = useCallback(async () => {
     if (!joinCode.trim()) return
-    const clientId = crypto.randomUUID()
+    const clientId = getJoinClientId()
+    const name = joinDisplayName.trim()
+    if (!name) {
+      setJoinNameError('请输入你的显示名称')
+      return
+    }
+    setJoinNameError('')
     try {
-      const res = await fetch(`${serverUrl}/api/v1/projects/${projectId}/join`, {
+      const pid = projectId || '0'
+      const res = await fetch(`${serverUrl}/api/v1/projects/${pid}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: joinCode.trim(), client_id: clientId }),
+        body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: name }),
       })
       if (res.ok) {
         const data = await res.json()
         if (data.status === 'pending') {
           setJoinStatus('pending')
-          setJoinMessage(`申请已提交，等待管理员 "${data.project_id ? data.project_id.slice(0, 8) : '项目'}" 审批...`)
+          setJoinMessage('申请已提交，等待管理员审批...')
+          setJoinState(joinCode, { pending: true, projectId: data.project_id })
+          startPolling(data.project_id)
           return
         }
+        clearJoinState(joinCode)
         const proj = useProjectStore.getState().currentProject
-        if (proj) {
+        if (proj && data.token) {
           const ps = parseProjectSettings(proj.settings)
           ps.token = data.token
           ps.displayName = data.display_name
-          ps.role = 'owner'
+          ps.role = 'member'
           useProjectStore.getState().updateProject(proj.id, {
             name: proj.name,
             description: proj.description,
@@ -109,11 +197,14 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
         }
         setJoinVisible(false)
         setJoinCode('')
+      } else if (res.status === 409) {
+        const err = await res.json().catch(() => ({ error: '' }))
+        setJoinNameError(err.error || '此名称已被占用，请换一个')
       } else {
         alert('邀请码无效或已过期')
       }
     } catch { alert('无法连接服务器') }
-  }, [joinCode, serverUrl, projectId])
+  }, [joinCode, joinDisplayName, serverUrl, projectId])
 
   const handleCopy = useCallback((code: string) => {
     navigator.clipboard.writeText(code)
@@ -140,6 +231,14 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
                 onChange={(e) => setJoinCode(e.target.value)}
                 placeholder="输入邀请码 BNDL-xxxx..."
               />
+              <Input
+                value={joinDisplayName}
+                onChange={(e) => { setJoinDisplayName(e.target.value); setJoinNameError('') }}
+                placeholder="你的显示名称"
+              />
+              {joinNameError && (
+                <p className="text-xs text-red-500">{joinNameError}</p>
+              )}
               <Button size="sm" onClick={handleJoin} disabled={!joinCode.trim()}>
                 加入
               </Button>

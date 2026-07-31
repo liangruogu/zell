@@ -155,9 +155,22 @@ export default function KnowledgeBasePage() {
                     headers['X-Server-Key'] = serverKey
                 }
                 const res = await fetch(`${serverUrl}/api/v1/projects/${projectId}/articles`, { headers })
-                if (res.status === 404 || res.status === 403) {
-                    // Project deleted or access revoked
+                if (res.status === 410) {
                     alert('项目已被管理员删除，即将返回首页')
+                    window.location.href = '/'
+                    return
+                }
+                if (res.status === 403) {
+                    try {
+                        const body = await res.json()
+                        if (body.code === 'COLLAB_DISABLED') {
+                            alert('协作已被管理员关闭，即将返回首页')
+                        } else if (body.code === 'MEMBER_REMOVED') {
+                            alert('你已被移出项目，即将返回首页')
+                        } else {
+                            alert('访问被拒绝，即将返回首页')
+                        }
+                    } catch { alert('访问被拒绝，即将返回首页') }
                     window.location.href = '/'
                     return
                 }

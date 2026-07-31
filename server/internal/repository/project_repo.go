@@ -237,6 +237,26 @@ func (db *DB) RemovePending(projectID, clientID string) error {
 	return err
 }
 
+func (db *DB) IsPending(projectID, clientID string) (bool, error) {
+	var count int
+	err := db.conn.QueryRow(
+		`SELECT COUNT(*) FROM pending_members WHERE project_id = ? AND client_id = ?`,
+		projectID, clientID).Scan(&count)
+	return count > 0, err
+}
+
+func (db *DB) IsDisplayNameTaken(projectID, displayName string) (bool, error) {
+	var count int
+	err := db.conn.QueryRow(
+		`SELECT COUNT(*) FROM (
+			SELECT display_name FROM project_members WHERE project_id = ? AND status = 'active'
+			UNION ALL
+			SELECT display_name FROM pending_members WHERE project_id = ?
+		) WHERE display_name = ?`,
+		projectID, projectID, displayName).Scan(&count)
+	return count > 0, err
+}
+
 func (db *DB) ListPending(projectID string) ([]struct {
 	ClientID    string `json:"client_id"`
 	DisplayName string `json:"display_name"`

@@ -132,12 +132,17 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		return
 	}
 
+	log.Printf("[join] code=%s client=%s name=%s pid=%s", req.Code[:min(8, len(req.Code))], req.ClientID[:min(8, len(req.ClientID))], req.DisplayName, pid)
+
 	// Validate invite code
 	realPID, err := h.db.ValidateInviteCode(req.Code)
 	if err != nil {
+		log.Printf("[join] invalid code: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired invite code"})
 		return
 	}
+
+	log.Printf("[join] code valid for project=%s", realPID)
 
 	if pid != "" && pid != "0" && pid != realPID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "invite not for this project"})
@@ -156,6 +161,7 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		return
 	}
 	if isMember {
+		log.Printf("[join] client=%s already member, returning token", displayName)
 		projectName := realPID[:8]
 		if proj, err := h.db.GetProject(realPID); err == nil {
 			projectName = proj.Name
@@ -178,7 +184,27 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		return
 	}
 
+	// Check if already in pending
+	isPending, err := h.db.IsPending(realPID, req.ClientID)
+	if err == nil && isPending {
+		log.Printf("[join] client=%s already pending", displayName)
+		c.JSON(http.StatusOK, gin.H{
+			"status":     "pending",
+			"project_id": realPID,
+		})
+		return
+	}
+
+	// Check display name uniqueness
+	nameExists, err := h.db.IsDisplayNameTaken(realPID, displayName)
+	if err == nil && nameExists {
+		log.Printf("[join] client=%s name '%s' already taken", req.ClientID[:min(8, len(req.ClientID))], displayName)
+		c.JSON(http.StatusConflict, gin.H{"error": "display_name '" + displayName + "' already taken in this project"})
+		return
+	}
+
 	// Add to pending — owner must approve
+	log.Printf("[join] adding client=%s to pending for project=%s", displayName, realPID)
 	if err := h.db.AddPending(realPID, req.ClientID, displayName); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add pending request"})
 		return
