@@ -49,17 +49,24 @@ export default function ProjectPage() {
         if (currentProject) {
             const ps = parseProjectSettings(currentProject.settings)
             if (ps.serverUrl) setServerInputUrl(ps.serverUrl)
-            if (ps.collabEnabled && ps.serverKey) {
-                setSharingEnabled(true)
-                setServerKey(ps.serverKey)
-                setServerUrl(ps.serverUrl || '')
-                setConnected(true)
-            }
         }
-    }, [currentProject?.id])
+    }, [currentProject])
 
     useEffect(() => {
-        if (id) fetchProject(id)
+        if (id) {
+            fetchProject(id).then(() => {
+                // Restore collab state after project loads
+                const proj = useProjectStore.getState().currentProject
+                if (!proj) return
+                const ps = parseProjectSettings(proj.settings)
+                if (ps.collabEnabled && ps.serverKey) {
+                    setSharingEnabled(true)
+                    setServerKey(ps.serverKey)
+                    setServerUrl(ps.serverUrl || '')
+                    setConnected(true)
+                }
+            })
+        }
         return () => setCurrentProject(null)
     }, [id, fetchProject, setCurrentProject])
 
