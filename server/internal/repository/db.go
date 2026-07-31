@@ -24,6 +24,9 @@ func New(dbPath string) (*DB, error) {
 	if err := db.migrateProjects(); err != nil {
 		return nil, err
 	}
+	if err := db.migrateNotifications(); err != nil {
+		return nil, err
+	}
 	return db, nil
 }
 
