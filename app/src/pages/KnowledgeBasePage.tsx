@@ -226,7 +226,7 @@ export default function KnowledgeBasePage() {
                 syncFromServer()
                 // Pull offline notifications on reconnect
                 if (token && serverUrl && projectId) {
-                    pullNotifications(projectId, token, serverUrl).then(() => {
+                    useSyncStore.getState().pullNotifications(projectId, token, serverUrl).then(() => {
                         const notifs = useSyncStore.getState().notifications
                         if (notifs) {
                             for (const n of notifs) {
