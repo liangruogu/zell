@@ -7,6 +7,7 @@ use uuid::Uuid;
 #[tauri::command]
 pub fn create_project(
     db: State<'_, Database>,
+    id: Option<String>,
     name: String,
     description: String,
     background: String,
@@ -14,7 +15,7 @@ pub fn create_project(
     settings: String,
 ) -> Result<Project, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    let id = Uuid::now_v7().to_string();
+    let id = id.unwrap_or_else(|| Uuid::now_v7().to_string());
     let now = Utc::now().to_rfc3339();
 
     conn.execute(

@@ -25,6 +25,8 @@ tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-mcp-bridge = "0.12"
+tauri-plugin-playwright = { version = "0.4", optional = true }
 rusqlite = { version = "0.31", features = ["bundled"] }
 uuid = { version = "1", features = ["v7"] }
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
@@ -38,3 +40,6 @@ base64 = "0.22"
 pdf_oxide = "0.3"
 opener = "0.7"
 undoc = "0.5"
+
+[features]
+e2e-testing = ["tauri-plugin-playwright"]

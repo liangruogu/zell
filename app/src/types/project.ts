@@ -22,7 +22,10 @@ export interface ProjectSettings {
   }
   publish?: PublishSettings
   serverUrl?: string
-  ownerToken?: string
+  token?: string
+  role?: 'owner' | 'member'
+  collabEnabled?: boolean
+  displayName?: string
   serverKey?: string
 }
 

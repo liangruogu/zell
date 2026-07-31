@@ -95,10 +95,12 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
       setVisible(false)
     }
 
-    editor.view.dom.addEventListener('contextmenu', contextMenuHandler)
+    let dom: HTMLElement
+    try { dom = editor.view.dom } catch { return }
+    dom.addEventListener('contextmenu', contextMenuHandler)
     document.addEventListener('click', closeHandler)
     return () => {
-      editor.view.dom.removeEventListener('contextmenu', contextMenuHandler)
+      dom.removeEventListener('contextmenu', contextMenuHandler)
       document.removeEventListener('click', closeHandler)
     }
   }, [editor])

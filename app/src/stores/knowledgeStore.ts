@@ -31,12 +31,14 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
     }
   },
 
-  createArticle: async (projectId: string, title: string, content = '', parentId?: string) => {
+  createArticle: async (projectId: string, title: string, content = '', parentId?: string, id?: string, contentJson?: string) => {
     const article = await invoke<KnowledgeArticle>('create_knowledge_article', {
       projectId,
       title,
       content,
       parentId: parentId || null,
+      id: id || null,
+      contentJson: contentJson || null,
     })
     set((state) => ({ articles: [...state.articles, article] }))
     return article

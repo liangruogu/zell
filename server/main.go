@@ -70,9 +70,6 @@ func main() {
 			serverApi.POST("/projects/:pid/invite/rotate", inviteH.RotateInvite)
 			serverApi.GET("/projects/:pid/members", inviteH.ListMembers)
 			serverApi.DELETE("/projects/:pid/members/:client_id", inviteH.RemoveMember)
-			serverApi.GET("/projects/:pid/pending", inviteH.ListPending)
-			serverApi.POST("/projects/:pid/pending/:client_id/approve", inviteH.ApprovePending)
-			serverApi.POST("/projects/:pid/pending/:client_id/reject", inviteH.RejectPending)
 			serverApi.DELETE("/projects/:pid/articles/:aid", articleH.Delete)
 		}
 

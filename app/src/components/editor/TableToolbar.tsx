@@ -8,13 +8,15 @@ export function TableToolbar({ editor }: { editor: any }) {
 
   useEffect(() => {
     if (!editor) return
+    let viewDom: HTMLElement
+    try { viewDom = editor.view.dom } catch { return }
     const updatePos = () => {
       if (!editor.isActive('table')) {
         setPos(null)
         setShowGrid(false)
         return
       }
-      const table = editor.view.dom.querySelector('table')
+      const table = viewDom.querySelector('table')
       if (!table) return
       const rect = table.getBoundingClientRect()
       setPos({ x: rect.left, y: rect.top - 22, right: rect.right })
@@ -22,7 +24,7 @@ export function TableToolbar({ editor }: { editor: any }) {
 
     editor.on('selectionUpdate', updatePos)
 
-    const scrollContainer = editor.view.dom.closest('.overflow-auto') as HTMLElement
+    const scrollContainer = viewDom.closest('.overflow-auto') as HTMLElement
     let raf = 0
     const onScroll = () => {
       cancelAnimationFrame(raf)

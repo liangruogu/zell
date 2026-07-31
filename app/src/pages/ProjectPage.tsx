@@ -41,7 +41,7 @@ export default function ProjectPage() {
     const [inviteCode, setInviteCode] = useState('')
     const [copied, setCopied] = useState(false)
     const [members, setMembers] = useState<{ client_id: string; display_name: string; online: boolean }[]>([])
-    const [pending, setPending] = useState<{ client_id: string; display_name: string; created_at: string }[]>([])
+    const [serverOnline, setServerOnline] = useState(false)
     const [serverOnline, setServerOnline] = useState(false)
     const wasOnlineRef = useRef<boolean | null>(null)
     const [showDisconnected, setShowDisconnected] = useState(false)
@@ -113,14 +113,12 @@ export default function ProjectPage() {
         const h = { 'X-Server-Key': serverKey }
         const jwtH = { 'Authorization': `Bearer ${parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').token || ''}` }
         try {
-            const [invRes, memRes, penRes] = await Promise.all([
+            const [invRes, memRes] = await Promise.all([
                 fetch(`${serverUrl}/api/v1/projects/${id}/invite-code`, { headers: jwtH, signal: AbortSignal.timeout(3000) }),
                 fetch(`${serverUrl}/api/v1/projects/${id}/members`, { headers: h, signal: AbortSignal.timeout(3000) }),
-                fetch(`${serverUrl}/api/v1/projects/${id}/pending`, { headers: h, signal: AbortSignal.timeout(3000) }),
             ])
             if (invRes.ok) setInviteCode((await invRes.json()).invite_code || '')
             if (memRes.ok) setMembers((await memRes.json()) || [])
-            if (penRes.ok) setPending((await penRes.json()) || [])
             useSyncStore.getState().setReadOnly(false)
         } catch { /* collab API might fail, but health passed */ }
     }, [sharingEnabled, serverUrl, id, serverKey, isMember, navigate])
@@ -202,7 +200,6 @@ export default function ProjectPage() {
             }
             setConnected(false)
             setMembers([])
-            setPending([])
             setInviteCode('')
             setServerOnline(false)
             useSyncStore.getState().setReadOnly(false)
@@ -216,22 +213,6 @@ export default function ProjectPage() {
             })
         }
     }, [serverInputUrl, id, currentProject, serverUrl, serverKey, setServerUrl, setConnected, setSharingEnabled, updateProject, fetchCollabData])
-
-    const handleApprove = useCallback(async (clientId: string) => {
-        if (!serverUrl || !id) return
-        await fetch(`${serverUrl}/api/v1/projects/${id}/pending/${clientId}/approve`, {
-            method: 'POST', headers: { 'X-Server-Key': serverKey },
-        })
-        fetchCollabData()
-    }, [serverUrl, id, serverKey, fetchCollabData])
-
-    const handleReject = useCallback(async (clientId: string) => {
-        if (!serverUrl || !id) return
-        await fetch(`${serverUrl}/api/v1/projects/${id}/pending/${clientId}/reject`, {
-            method: 'POST', headers: { 'X-Server-Key': serverKey },
-        })
-        fetchCollabData()
-    }, [serverUrl, id, serverKey, fetchCollabData])
 
     const handleKick = useCallback(async (clientId: string, displayName: string) => {
         setKickTarget({ clientId, displayName })
@@ -275,7 +256,6 @@ export default function ProjectPage() {
         setServerKey('')
         setInviteCode('')
         setMembers([])
-        setPending([])
         setConnectFailed(false)
         setServerUrl('')
         useSyncStore.getState().setReadOnly(false)
@@ -506,35 +486,6 @@ export default function ProjectPage() {
                                                                         className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500" title="踢出">
                                                                         <X size={13} />
                                                                     </button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {pending.length > 0 && (
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-700 mb-2">待审批 ({pending.length})</p>
-                                                        <div className="space-y-1">
-                                                            {pending.map(p => (
-                                                                <div key={p.client_id} className="flex items-center justify-between py-1.5 px-2 rounded bg-amber-50 border border-amber-100 text-sm">
-                                                                    <span className="text-gray-700">{p.display_name}</span>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <button onClick={() => {
-                                                                            if (!confirm(`确定通过 ${p.display_name} 的加入申请吗？`)) return
-                                                                            handleApprove(p.client_id)
-                                                                        }}
-                                                                            className="p-1 rounded hover:bg-green-200 text-gray-400 hover:text-green-600" title="通过">
-                                                                            <Check size={13} />
-                                                                        </button>
-                                                                        <button onClick={() => {
-                                                                            if (!confirm(`确定拒绝 ${p.display_name} 的加入申请吗？操作不可撤销。`)) return
-                                                                            handleReject(p.client_id)
-                                                                        }}
-                                                                            className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500" title="拒绝">
-                                                                            <X size={13} />
-                                                                        </button>
-                                                                    </div>
                                                                 </div>
                                                             ))}
                                                         </div>

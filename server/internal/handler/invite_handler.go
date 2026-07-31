@@ -144,24 +144,20 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		Code        string `json:"code"`
 		ClientID    string `json:"client_id"`
 		DisplayName string `json:"display_name"`
-		Poll        bool   `json:"poll"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	log.Printf("[join] code=%s client=%s name=%s pid=%s", req.Code[:min(8, len(req.Code))], req.ClientID[:min(8, len(req.ClientID))], req.DisplayName, pid)
+	log.Printf("[join] code=%s client=%s name=%s", req.Code[:min(8, len(req.Code))], req.ClientID[:min(8, len(req.ClientID))], req.DisplayName)
 
-	// Validate invite code
 	realPID, err := h.db.ValidateInviteCode(req.Code)
 	if err != nil {
 		log.Printf("[join] invalid code: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired invite code"})
 		return
 	}
-
-	log.Printf("[join] code valid for project=%s", realPID)
 
 	if pid != "" && pid != "0" && pid != realPID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "invite not for this project"})
@@ -173,82 +169,40 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		displayName = req.ClientID[:8]
 	}
 
-	// If already an approved member, return token directly
-	isMember, err := h.db.IsMember(realPID, req.ClientID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check membership"})
-		return
-	}
-	if isMember {
-		log.Printf("[join] client=%s already member, returning token", displayName)
-		projectName := realPID[:8]
-		if proj, err := h.db.GetProject(realPID); err == nil {
-			projectName = proj.Name
-		}
-		claims := jwt.MapClaims{
-			"sub":        req.ClientID,
-			"project_id": realPID,
-			"iat":        time.Now().Unix(),
-			"exp":        time.Now().Add(365 * 24 * time.Hour).Unix(),
-		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenStr, _ := token.SignedString(h.jwtSecret)
-		c.JSON(http.StatusOK, gin.H{
-			"status":       "approved",
-			"project_id":   realPID,
-			"project_name": projectName,
-			"token":        tokenStr,
-			"display_name": displayName,
-		})
-		return
-	}
-
-	// Check if already in pending
-	isPending, err := h.db.IsPending(realPID, req.ClientID)
-	if err == nil && isPending {
-		log.Printf("[join] client=%s already pending", displayName)
-		c.JSON(http.StatusOK, gin.H{
-			"status":     "pending",
-			"project_id": realPID,
-		})
-		return
-	}
-
-	// If polling and not pending/not member → expired (was rejected)
-	if req.Poll && !isMember {
-		log.Printf("[join] client=%s poll expired (no longer pending)", displayName)
-		c.JSON(http.StatusOK, gin.H{
-			"status":     "expired",
-			"project_id": realPID,
-		})
-		return
-	}
-
 	// Check display name uniqueness
-	nameExists, err := h.db.IsDisplayNameTaken(realPID, displayName)
-	if err == nil && nameExists {
-		log.Printf("[join] client=%s name '%s' already taken", req.ClientID[:min(8, len(req.ClientID))], displayName)
+	nameExists, _ := h.db.IsDisplayNameTaken(realPID, displayName)
+	if nameExists {
 		c.JSON(http.StatusConflict, gin.H{"error": "display_name '" + displayName + "' already taken in this project"})
 		return
 	}
 
-	// Check if previously rejected — clear rejection and allow re-apply
-	isRejected, err := h.db.IsRejected(realPID, req.ClientID)
-	if err == nil && isRejected {
-		log.Printf("[join] client=%s was previously rejected, clearing and re-adding to pending", displayName)
-		h.db.RemoveRejected(realPID, req.ClientID)
+	// Direct join: valid invite code = immediate member
+	h.db.AddMember(realPID, req.ClientID, displayName)
+
+	// Generate JWT
+	claims := jwt.MapClaims{
+		"sub":        req.ClientID,
+		"project_id": realPID,
+		"iat":        time.Now().Unix(),
+		"exp":        time.Now().Add(365 * 24 * time.Hour).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenStr, _ := token.SignedString(h.jwtSecret)
+
+	projectName := realPID[:8]
+	if proj, _ := h.db.GetProject(realPID); proj != nil {
+		projectName = proj.Name
 	}
 
-	// Add to pending — owner must approve
-	log.Printf("[join] adding client=%s to pending for project=%s", displayName, realPID)
-	if err := h.db.AddPending(realPID, req.ClientID, displayName); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add pending request"})
-		return
-	}
+	log.Printf("[join] client=%s joined project=%s", displayName, realPID)
+	h.hub.BroadcastProject(realPID, "member_joined", gin.H{"client_id": req.ClientID, "display_name": displayName})
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":     "pending",
-		"project_id": realPID,
+		"status":       "approved",
+		"project_id":   realPID,
+		"project_name": projectName,
+		"token":        tokenStr,
+		"display_name": displayName,
 	})
 }
 
@@ -275,93 +229,6 @@ func (h *InviteHandler) RemoveMember(c *gin.Context) {
 		return
 	}
 	h.hub.BroadcastProject(pid, "member_removed", gin.H{"client_id": clientID})
-	c.JSON(http.StatusOK, gin.H{"ok": true})
-}
-
-// ── Pending ──────────────────────────────────────────────────────────────
-
-func (h *InviteHandler) ListPending(c *gin.Context) {
-	pid := c.Param("pid")
-	list, err := h.db.ListPending(pid)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, list)
-}
-
-func (h *InviteHandler) ApprovePending(c *gin.Context) {
-	pid := c.Param("pid")
-	clientID := c.Param("client_id")
-
-	// Get pending info
-	pending, err := h.db.ListPending(pid)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	var displayName string
-	for _, p := range pending {
-		if p.ClientID == clientID {
-			displayName = p.DisplayName
-			break
-		}
-	}
-	if displayName == "" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "pending request not found"})
-		return
-	}
-
-	// Remove from pending
-	h.db.RemovePending(pid, clientID)
-
-	// Generate JWT for approved member
-	claims := jwt.MapClaims{
-		"sub":        clientID,
-		"project_id": pid,
-		"iat":        time.Now().Unix(),
-		"exp":        time.Now().Add(365 * 24 * time.Hour).Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, _ := token.SignedString(h.jwtSecret)
-
-	// Add to members
-	h.db.AddMember(pid, clientID, displayName)
-
-	// Write notification for offline member
-	h.db.CreateNotification(pid, clientID, "approved", `{}`)
-
-	c.JSON(http.StatusOK, gin.H{
-		"ok":           true,
-		"token":        tokenStr,
-		"display_name": displayName,
-	})
-}
-
-func (h *InviteHandler) RejectPending(c *gin.Context) {
-	pid := c.Param("pid")
-	clientID := c.Param("client_id")
-
-	pending, _ := h.db.ListPending(pid)
-	var displayName string
-	for _, p := range pending {
-		if p.ClientID == clientID {
-			displayName = p.DisplayName
-			break
-		}
-	}
-
-	if err := h.db.CreateNotification(pid, clientID, "rejected", `{}`); err != nil {
-		log.Printf("[invite] notification write error: %v", err)
-	}
-	if err := h.db.RemovePending(pid, clientID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	h.db.AddRejected(pid, clientID)
-
-	h.hub.BroadcastProject(pid, "member_rejected", gin.H{"client_id": clientID, "display_name": displayName})
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 

@@ -47,8 +47,8 @@ export function ProjectForm({ defaultValues, onSubmit, submitLabel = '保存' }:
       />
       <Input
         id="icon"
-        label="图标 (Emoji)"
-        placeholder="选择一个 emoji 作为图标"
+        label="图标"
+        placeholder="项目图标"
         error={errors.icon?.message}
         {...register('icon')}
       />

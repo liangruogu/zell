@@ -29,6 +29,7 @@ import { useProjectStore } from '@/stores/projectStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useSyncStore } from '@/stores/syncStore'
 import { format } from '@/lib/format'
+import { parseProjectSettings } from '@/types/project'
 import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
 import { useEditorPlugins } from './useEditorPlugins'
@@ -110,47 +111,43 @@ export function MarkdownEditor({
     }, [appearanceSettings])
 
     // ---- Collaboration ----
-    const collabConnected = useSyncStore((s) => s.connected)
-    const collabServerUrl = useSyncStore((s) => s.serverUrl)
-    const collabToken = useSyncStore((s) => s.token)
+    const currentProject = useProjectStore((s) => s.currentProject)
+    const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
+    const collabServerUrl = ps.serverUrl || ''
+    const collabToken = ps.token || ''
+    const collabEnabled = !!collabServerUrl && !!collabToken
+    const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
     const collabYDocRef = useRef<Y.Doc | null>(null)
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
-    const collabEnabled = collabConnected && !!collabToken
+    const [collabKey, setCollabKey] = useState(0)
 
     useEffect(() => {
+        if (!collabEnabled) {
+            collabYDocRef.current = null
+            return
+        }
         const article = useKnowledgeStore.getState().currentArticle
-        if (!collabEnabled || !collabServerUrl || !article) return
+        if (!article) return
+        const projectId = useProjectStore.getState().currentProject?.id
+        if (!projectId) return
+        if (collabProviderRef.current) {
+            collabProviderRef.current.disconnect()
+            collabProviderRef.current = null
+        }
         const ydoc = new Y.Doc()
         collabYDocRef.current = ydoc
         const wsBase = collabServerUrl.replace(/^http/, 'ws')
-        const projectId = useProjectStore.getState().currentProject?.id
-        if (!projectId) return
         const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, ydoc, {
             params: { token: collabToken },
         })
         collabProviderRef.current = provider
-        return () => { provider.disconnect(); ydoc.destroy(); collabYDocRef.current = null; collabProviderRef.current = null }
-    }, [collabEnabled, collabServerUrl, collabToken])
-
-    const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
-    const [collabKey, setCollabKey] = useState(0)
-
-    useEffect(() => {
-        if (!collabYDocRef.current || !collabProviderRef.current) return
-        const article = useKnowledgeStore.getState().currentArticle
-        const projectId = useProjectStore.getState().currentProject?.id
-        if (!article || !projectId || !collabToken) return
-        collabProviderRef.current.disconnect()
-        collabYDocRef.current.destroy()
-        const ydoc = new Y.Doc()
-        collabYDocRef.current = ydoc
-        const wsBase = collabServerUrl.replace(/^http/, 'ws')
-        const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, ydoc, { params: { token: collabToken } })
-        collabProviderRef.current = provider
-        setCollabKey((k) => k + 1)
-    }, [currentArticleId])
-
-    useEffect(() => { if (collabEnabled) setCollabKey((k) => k + 1) }, [collabEnabled])
+        requestAnimationFrame(() => setCollabKey(k => k + 1))
+        return () => {
+            provider.disconnect()
+            collabYDocRef.current = null
+            collabProviderRef.current = null
+        }
+    }, [collabEnabled, collabServerUrl, collabToken, currentArticleId])
 
     // ---- Settings ----
     const showToolbar = useSettingsStore((s) => s.settings['show_toolbar'] !== 'false')
@@ -273,7 +270,7 @@ export function MarkdownEditor({
             handlePaste,
             handleDrop,
         },
-    })
+    }, [collabKey])
 
     editorRef.current = editor
 
@@ -294,6 +291,8 @@ export function MarkdownEditor({
     // Keyboard: edit # markers at heading start
     useEffect(() => {
         if (!editor) return
+        let dom: HTMLElement
+        try { dom = editor.view.dom } catch { return }
         const keyHandler = (e: KeyboardEvent) => {
             if (!editor.isEditable) return
             if (!editor.isActive('heading')) return
@@ -312,7 +311,6 @@ export function MarkdownEditor({
                 else editor.chain().focus().setParagraph().run()
             }
         }
-        const dom = editor.view.dom
         dom.addEventListener('keydown', keyHandler, true)
         return () => { dom.removeEventListener('keydown', keyHandler, true) }
     }, [editor])
@@ -325,7 +323,7 @@ export function MarkdownEditor({
 
             <div ref={scrollRef} className="flex-1 overflow-auto flex flex-col items-center">
                 {typewriterEnabled && <div className="shrink-0" style={{ width: '100%', maxWidth: '48rem', height: '50vh' }} />}
-                <div className="w-full max-w-3xl px-8 py-4" key={collabKey}>
+                <div className="w-full max-w-3xl px-8 py-4">
                     <EditorContent editor={editor} />
                 </div>
                 {typewriterEnabled && <div className="shrink-0" style={{ width: '100%', maxWidth: '48rem', height: '50vh' }} />}

@@ -17,6 +17,7 @@ interface ProjectState {
 }
 
 export interface CreateProjectInput {
+  id?: string
   name: string
   description?: string
   background?: string
@@ -58,6 +59,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   createProject: async (data: CreateProjectInput) => {
     const project = await invoke<Project>('create_project', {
+      id: data.id || null,
       name: data.name,
       description: data.description || '',
       background: data.background || '',

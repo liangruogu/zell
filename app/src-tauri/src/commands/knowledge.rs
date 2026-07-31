@@ -20,9 +20,12 @@ pub fn create_knowledge_article(
     title: String,
     content: String,
     parent_id: Option<String>,
+    id: Option<String>,
+    content_json: Option<String>,
 ) -> Result<KnowledgeArticle, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    let id = Uuid::now_v7().to_string();
+    let id = id.unwrap_or_else(|| Uuid::now_v7().to_string());
+    let cj = content_json.unwrap_or_else(|| "{}".to_string());
     let now = Utc::now().to_rfc3339();
 
     let max_order: i32 = conn
@@ -34,8 +37,8 @@ pub fn create_knowledge_article(
         .unwrap_or(-1);
 
     conn.execute(
-        "INSERT INTO knowledge_articles (id, project_id, title, content, content_json, parent_id, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, '{}', ?5, ?6, ?7, ?8)",
-        rusqlite::params![id, project_id, title, content, parent_id, max_order + 1, now, now],
+        "INSERT INTO knowledge_articles (id, project_id, title, content, content_json, parent_id, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        rusqlite::params![id, project_id, title, content, cj, parent_id, max_order + 1, now, now],
     )
     .map_err(|e| e.to_string())?;
 

@@ -4,19 +4,19 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+    plugins: [react(), tailwindcss()],
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, './src'),
+        },
     },
-  },
-  clearScreen: false,
-  server: {
-    port: 5173,
-    strictPort: true,
-    watch: {
-      ignored: ['**/src-tauri/**'],
+    clearScreen: false,
+    server: {
+        port: 5173,
+        strictPort: false,
+        watch: {
+            ignored: ['**/src-tauri/**'],
+        },
     },
-  },
-  envPrefix: ['VITE_', 'TAURI_'],
+    envPrefix: ['VITE_', 'TAURI_'],
 })
