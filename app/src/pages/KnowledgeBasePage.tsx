@@ -140,13 +140,14 @@ export default function KnowledgeBasePage() {
     useEffect(() => {
         const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
         const serverUrl = ps.serverUrl
-        const token = ps.token
-        const serverKey = ps.serverKey
         if (!serverUrl || !projectId) return
-        if (!token && !serverKey) return
 
         // Initial sync from server
         const syncFromServer = async () => {
+            const cur = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
+            const token = cur.token
+            const serverKey = cur.serverKey
+            if (!token && !serverKey) return
             try {
                 const headers: Record<string, string> = {}
                 if (token) {
@@ -204,13 +205,15 @@ export default function KnowledgeBasePage() {
 
         // WebSocket listener for live updates — auto-reconnect
         const wsBase = serverUrl.replace(/^http/, 'ws')
-        const wsUrl = `${wsBase}/ws/${projectId}/__notifications__${token ? '?token=' + encodeURIComponent(token) : ''}`
         let ws: WebSocket
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null
         let stopped = false
 
         function connect() {
             if (stopped) return
+            const cur = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
+            const token = cur.token
+            const wsUrl = `${wsBase}/ws/${projectId}/__notifications__${token ? '?token=' + encodeURIComponent(token) : ''}`
             ws = new WebSocket(wsUrl)
             ws.onopen = () => {
                 console.log('[sync] WS connected')

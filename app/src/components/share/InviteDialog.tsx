@@ -50,6 +50,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim() }),
+        signal: AbortSignal.timeout(5000),
       })
       if (res.ok) {
         const data = await res.json()
@@ -149,7 +150,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
                 </p>
               )}
               <Button size="sm" onClick={handleJoin} disabled={joining || !joinCode.trim() || !joinDisplayName.trim()}>
-                {joining ? '加入中...' : '加入'}
+                加入
               </Button>
             </div>
           )}
