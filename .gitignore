@@ -9,3 +9,6 @@ app/src-tauri/target/
 
 # Dependencies
 node_modules/
+
+# Docs
+docs/superpowers
