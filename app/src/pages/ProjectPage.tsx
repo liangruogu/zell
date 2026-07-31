@@ -539,7 +539,7 @@ export default function ProjectPage() {
                                         <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
                                             {sharingEnabled ? (
                                                 <Button size="sm" variant="outline" onClick={() => {
-                                                    if (!confirm('确定关闭协作吗？所有成员将被移出项目。')) return
+                                                    if (!confirm('确定关闭协作吗？成员将暂时无法编辑。')) return
                                                     handleToggleSharing(false)
                                                     setSharingEnabled(false)
                                                 }}>
