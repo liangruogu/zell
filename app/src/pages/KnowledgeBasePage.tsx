@@ -237,6 +237,8 @@ export default function KnowledgeBasePage() {
             }
             ws.onerror = () => {}
             ws.onclose = () => {
+                setServerOnline(false)
+                useSyncStore.getState().setReadOnly(true)
                 if (!stopped) {
                     reconnectTimer = setTimeout(connect, 3000)
                 }
@@ -276,31 +278,6 @@ export default function KnowledgeBasePage() {
             ws.close()
         }
     }, [projectId, useProjectStore(s => s.currentProject?.settings)])
-
-    // Periodic health check independent of WS connection
-    useEffect(() => {
-        const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
-        const serverUrl = ps.serverUrl
-        if (!serverUrl || !projectId || !isCollab) return
-        const check = async () => {
-            try {
-                const res = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) })
-                if (res.ok) {
-                    setServerOnline(true)
-                    useSyncStore.getState().setReadOnly(false)
-                } else {
-                    setServerOnline(false)
-                    useSyncStore.getState().setReadOnly(true)
-                }
-            } catch {
-                setServerOnline(false)
-                useSyncStore.getState().setReadOnly(true)
-            }
-        }
-        check()
-        const t = setInterval(check, 5000)
-        return () => clearInterval(t)
-    }, [projectId, isCollab])
 
 
     const handleCreate = useCallback(async () => {
