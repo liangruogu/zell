@@ -80,14 +80,14 @@ export default function ProjectPage() {
 
     // Fetch collab data and health check
     const fetchCollabData = useCallback(async () => {
-        if (!sharingEnabled || !serverUrl || !id || !serverKey || !connected) return
+        if (!sharingEnabled || !serverUrl || !id || !serverKey) return
         try {
-            // Health check first
+            // Health check first — always run, don't gate on connected (deadlock)
             const healthRes = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) })
             if (!healthRes.ok) throw new Error('unhealthy')
         } catch {
-            // Server went offline
             setServerOnline(false)
+            setConnected(false)
             useSyncStore.getState().setReadOnly(true)
             if (wasOnlineRef.current === true) {
                 setServerToast('服务器连接已断开，编辑已锁定')
@@ -99,6 +99,7 @@ export default function ProjectPage() {
         const wasPrev = wasOnlineRef.current
         wasOnlineRef.current = true
         setServerOnline(true)
+        setConnected(true)
         setShowDisconnected(false)
         useSyncStore.getState().setReadOnly(false)
         if (wasPrev === false) setServerToast('服务器已恢复连接')
@@ -116,7 +117,7 @@ export default function ProjectPage() {
             if (penRes.ok) setPending((await penRes.json()) || [])
             useSyncStore.getState().setReadOnly(false)
         } catch { /* collab API might fail, but health passed */ }
-    }, [sharingEnabled, serverUrl, id, serverKey, connected, isMember, navigate])
+    }, [sharingEnabled, serverUrl, id, serverKey, isMember, navigate])
 
     useEffect(() => { fetchCollabData(); const t = setInterval(fetchCollabData, 5000); return () => clearInterval(t) }, [fetchCollabData])
 
