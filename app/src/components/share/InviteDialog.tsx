@@ -55,25 +55,25 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
       if (res.ok) {
         const data = await res.json()
         if (data.status === 'approved') {
-          // Ensure project is loaded
+          // Use the real project ID from the server response
+          const realPid = data.project_id
           let proj = useProjectStore.getState().currentProject
-          if (!proj) {
-            await useProjectStore.getState().fetchProject(projectId!)
+          if (!proj || proj.id !== realPid) {
+            await useProjectStore.getState().fetchProject(realPid)
             proj = useProjectStore.getState().currentProject
           }
-          if (proj) {
-            const ps = parseProjectSettings(proj.settings)
-            ps.token = data.token
-            ps.displayName = data.display_name
-            ps.serverUrl = serverUrl
-            useProjectStore.getState().setCurrentProject({ ...proj, settings: stringifyProjectSettings(ps) })
-            useProjectStore.getState().updateProject(proj.id, {
-              name: proj.name,
-              description: proj.description,
-              background: proj.background,
-              settings: stringifyProjectSettings(ps),
-            })
-          }
+          if (!proj) { setJoinMessage('加入成功，请刷新页面'); setJoining(false); return }
+          const ps = parseProjectSettings(proj.settings)
+          ps.token = data.token
+          ps.displayName = data.display_name
+          ps.serverUrl = serverUrl
+          useProjectStore.getState().setCurrentProject({ ...proj, settings: stringifyProjectSettings(ps) })
+          useProjectStore.getState().updateProject(proj.id, {
+            name: proj.name,
+            description: proj.description,
+            background: proj.background,
+            settings: stringifyProjectSettings(ps),
+          })
           setJoinMessage('已加入项目')
           setTimeout(() => {
             setJoinVisible(false)
@@ -91,7 +91,10 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
       } else {
         setJoinMessage('加入失败')
       }
-    } catch { setJoinMessage('无法连接服务器') }
+    } catch (e: any) {
+      if (e?.name === 'AbortError') { setJoinMessage('请求超时') }
+      else { setJoinMessage('无法连接服务器') }
+    }
     setJoining(false)
   }, [joinCode, joinDisplayName, serverUrl, projectId])
 
