@@ -1,6 +1,6 @@
 # Zell Collaboration Server
 
-单二进制部署的 Go 协作服务器，支持知识库文章 CRDT 实时协作编辑。SQLite 存储，JWT 认证，WebSocket 同步。
+单二进制部署的 Go 协作服务器，支持知识库文章 CRDT 实时协作编辑。SQLite 存储，JWT 认证，WebSocket 同步。邀请码直接加入（无需审批）。
 
 ## 快速开始
 
@@ -26,7 +26,7 @@ ZELL_PORT=8080 ZELL_DATA_DIR=./mydata ./zell-server
 | 方式 | 说明 |
 |------|------|
 | **Server Key** | `X-Server-Key` 头，每次启动随机生成，控制台输出。用于：开启/关闭协作、管理成员 |
-| **JWT** | `Authorization: Bearer <token>`，由 JWT Secret 签名（持久存储）。用于：Member API 调用、WebSocket 连接。签发策略：Owner 在 collab_toggle 时生成，Member 在 approve_pending 时生成。有效期 365 天 |
+| **JWT** | `Authorization: Bearer <token>`，由 JWT Secret 签名（持久存储）。用于：Member API 调用、WebSocket 连接。签发策略：Owner/Member 在加入项目时签发。有效期 365 天 |
 
 ---
 
@@ -35,16 +35,15 @@ ZELL_PORT=8080 ZELL_DATA_DIR=./mydata ./zell-server
 | 方法 | 路径 | 认证 | 说明 |
 |------|------|------|------|
 | `GET` | `/health` | 无 | 健康检查 |
-| `POST` | `/api/v1/projects/:pid/collab` | Server Key | 开启/关闭协作 |
-| `POST` | `/api/v1/projects/join` | 无 | 用邀请码加入 |
+| `POST` | `/api/v1/projects/:pid/collab` | Server Key | 开启/关闭协作/删除项目 |
+| `POST` | `/api/v1/projects/join` | 无 | 邀请码直接加入 |
 | `POST` | `/api/v1/projects/:pid/join` | 无 | 同上（带 project_id 校验） |
-| `GET` | `/api/v1/projects/:pid/invite` | Server Key | 获取邀请码 |
+| `GET` | `/api/v1/projects/:pid/invite` | Server Key | 获取邀请码（Server Key） |
+| `GET` | `/api/v1/projects/:pid/invite-code` | JWT | 获取邀请码（JWT） |
 | `POST` | `/api/v1/projects/:pid/invite/rotate` | Server Key | 轮换邀请码 |
+| `PUT` | `/api/v1/projects/:pid/info` | Server Key | 更新项目名称/描述 |
 | `GET` | `/api/v1/projects/:pid/members` | Server Key | 成员列表 |
 | `DELETE` | `/api/v1/projects/:pid/members/:client_id` | Server Key | 踢出成员 |
-| `GET` | `/api/v1/projects/:pid/pending` | Server Key | 待审批列表 |
-| `POST` | `/api/v1/projects/:pid/pending/:client_id/approve` | Server Key | 审批通过 |
-| `POST` | `/api/v1/projects/:pid/pending/:client_id/reject` | Server Key | 拒绝申请 |
 | `POST` | `/api/v1/projects/:pid/leave` | JWT | Member 主动退出 |
 | `GET` | `/api/v1/projects/:pid/notifications` | JWT | 拉取离线通知 |
 | `GET` | `/api/v1/projects/:pid/status` | JWT | 查询项目/成员状态 |
@@ -87,17 +86,22 @@ X-Server-Key: <key>
 }
 
 副作用：
-  enabled=false 时：移除所有成员、广播 collab_disabled、写入 notifications
-  deleted=true 时：软删除项目、移除所有成员、广播 project_deleted、写入 notifications
+  enabled=false：广播 collab_disabled（不踢出成员），写入 notifications
+  deleted=true：软删除项目，踢出所有成员，广播 project_deleted，写入 notifications
 ```
 
 ### 获取邀请码
 
 ```
+# Server Key 方式（Owner 使用）
 GET /api/v1/projects/:pid/invite
 X-Server-Key: <key>
+→ 200 { "invite_code": "BNDL-1a2b-3c4d", "updated_at": "..." }
 
-响应 200：{ "invite_code": "BNDL-1a2b-3c4d", "updated_at": "..." }
+# JWT 方式（用于前端自动拉取）
+GET /api/v1/projects/:pid/invite-code
+Authorization: Bearer <jwt>
+→ 200 { "invite_code": "BNDL-1a2b-3c4d", "updated_at": "..." }
 ```
 
 ### 轮换邀请码
@@ -105,8 +109,20 @@ X-Server-Key: <key>
 ```
 POST /api/v1/projects/:pid/invite/rotate
 X-Server-Key: <key>
+→ 200 { "invite_code": "BNDL-5e6f-7g8h" }
+```
 
-响应 200：{ "invite_code": "BNDL-5e6f-7g8h" }
+### 更新项目信息
+
+```
+PUT /api/v1/projects/:pid/info
+X-Server-Key: <key>
+
+请求体：
+{ "name": "新项目名", "description": "新描述" }
+→ 200 { "ok": true }
+
+副作用：广播 project_updated 给所有在线成员
 ```
 
 ### 成员列表
@@ -120,7 +136,7 @@ X-Server-Key: <key>
   "client_id": "client-abc",
   "display_name": "张三",
   "online": true,
-  "status": "active"        // "active" | "removed"
+  "status": "active"
 }]
 ```
 
@@ -129,54 +145,12 @@ X-Server-Key: <key>
 ```
 DELETE /api/v1/projects/:pid/members/:client_id
 X-Server-Key: <key>
+→ 200 { "ok": true }
 
-响应 200：{ "ok": true }
-
-副作用：软删除（status='removed'）、写入 notification、广播 member_removed
+副作用：软删除（status='removed'），写入 notification，广播 member_removed
 ```
 
-### 待审批列表
-
-```
-GET /api/v1/projects/:pid/pending
-X-Server-Key: <key>
-
-响应 200：
-[{
-  "client_id": "client-xyz",
-  "display_name": "王五",
-  "created_at": "2026-07-31T09:00:00Z"
-}]
-```
-
-### 审批通过
-
-```
-POST /api/v1/projects/:pid/pending/:client_id/approve
-X-Server-Key: <key>
-
-响应 200：
-{
-  "ok": true,
-  "token": "eyJ...",          // Member JWT
-  "display_name": "王五"
-}
-
-副作用：从 pending 移除、加入 members、签发 JWT、写入 notification
-```
-
-### 拒绝申请
-
-```
-POST /api/v1/projects/:pid/pending/:client_id/reject
-X-Server-Key: <key>
-
-响应 200：{ "ok": true }
-
-副作用：从 pending 删除、写入 notification、广播 member_rejected
-```
-
-### 加入项目
+### 加入项目（直接加入，无需审批）
 
 ```
 POST /api/v1/projects/:pid/join
@@ -188,8 +162,14 @@ POST /api/v1/projects/:pid/join
   "display_name": "赵六"
 }
 
-响应 200（已是成员）：{ "status": "approved", "project_id": "...", "project_name": "...", "token": "eyJ...", "display_name": "赵六" }
-响应 200（新申请）：{ "status": "pending", "project_id": "..." }
+响应 200（新成员）：
+{ "status": "approved", "project_id": "...", "project_name": "...", "token": "eyJ...", "display_name": "赵六" }
+
+响应 200（已是成员）：
+{ "status": "already_member", "project_id": "...", "display_name": "赵六" }
+
+响应 401：邀请码无效或已过期
+响应 409：该显示名称已被占用
 ```
 
 ### 退出项目
@@ -197,10 +177,9 @@ POST /api/v1/projects/:pid/join
 ```
 POST /api/v1/projects/:pid/leave
 Authorization: Bearer <jwt>
+→ 200 { "ok": true }
 
-响应 200：{ "ok": true }
-
-副作用：从 members 删除、广播 member_left
+副作用：从 members 删除，广播 member_left
 ```
 
 ### 拉取离线通知
@@ -237,7 +216,7 @@ Authorization: Bearer <jwt>
 
 ### 文章 API
 
-文章 API 受 `MemberCheckMiddleware` 保护，验证 JWT + 项目状态 + 成员身份。
+受 `MemberCheckMiddleware` 保护，验证 JWT + 项目状态 + 成员身份（Owner 通过 owner_token 豁免）。
 
 ```
 GET    /api/v1/projects/:pid/articles          → 文章列表
@@ -271,15 +250,19 @@ ws://host:3000/ws/:pid/:aid?token=<jwt>&client_id=xxx
   [1] sync_step2  — 服务端发送差异更新
   [2] update      — 实时编辑增量广播
 
-文本消息（UTF-8 JSON，用于通知）：
+文本消息（UTF-8 JSON，通知频道）：
+  ws://host:3000/ws/:pid/__notifications__?token=<jwt>
+
+  事件类型：
   {"type":"article_created","project_id":"...","data":{...}}
   {"type":"article_updated","project_id":"...","data":{...}}
   {"type":"article_deleted","project_id":"...","data":{"id":"..."}}
+  {"type":"member_joined","project_id":"...","data":{"client_id":"...","display_name":"..."}}
   {"type":"member_online","project_id":"...","data":{"client_id":"..."}}
   {"type":"member_offline","project_id":"...","data":{"client_id":"..."}}
   {"type":"member_left","project_id":"...","data":{"client_id":"..."}}
   {"type":"member_removed","project_id":"...","data":{"client_id":"..."}}
-  {"type":"member_joined","project_id":"...","data":{...}}
+  {"type":"project_updated","project_id":"...","data":{"name":"...","description":"..."}}
   {"type":"collab_disabled","project_id":"..."}
   {"type":"project_deleted","project_id":"..."}
 ```
@@ -296,6 +279,7 @@ ws://host:3000/ws/:pid/:aid?token=<jwt>&client_id=xxx
 | 403 | `MEMBER_REMOVED` | 你已被移出项目 |
 | 403 | - | Server Key 无效 |
 | 404 | - | 资源不存在 |
+| 409 | - | 名称已被占用 |
 | 410 | `PROJECT_DELETED` | 项目已删除 |
 
 ---
@@ -319,10 +303,10 @@ server/
 ├── main.go
 ├── go.mod
 ├── internal/
-│   ├── config/config.go
+│   ├── config/config.go            # 配置 (端口/JWT/ServerKey)
 │   ├── handler/
-│   │   ├── article_handler.go     # 文章 CRUD
-│   │   ├── invite_handler.go      # 邀请/加入/退出/成员管理/通知
+│   │   ├── article_handler.go     # 文章 CRUD + 广播
+│   │   ├── invite_handler.go      # 加入/退出/成员管理/通知/项目信息
 │   │   ├── publish_handler.go     # 发布 API
 │   │   └── ws_handler.go          # WebSocket 连接管理
 │   ├── ws/
@@ -337,7 +321,6 @@ server/
 │   │   └── publish_repo.go        # 发布 CRUD
 │   ├── middleware/
 │   │   └── auth.go                # JWT/ServerKey/MemberCheck 中间件
-│   ├── model/                     # 数据模型
 │   └── template/                  # HTML 模板
 └── data/                          # 运行时数据 (zell.db, .jwt_secret)
 ```
