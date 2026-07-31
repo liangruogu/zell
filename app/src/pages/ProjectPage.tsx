@@ -477,26 +477,6 @@ export default function ProjectPage() {
                                                         <span className="text-sm text-yellow-700">正在获取邀请码...</span>
                                                     </div>
                                                 )}
-
-                                                {members.length > 0 && (
-                                                    <div className="mb-4">
-                                                        <p className="text-sm font-medium text-gray-700 mb-2">成员 ({members.length})</p>
-                                                        <div className="space-y-1">
-                                                            {members.map(m => (
-                                                                <div key={m.client_id} className="flex items-center justify-between py-1.5 px-2 rounded bg-gray-50 text-sm">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className={m.online ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-gray-300'} />
-                                                                        <span className="text-gray-700">{m.display_name}</span>
-                                                                    </div>
-                                                                    <button onClick={() => handleKick(m.client_id, m.display_name)}
-                                                                        className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500" title="踢出">
-                                                                        <X size={13} />
-                                                                    </button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </>
                                         )}
 
