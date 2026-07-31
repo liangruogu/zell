@@ -1,6 +1,7 @@
 # Build outputs
 server/zell-server
 server/zell-server.exe
+server/tmp/
 server/data/
 
 # Rust
