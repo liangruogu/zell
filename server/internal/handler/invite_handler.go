@@ -110,6 +110,25 @@ func (h *InviteHandler) GetInvite(c *gin.Context) {
 	})
 }
 
+func (h *InviteHandler) GetInviteJWT(c *gin.Context) {
+	pid := c.Param("pid")
+	proj, err := h.db.GetProject(pid)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+		return
+	}
+
+	if !proj.CollabEnabled {
+		c.JSON(http.StatusNotFound, gin.H{"error": "collaboration not enabled"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"invite_code": proj.InviteCode,
+		"updated_at":  proj.InviteUpdatedAt,
+	})
+}
+
 func (h *InviteHandler) RotateInvite(c *gin.Context) {
 	pid := c.Param("pid")
 	code, err := h.db.RotateInviteCode(pid)

@@ -84,6 +84,7 @@ func main() {
 			memberApi.GET("/projects/:pid/articles", articleH.List)
 			memberApi.POST("/projects/:pid/articles", articleH.Create)
 			memberApi.PUT("/projects/:pid/articles/:aid", articleH.Update)
+			memberApi.GET("/projects/:pid/invite", inviteH.GetInviteJWT)
 		}
 
 		// Member self-service (JWT auth but no state check — handlers do their own)
