@@ -60,10 +60,11 @@ export default function ProjectPage() {
                 const proj = useProjectStore.getState().currentProject
                 if (!proj) return
                 const ps = parseProjectSettings(proj.settings)
-                if (ps.collabEnabled && ps.serverKey) {
-                    setSharingEnabled(true)
+                if (ps.collabEnabled && ps.serverKey && ps.serverUrl) {
+                    setServerInputUrl(ps.serverUrl)
                     setServerKey(ps.serverKey)
-                    setServerUrl(ps.serverUrl || '')
+                    setServerUrl(ps.serverUrl)
+                    setSharingEnabled(true)
                     setConnected(true)
                 }
             })
@@ -148,9 +149,25 @@ export default function ProjectPage() {
                 body: JSON.stringify({ enabled: true, owner_token: ownerToken, name: currentProject.name }),
             })
             if (!res.ok) {
-                const err = await res.json().catch(() => ({ error: '未知错误' }))
-                alert('开启共享失败：' + (err.error || '服务器拒绝连接，请检查密钥'))
-                setConnecting(false); setSharingEnabled(false); setConnectFailed(true); return
+                const status = res.status
+                setConnecting(false); setConnectFailed(true)
+                if (status === 403) {
+                    // Server key changed — clear saved key, let user re-enter
+                    const ps = parseProjectSettings(currentProject!.settings)
+                    delete ps.serverKey
+                    delete ps.token
+                    ps.collabEnabled = false
+                    await updateProject(currentProject!.id, {
+                        name: currentProject!.name, description: currentProject!.description,
+                        background: currentProject!.background,
+                        settings: stringifyProjectSettings(ps),
+                    })
+                    setServerKey('')
+                    setConnectFailed(true)
+                } else {
+                    alert('开启共享失败：服务器拒绝连接')
+                }
+                return
             }
 
             const collabData = await res.json()
@@ -159,17 +176,19 @@ export default function ProjectPage() {
             setConnecting(false)
             setConnectFailed(false)
 
+            // Save to local state immediately so fetchCollabData can use the token
+            const newToken = collabData.token || ownerToken
             const ps = parseProjectSettings(currentProject.settings)
             ps.serverUrl = url
             ps.serverKey = key
-            ps.token = collabData.token || ownerToken
+            ps.token = newToken
             ps.collabEnabled = true
-            await updateProject(currentProject.id, {
+            // Update store in memory first for immediate use
+            useProjectStore.getState().updateProject(currentProject.id, {
                 name: currentProject.name, description: currentProject.description,
                 background: currentProject.background,
                 settings: stringifyProjectSettings(ps),
-            })
-            fetchCollabData()
+            }).then(() => fetchCollabData())
         } else {
             if (serverUrl && id) {
                 await fetch(`${serverUrl}/api/v1/projects/${id}/collab`, {
