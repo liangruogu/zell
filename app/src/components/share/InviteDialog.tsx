@@ -55,13 +55,17 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
       if (res.ok) {
         const data = await res.json()
         if (data.status === 'approved') {
-          const proj = useProjectStore.getState().currentProject
-          // Save member role immediately to store before async persist
+          // Ensure project is loaded
+          let proj = useProjectStore.getState().currentProject
+          if (!proj) {
+            await useProjectStore.getState().fetchProject(projectId!)
+            proj = useProjectStore.getState().currentProject
+          }
           if (proj) {
             const ps = parseProjectSettings(proj.settings)
             ps.token = data.token
             ps.displayName = data.display_name
-            ps.role = 'member'
+            ps.serverUrl = serverUrl
             // Immediate in-memory update
             useProjectStore.getState().setCurrentProject({ ...proj, settings: stringifyProjectSettings(ps) })
             // Persist to backend
