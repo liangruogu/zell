@@ -35,8 +35,8 @@ export function Sidebar() {
     ? [
         { to: `/project/${projectId}`, icon: LayoutDashboard, label: '概览', end: true },
         { to: `/project/${projectId}/knowledge`, icon: BookOpen, label: '知识库' },
-        { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '设计画布' },
-        { to: `/project/${projectId}/links`, icon: Link2, label: '外部资源' },
+        { to: `/project/${projectId}/whiteboard`, icon: PenTool, label: '设计画布', disabled: true },
+        { to: `/project/${projectId}/links`, icon: Link2, label: '外部资源', disabled: true },
       ]
     : []
 
@@ -91,6 +91,19 @@ export function Sidebar() {
               )}
               {collapsed && <div className="pt-2" />}
               {projectNavItems.map((item) => (
+                item.disabled ? (
+                  <span key={item.to}
+                    className={cn(
+                      'flex items-center gap-2 px-2.5 py-2 rounded-md text-sm whitespace-nowrap overflow-hidden',
+                      collapsed && 'justify-center px-0',
+                      'text-gray-300 cursor-not-allowed'
+                    )}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <item.icon size={18} />
+                    {!collapsed && item.label}
+                  </span>
+                ) : (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -109,6 +122,7 @@ export function Sidebar() {
                   <item.icon size={18} />
                   {!collapsed && item.label}
                 </NavLink>
+                )
               ))}
             </>
           )}
