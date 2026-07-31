@@ -35,6 +35,7 @@ export default function ProjectPage() {
     const [serverInputUrl, setServerInputUrl] = useState('http://localhost:3000')
     const [serverKey, setServerKey] = useState('')
     const [connecting, setConnecting] = useState(false)
+    const [connectFailed, setConnectFailed] = useState(false)
     const [inviteCode, setInviteCode] = useState('')
     const [copied, setCopied] = useState(false)
     const [members, setMembers] = useState<{ client_id: string; display_name: string; online: boolean }[]>([])
@@ -135,9 +136,10 @@ export default function ProjectPage() {
             const url = serverInputUrl.trim()
             if (!url || !id || !currentProject || !key) return
             setConnecting(true)
+            setConnectFailed(false)
             try {
                 await fetch(`${url}/health`, { signal: AbortSignal.timeout(3000) })
-            } catch { alert('无法连接到服务器'); setConnecting(false); setSharingEnabled(false); return }
+            } catch { alert('无法连接到服务器'); setConnecting(false); setSharingEnabled(false); setConnectFailed(true); return }
 
             const ownerToken = crypto.randomUUID()
             const res = await fetch(`${url}/api/v1/projects/${id}/collab`, {
@@ -148,13 +150,14 @@ export default function ProjectPage() {
             if (!res.ok) {
                 const err = await res.json().catch(() => ({ error: '未知错误' }))
                 alert('开启共享失败：' + (err.error || '服务器拒绝连接，请检查密钥'))
-                setConnecting(false); setSharingEnabled(false); return
+                setConnecting(false); setSharingEnabled(false); setConnectFailed(true); return
             }
 
             const collabData = await res.json()
             setServerUrl(url)
             setConnected(true)
             setConnecting(false)
+            setConnectFailed(false)
 
             const ps = parseProjectSettings(currentProject.settings)
             ps.serverUrl = url
@@ -351,12 +354,17 @@ export default function ProjectPage() {
                                 <div className="flex items-center justify-between">
                                     <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                                         <Users size={18} /> 项目服务器
-                                        {sharingEnabled && inviteCode && (
+                                        {connecting && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full font-medium text-yellow-600 bg-yellow-50">
+                                                连接中...
+                                            </span>
+                                        )}
+                                        {!connecting && sharingEnabled && (
                                             <span className={cn(
                                                 'text-xs px-2 py-0.5 rounded-full font-medium',
-                                                serverOnline ? 'text-green-600 bg-green-50' : 'text-amber-600 bg-amber-50'
+                                                serverOnline ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
                                             )}>
-                                                {serverOnline ? '已连接' : '已断开'}
+                                                {serverOnline ? '已连接' : (connectFailed ? '连接失败' : '已断开')}
                                             </span>
                                         )}
                                     </h3>
@@ -424,7 +432,8 @@ export default function ProjectPage() {
                                         {inviteCode && (
                                             <>
                                                 <div className="flex items-center gap-2 text-sm">
-                                                    <div className={cn('w-2.5 h-2.5 rounded-full', serverOnline ? 'bg-green-500' : 'bg-red-400')} />
+                                                    <div className={cn('w-2.5 h-2.5 rounded-full',
+                                                        connecting ? 'bg-yellow-400' : serverOnline ? 'bg-green-500' : 'bg-red-400')} />
                                                     <span className="text-gray-600">{serverUrl}</span>
                                                 </div>
 
