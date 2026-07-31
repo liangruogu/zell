@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useProjectStore } from '@/stores/projectStore'
-import { useSyncStore } from '@/stores/syncStore'
 import { ProjectCard } from '@/components/project/ProjectCard'
 import { AppShell } from '@/components/layout/AppShell'
 import { Header } from '@/components/layout/Header'
@@ -8,28 +7,56 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dialog } from '@/components/ui/Dialog'
 import { FolderOpen, Link2 } from 'lucide-react'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { CreateProjectDialog } from '@/components/project/CreateProjectDialog'
+import { useKnowledgeStore } from '@/stores/knowledgeStore'
+
+async function syncArticles(serverUrl: string, projectId: string, token: string) {
+  try {
+    const res = await fetch(`${serverUrl}/api/v1/projects/${projectId}/articles`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return
+    const articles = await res.json()
+    const store = useKnowledgeStore.getState()
+    for (const a of articles) {
+      try {
+        await store.createArticle(projectId, a.title || '', a.content || '', undefined, a.id, a.content_json)
+      } catch { /* article might already exist */ }
+    }
+  } catch { /* server offline, skip */ }
+}
 
 export default function HomePage() {
   const { projects, loading, fetchProjects, createProject } = useProjectStore()
-  const { setToken } = useSyncStore()
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [joinServerUrl, setJoinServerUrl] = useState('')
   const [joinDisplayName, setJoinDisplayName] = useState('')
   const [joining, setJoining] = useState(false)
+  const [joinStatus, setJoinStatus] = useState('')
+  const joinPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     fetchProjects()
+    return () => clearPoll()
   }, [fetchProjects])
+
+  const clearPoll = useCallback(() => {
+    if (joinPollRef.current) {
+      clearInterval(joinPollRef.current)
+      joinPollRef.current = null
+    }
+  }, [])
 
   const handleJoin = useCallback(async () => {
     if (!joinCode.trim() || !joinServerUrl.trim() || !joinDisplayName.trim()) return
     setJoining(true)
+    setJoinStatus('连接中...')
+    clearPoll()
+    const clientId = localStorage.getItem('zell_join_client_id') || (() => { const id = crypto.randomUUID(); localStorage.setItem('zell_join_client_id', id); return id })()
     try {
-      const clientId = crypto.randomUUID()
       const res = await fetch(`${joinServerUrl}/api/v1/projects/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -38,24 +65,61 @@ export default function HomePage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: '未知错误' }))
         alert('加入失败：' + (err.error || '邀请码无效'))
+        setJoining(false)
+        setJoinStatus('')
         return
       }
       const data = await res.json()
       if (data.status === 'pending') {
-        alert(`申请已提交，请等待项目管理员审批`)
-        setShowJoin(false)
-        setJoinCode('')
-        setJoinServerUrl('')
-        setJoinDisplayName('')
+        setJoinStatus('等待管理员审批...')
+        joinPollRef.current = setInterval(async () => {
+          try {
+            const pollRes = await fetch(`${joinServerUrl}/api/v1/projects/join`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim() }),
+            })
+            if (!pollRes.ok) return
+            const pollData = await pollRes.json()
+            if (pollData.status !== 'pending') {
+              clearPoll()
+              await createProject({
+                id: pollData.project_id,
+                name: `${pollData.project_name || pollData.project_id.slice(0, 8)} (协作)`,
+                description: '',
+                background: '',
+                settings: JSON.stringify({
+                  serverUrl: joinServerUrl,
+                  token: pollData.token,
+                  displayName: joinDisplayName.trim(),
+                  role: 'member',
+                }),
+              })
+              // Sync articles from server
+              syncArticles(joinServerUrl, pollData.project_id, pollData.token)
+              setShowJoin(false)
+              setJoinCode('')
+              setJoinServerUrl('')
+              setJoinDisplayName('')
+              setJoinStatus('')
+            }
+          } catch { /* server might be down, keep polling */ }
+        }, 3000)
         return
       }
+      // Already approved — create/sync local project with server's ID
       await createProject({
-        name: `协作项目 ${data.project_id.slice(0, 8)}`,
+        id: data.project_id,
+        name: `${data.project_name || data.project_id.slice(0, 8)} (协作)`,
         description: '',
         background: '',
-        settings: JSON.stringify({ serverUrl: joinServerUrl }),
+        settings: JSON.stringify({
+          serverUrl: joinServerUrl,
+          token: data.token,
+          displayName: joinDisplayName.trim(),
+        }),
       })
-      setToken(data.token)
+      syncArticles(joinServerUrl, data.project_id, data.token)
       setShowJoin(false)
       setJoinCode('')
       setJoinServerUrl('')
@@ -65,7 +129,7 @@ export default function HomePage() {
     } finally {
       setJoining(false)
     }
-  }, [joinCode, joinServerUrl, joinDisplayName, createProject, setToken])
+  }, [joinCode, joinServerUrl, joinDisplayName, createProject])
 
   return (
     <AppShell>
@@ -107,7 +171,7 @@ export default function HomePage() {
       </div>
       <CreateProjectDialog open={showCreate} onOpenChange={setShowCreate} />
 
-      <Dialog open={showJoin} onOpenChange={setShowJoin} title="加入项目" description="输入服务器地址和邀请码加入已有的协作项目">
+      <Dialog open={showJoin} onOpenChange={(open) => { setShowJoin(open); if (!open) { clearPoll(); setJoinStatus('') } }} title="加入项目" description="输入服务器地址和邀请码加入已有的协作项目">
         <div className="space-y-4 mt-2">
           <div>
             <label className="block text-xs text-gray-500 mb-1">服务器地址</label>
@@ -134,9 +198,12 @@ export default function HomePage() {
               onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
             />
           </div>
-          <Button onClick={handleJoin} disabled={!joinCode.trim() || !joinServerUrl.trim() || !joinDisplayName.trim() || joining} className="w-full">
-            {joining ? '加入中...' : '加入项目'}
+          <Button onClick={handleJoin} disabled={!joinCode.trim() || !joinServerUrl.trim() || !joinDisplayName.trim() || joining || !!joinStatus} className="w-full">
+            {joining ? '加入中...' : joinStatus || '加入项目'}
           </Button>
+          {joinStatus && (
+            <p className="text-center text-sm text-zell-500">{joinStatus}</p>
+          )}
         </div>
       </Dialog>
     </AppShell>
