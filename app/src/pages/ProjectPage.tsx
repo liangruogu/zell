@@ -429,7 +429,7 @@ export default function ProjectPage() {
                                             <p className="text-xs text-gray-400 mt-1">启动 zell-server 时控制台输出的密钥</p>
                                         </div>
 
-                                        {inviteCode && (
+                                        {serverOnline && (
                                             <>
                                                 <div className="flex items-center gap-2 text-sm">
                                                     <div className={cn('w-2.5 h-2.5 rounded-full',
@@ -437,21 +437,27 @@ export default function ProjectPage() {
                                                     <span className="text-gray-600">{serverUrl}</span>
                                                 </div>
 
-                                                <div className="p-3 bg-zell-50 rounded-lg border border-zell-100 space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-sm font-medium text-gray-700">邀请码</span>
-                                                        <span className="text-xs text-gray-400">每 30 分钟自动更新</span>
+                                                {inviteCode ? (
+                                                    <div className="p-3 bg-zell-50 rounded-lg border border-zell-100 space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-sm font-medium text-gray-700">邀请码</span>
+                                                            <span className="text-xs text-gray-400">每 30 分钟自动更新</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <code className="text-sm bg-white px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-700 flex-1">
+                                                                {inviteCode}
+                                                            </code>
+                                                            <Button size="sm" variant="outline" onClick={handleCopyCode}>
+                                                                <Copy size={14} className="mr-1" />
+                                                                {copied ? '已复制' : '复制'}
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <code className="text-sm bg-white px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-700 flex-1">
-                                                            {inviteCode}
-                                                        </code>
-                                                        <Button size="sm" variant="outline" onClick={handleCopyCode}>
-                                                            <Copy size={14} className="mr-1" />
-                                                            {copied ? '已复制' : '复制'}
-                                                        </Button>
+                                                ) : (
+                                                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                                                        <span className="text-sm text-yellow-700">正在获取邀请码...</span>
                                                     </div>
-                                                </div>
+                                                )}
 
                                                 {members.length > 0 && (
                                                     <div>
