@@ -148,8 +148,7 @@ export function MarkdownEditor({
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
         requestAnimationFrame(() => setCollabKey(k => k + 1))
         return () => {
-            if (provider.wsconnected) provider.disconnect()
-            else provider.destroy()
+            try { provider.disconnect() } catch {}
             collabYDocRef.current = null
             collabProviderRef.current = null
         }
