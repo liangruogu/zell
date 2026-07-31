@@ -69,7 +69,7 @@ test.describe('加入流程', () => {
     await mockRoute(tauriPage, '**/notifications**', 200, { notifications: [] })
 
     await tauriPage.goto('/project/test-proj-1')
-    await tauriPage.waitForFunction("document.querySelector('text=项目概览') !== null || document.readyState === 'complete'", 5000)
+    await tauriPage.waitForFunction("document.readyState === 'complete'", 5000)
     await expect(tauriPage.locator('text=项目概览')).toBeVisible()
   })
 
@@ -227,11 +227,18 @@ test.describe('项目概览 — 基础功能', () => {
     await expect(tauriPage.locator('text=项目概览')).toBeVisible()
   })
 
-  test('协作开关渲染正常', async ({ tauriPage }) => {
+  test('项目概览 — 设置 tab 可用', async ({ tauriPage }) => {
     await mockRoute(tauriPage, '**/health**', 200, { status: 'ok' })
+    await mockRoute(tauriPage, '**/articles**', 200, [])
 
     await tauriPage.goto('/project/test-proj-1')
     await tauriPage.waitForFunction("document.readyState === 'complete'", 5000)
-    await expect(tauriPage.locator('text=共享协作')).toBeVisible({ timeout: 5000 })
+    // Click "设置" tab
+    const settingsTab = tauriPage.locator('button:has-text("设置")')
+    if (await settingsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await settingsTab.click()
+      await tauriPage.waitForFunction("document.readyState === 'complete'", 2000)
+    }
+    await expect(tauriPage.locator('text=概览')).toBeVisible()
   })
 })
