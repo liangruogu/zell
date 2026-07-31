@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { type ReactNode, useEffect, useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
@@ -39,7 +40,7 @@ export function AppShell({ children }: AppShellProps) {
           setServerRunning(true)
         }
       })
-      .catch(() => {})
+      .catch((e) => { logger.error('AppShell: failed to connect to server on startup', e) })
   }, [serverUrl, setConnected, setServerRunning])
 
   const showAI = location.pathname.includes('/knowledge')

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 import { LayoutGrid, AlignLeft, AlignCenter, AlignRight, Trash2 } from 'lucide-react'
 
 export function TableToolbar({ editor }: { editor: any }) {
@@ -9,7 +10,7 @@ export function TableToolbar({ editor }: { editor: any }) {
   useEffect(() => {
     if (!editor) return
     let viewDom: HTMLElement
-    try { viewDom = editor.view.dom } catch { return }
+    try { viewDom = editor.view.dom } catch (e) { logger.error('TableToolbar: failed to access editor dom', e); return }
     const updatePos = () => {
       if (!editor.isActive('table')) {
         setPos(null)

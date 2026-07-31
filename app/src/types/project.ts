@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger'
+
 export interface Project {
   id: string
   name: string
@@ -40,7 +42,8 @@ export interface PublishSettings {
 export function parseProjectSettings(settings: string): ProjectSettings {
   try {
     return JSON.parse(settings)
-  } catch {
+  } catch (e) {
+    logger.error('Failed to parse project settings', e)
     return {}
   }
 }

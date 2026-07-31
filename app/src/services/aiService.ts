@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { useAIStore } from '@/stores/aiStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
@@ -13,7 +14,7 @@ export interface AIProvider {
 
 export function getProviders(): AIProvider[] {
   const raw = useSettingsStore.getState().settings['ai_providers']
-  try { return raw ? JSON.parse(raw) : [] } catch { return [] }
+  try { return raw ? JSON.parse(raw) : [] } catch (e) { logger.error('Failed to parse AI providers', e); return [] }
 }
 
 export function getActiveProviderId(): string | null {
@@ -32,7 +33,7 @@ export async function testProviderConnection(provider: AIProvider): Promise<{ ok
     if (r.ok) return { ok: true, message: '连接成功' }
     const t = await r.text()
     return { ok: false, message: `HTTP ${r.status}: ${t.slice(0, 200)}` }
-  } catch (e: any) { return { ok: false, message: `网络错误: ${e.message || String(e)}` } }
+  } catch (e: any) { logger.error('Failed to test provider connection', e); return { ok: false, message: `网络错误: ${e.message || String(e)}` } }
 }
 
 export async function sendMessage(userContent: string) {
@@ -100,7 +101,7 @@ export async function sendMessage(userContent: string) {
       try {
         const s = JSON.parse(project.settings || '{}')
         if (s.status) ctx += `\n项目状态: ${s.status}`
-      } catch { /* */ }
+      } catch (e) { logger.error('Failed to parse project settings in context inject', e) }
       // Add article list
       const articles = useKnowledgeStore.getState().articles
       if (articles.length > 0) {
@@ -147,7 +148,7 @@ export async function sendMessage(userContent: string) {
 
       config.systemPrompt += ctx
     }
-  } catch { /* best effort */ }
+  } catch (e) { logger.error('Failed to inject project context', e) }
 
   let accumulated = ''
 
@@ -175,6 +176,6 @@ export async function sendMessage(userContent: string) {
 
   useAIStore.getState().setStreaming(false)
   // Persist conversation to DB
-  useAIStore.getState().saveConversation().catch(() => {})
+  useAIStore.getState().saveConversation().catch((e) => { logger.error('Failed to save conversation', e) })
   useAIStore.getState().setAbortController(null)
 }

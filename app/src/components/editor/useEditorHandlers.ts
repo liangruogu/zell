@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import type { Editor } from '@tiptap/react'
 import { readText } from '@tauri-apps/plugin-clipboard-manager'
 import { readFile } from '@tauri-apps/plugin-fs'
@@ -46,7 +47,7 @@ export function useEditorHandlers({ editorRef, insertImageRef }: UseEditorHandle
             const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
             const dataUrl = `data:${mime};base64,${toBase64(bytes)}`
             insertImageRef.current(dataUrl, ref.path)
-          }).catch(() => { })
+          }).catch((e) => { logger.error('useEditorHandlers: failed to read image file in paste', e) })
         }
       } else if (text) {
         const ed = editorRef.current
@@ -56,7 +57,7 @@ export function useEditorHandlers({ editorRef, insertImageRef }: UseEditorHandle
           ed.view.dispatch(tr)
         }
       }
-    }).catch(() => { })
+    }).catch((e) => { logger.error('useEditorHandlers: failed to read clipboard text', e) })
     return true
   }
 
@@ -98,7 +99,7 @@ export function useEditorHandlers({ editorRef, insertImageRef }: UseEditorHandle
         } else {
           insertImageRef.current(dataUrl, ref.path)
         }
-      }).catch(() => { })
+      }).catch((e) => { logger.error('useEditorHandlers: failed to read image file in drop', e) })
     }
     return true
   }

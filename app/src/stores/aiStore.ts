@@ -1,20 +1,21 @@
 import { create } from 'zustand'
 import { invoke } from '@tauri-apps/api/core'
+import { logger } from '@/lib/logger'
 
 const STORAGE_OPEN_KEY = 'zell_ai_open'
 const STORAGE_INPUT_KEY = 'zell_ai_input'
 
 function loadAIOpen(): boolean {
-  try { return localStorage.getItem(STORAGE_OPEN_KEY) === '1' } catch { return false }
+  try { return localStorage.getItem(STORAGE_OPEN_KEY) === '1' } catch (e) { logger.error('Failed to read AI open state', e); return false }
 }
 function saveAIOpen(v: boolean) {
-  try { localStorage.setItem(STORAGE_OPEN_KEY, v ? '1' : '0') } catch { /* */ }
+  try { localStorage.setItem(STORAGE_OPEN_KEY, v ? '1' : '0') } catch (e) { logger.error('Failed to save AI open state', e); /* */ }
 }
 function loadInput(): string {
-  try { return localStorage.getItem(STORAGE_INPUT_KEY) || '' } catch { return '' }
+  try { return localStorage.getItem(STORAGE_INPUT_KEY) || '' } catch (e) { logger.error('Failed to read AI input', e); return '' }
 }
 function saveInput(v: string) {
-  try { localStorage.setItem(STORAGE_INPUT_KEY, v) } catch { /* */ }
+  try { localStorage.setItem(STORAGE_INPUT_KEY, v) } catch (e) { logger.error('Failed to save AI input', e); /* */ }
 }
 
 interface AIMessage_ {
@@ -139,7 +140,7 @@ export const useAIStore = create<AIState>((set, get) => ({
         }
         return { conversations: convos }
       })
-    } catch { /* */ }
+    } catch (e) { logger.error('Failed to load conversations', e); /* */ }
   },
 
   createConversation: async (projectId: string, sourceType: string) => {
@@ -159,7 +160,8 @@ export const useAIStore = create<AIState>((set, get) => ({
       const full = await invoke<AiConversation>('get_ai_conversation', { id })
       const msgs = JSON.parse(full.messages || '[]') as AIMessage_[]
       set({ activeConversationId: id, messages: msgs })
-    } catch {
+    } catch (e) {
+      logger.error('Failed to switch conversation', e)
       set({ activeConversationId: id, messages: [] })
     }
   },

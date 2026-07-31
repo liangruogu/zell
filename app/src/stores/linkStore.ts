@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ExternalLink } from '@/types/share'
 import { invoke } from '@tauri-apps/api/core'
+import { logger } from '@/lib/logger'
 
 export interface SearchResult {
   title: string
@@ -39,7 +40,7 @@ export const useLinkStore = create<LinkState>((set) => ({
     try {
       const links = await invoke<ExternalLink[]>('get_external_links', { projectId })
       set({ links, loading: false })
-    } catch { set({ loading: false }) }
+    } catch (e) { logger.error('Failed to fetch links', e); set({ loading: false }) }
   },
 
   createLink: async (projectId, data) => {

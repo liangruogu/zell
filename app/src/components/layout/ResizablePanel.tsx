@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface ResizablePanelState {
   effectiveWidth: number
@@ -34,14 +35,14 @@ export function useResizablePanel(
 ): ResizablePanelState {
   const [width, setWidth] = useState(defaultWidth)
   const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem(storageKey) === '1' } catch { return false }
+    try { return localStorage.getItem(storageKey) === '1' } catch (e) { logger.error('ResizablePanel: failed to read collapsed state from localStorage', e); return false }
   })
   const [dragging, setDragging] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
   const effectiveWidth = collapsed ? 0 : width
 
-  const persistCollapsed = (v: boolean) => { try { localStorage.setItem(storageKey, v ? '1' : '0') } catch { /* */ } }
+  const persistCollapsed = (v: boolean) => { try { localStorage.setItem(storageKey, v ? '1' : '0') } catch (e) { logger.error('ResizablePanel: failed to persist collapsed state to localStorage', e); /* */ } }
 
   const toggle = useCallback(() => {
     setCollapsed((c) => {

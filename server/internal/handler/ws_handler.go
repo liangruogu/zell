@@ -80,18 +80,20 @@ func (h *WSHandler) Handle(c *gin.Context) {
 
 	// State check: verify project and member status
 	proj, err := h.db.GetProject(pid)
-	if err != nil || proj == nil || proj.Status == "deleted" || !proj.CollabEnabled {
-		c.JSON(http.StatusForbidden, gin.H{"error": "project unavailable"})
-		return
-	}
-	memberStatus, err := h.db.GetMemberStatus(pid, clientID)
-	if err != nil || memberStatus != "active" {
-		// Owner bypass
-		if clientID == proj.OwnerToken && proj.OwnerToken != "" {
-			// owner OK
-		} else {
-			c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
+	isNotification := articleID == "__notifications__"
+	if !isNotification {
+		if err != nil || proj == nil || proj.Status == "deleted" || !proj.CollabEnabled {
+			c.JSON(http.StatusForbidden, gin.H{"error": "project unavailable"})
 			return
+		}
+		memberStatus, err := h.db.GetMemberStatus(pid, clientID)
+		if err != nil || memberStatus != "active" {
+			if clientID == proj.OwnerToken && proj.OwnerToken != "" {
+				// owner OK
+			} else {
+				c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
+				return
+			}
 		}
 	}
 

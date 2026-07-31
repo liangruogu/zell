@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { useEffect, useState, useCallback } from 'react'
 import { X, CheckCircle, Plus, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -154,7 +155,7 @@ function AISettings({ parsed, setSetting, showToast }: {
     try {
       const list = typeof parsed.aiProviders === 'string' ? JSON.parse(parsed.aiProviders) : (parsed.aiProviders || [])
       setProviders(list)
-    } catch { setProviders([]) }
+    } catch (e) { logger.error('SettingsDialog: failed to parse AI providers', e); setProviders([]) }
   }, [parsed.aiProviders])
 
   useEffect(() => { setActiveId(parsed.activeProvider || '') }, [parsed.activeProvider])

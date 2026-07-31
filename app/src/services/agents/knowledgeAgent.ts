@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { AgentConfig } from '@/services/core/agentRunner'
 import { invoke } from '@tauri-apps/api/core'
 import { useProjectStore } from '@/stores/projectStore'
+import { logger } from '@/lib/logger'
 
 interface ArticleSummary { id: string; title: string; preview: string; updated_at: string }
 interface SearchResult { title: string; snippet: string; source_type: string; source_id: string; rank: number }
@@ -12,7 +13,7 @@ const getProjectContext = tool(
     const project = useProjectStore.getState().currentProject
     if (!project) return '当前没有打开的项目。'
     let status = '未设置'
-    try { const s = JSON.parse(project.settings || '{}'); if (s.status) status = s.status } catch { /* */ }
+    try { const s = JSON.parse(project.settings || '{}'); if (s.status) status = s.status } catch (e) { logger.error('Failed to parse project settings', e) }
     return JSON.stringify({ name: project.name, description: project.description, background: project.background, status })
   },
   { name: 'get_project_context', description: '获取当前项目的基本信息和背景' }

@@ -13,6 +13,7 @@ import { Trash2, Edit3, Users, Copy, X, Check, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PublishSettings } from '@/components/project/PublishSettings'
 import { parseProjectSettings, stringifyProjectSettings } from '@/types/project'
+import { logger } from '@/lib/logger'
 
 export default function ProjectPage() {
     const { id } = useParams<{ id: string }>()
@@ -84,12 +85,15 @@ export default function ProjectPage() {
 
     // Fetch collab data and health check
     const fetchCollabData = useCallback(async () => {
-        if (!sharingEnabled || !serverUrl || !id || !serverKey) return
+        if (!sharingEnabled || !serverUrl || !id) return
+        const token = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').token
+        if (!serverKey && !token) return
         try {
             // Health check first — always run, don't gate on connected (deadlock)
             const healthRes = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) })
             if (!healthRes.ok) throw new Error('unhealthy')
-        } catch {
+        } catch (e) {
+            logger.error('Health check failed', e)
             setServerOnline(false)
             setConnected(false)
             useSyncStore.getState().setReadOnly(true)
@@ -109,20 +113,47 @@ export default function ProjectPage() {
         if (wasPrev === false) setServerToast('服务器已恢复连接')
 
         // Fetch collab data
-        const h = { 'X-Server-Key': serverKey }
-        const jwtH = { 'Authorization': `Bearer ${parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').token || ''}` }
         try {
-            const [invRes, memRes] = await Promise.all([
-                fetch(`${serverUrl}/api/v1/projects/${id}/invite-code`, { headers: jwtH, signal: AbortSignal.timeout(3000) }),
-                fetch(`${serverUrl}/api/v1/projects/${id}/members`, { headers: h, signal: AbortSignal.timeout(3000) }),
-            ])
-            if (invRes.ok) setInviteCode((await invRes.json()).invite_code || '')
-            if (memRes.ok) setMembers((await memRes.json()) || [])
+            if (serverKey) {
+                const h = { 'X-Server-Key': serverKey }
+                const proms: Promise<any>[] = [
+                    fetch(`${serverUrl}/api/v1/projects/${id}/members`, { headers: h, signal: AbortSignal.timeout(3000) }),
+                ]
+                if (token) {
+                    proms.push(fetch(`${serverUrl}/api/v1/projects/${id}/invite-code`, {
+                        headers: { 'Authorization': `Bearer ${token}` }, signal: AbortSignal.timeout(3000),
+                    }))
+                }
+                const results = await Promise.all(proms)
+                const memRes = results[0]
+                if (memRes.ok) setMembers((await memRes.json()) || [])
+                if (token) {
+                    const invRes = results[1]
+                    if (invRes.ok) setInviteCode((await invRes.json()).invite_code || '')
+                }
+            }
+            if (token) {
+                fetch(`${serverUrl}/api/v1/projects/${id}/info`, {
+                    headers: { 'Authorization': `Bearer ${token}` }, signal: AbortSignal.timeout(3000),
+                }).then(res => res.ok ? res.json() : null).then(data => {
+                    if (data?.name) {
+                        const proj = useProjectStore.getState().currentProject
+                        if (proj && (data.name !== proj.name || data.description !== (proj.description || ''))) {
+                            updateProject(id, {
+                                name: data.name,
+                                description: data.description || '',
+                                background: proj.background || '',
+                                settings: proj.settings || '{}',
+                            })
+                        }
+                    }
+                }).catch(() => { /* ignore */ })
+            }
             useSyncStore.getState().setReadOnly(false)
-        } catch { /* collab API might fail, but health passed */ }
-    }, [sharingEnabled, serverUrl, id, serverKey, isMember, navigate])
+        } catch (e) { logger.error('Failed to fetch collab data', e) /* collab API might fail, but health passed */ }
+    }, [sharingEnabled, serverUrl, id, serverKey, updateProject])
 
-    useEffect(() => { if (!isMember) { fetchCollabData(); const t = setInterval(fetchCollabData, 5000); return () => clearInterval(t) } }, [fetchCollabData, isMember])
+    useEffect(() => { fetchCollabData(); const t = setInterval(fetchCollabData, 5000); return () => clearInterval(t) }, [fetchCollabData])
 
     // Toast auto-clear
     useEffect(() => {
@@ -131,21 +162,21 @@ export default function ProjectPage() {
         return () => clearTimeout(t)
     }, [serverToast])
 
-     const handleToggleSharing = useCallback(async (enable: boolean) => {
+    const handleToggleSharing = useCallback(async (enable: boolean) => {
         const key = serverKey.trim()
         if (enable) {
             const url = serverInputUrl.trim()
             if (!url || !id || !currentProject || !key) return
             if (!/^https?:\/\//i.test(url)) {
-              alert('服务器地址格式不正确，需要以 http:// 或 https:// 开头')
-              setConnecting(false)
-              return
+                alert('服务器地址格式不正确，需要以 http:// 或 https:// 开头')
+                setConnecting(false)
+                return
             }
             setConnecting(true)
             setConnectFailed(false)
             try {
                 await fetch(`${url}/health`, { signal: AbortSignal.timeout(3000) })
-            } catch { alert('无法连接到服务器'); setConnecting(false); setSharingEnabled(false); setConnectFailed(true); return }
+            } catch (e) { logger.error('Failed to connect to server', e); alert('无法连接到服务器'); setConnecting(false); setSharingEnabled(false); setConnectFailed(true); return }
 
             const ownerToken = crypto.randomUUID()
             const res = await fetch(`${url}/api/v1/projects/${id}/collab`, {
@@ -200,7 +231,7 @@ export default function ProjectPage() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Server-Key': key },
                     body: JSON.stringify({ enabled: false }),
-                }).catch(() => { })
+                }).catch((e) => { logger.error('Failed to disable collab sharing', e) })
             }
             setConnected(false)
             setMembers([])
@@ -240,7 +271,7 @@ export default function ProjectPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Server-Key': serverKey },
                 body: JSON.stringify({ enabled: false }),
-            }).catch(() => {})
+            }).catch((e) => { logger.error('Failed to disable collab on server delete', e) })
         }
         const ps = parseProjectSettings(currentProject.settings)
         delete ps.serverUrl
@@ -280,7 +311,7 @@ export default function ProjectPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Server-Key': ps.serverKey },
                 body: JSON.stringify({ enabled: false, deleted: true }),
-            }).catch(() => { })
+            }).catch((e) => { logger.error('Failed to notify server on project delete', e) })
         }
         await deleteProject(currentProject.id)
         setShowDelete(false)
@@ -289,6 +320,13 @@ export default function ProjectPage() {
 
     const handleExit = async () => {
         if (!currentProject) return
+        const ps = parseProjectSettings(currentProject.settings)
+        if (ps.serverUrl && ps.token) {
+            fetch(`${ps.serverUrl}/api/v1/projects/${currentProject.id}/leave`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${ps.token}` },
+            }).catch((e) => { logger.error('Failed to notify server on exit', e) })
+        }
         await deleteProject(currentProject.id)
         setShowExit(false)
         navigate('/')
@@ -304,11 +342,13 @@ export default function ProjectPage() {
         // Sync to server if sharing
         if (sharingEnabled && serverOnline && serverUrl) {
             const key = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').serverKey
-            fetch(`${serverUrl}/api/v1/projects/${id}/info`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-Server-Key': key || '' },
-                body: JSON.stringify({ name: editName, description: editDesc }),
-            }).catch(() => {})
+            if (key) {
+                fetch(`${serverUrl}/api/v1/projects/${id}/info`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-Server-Key': key },
+                    body: JSON.stringify({ name: editName, description: editDesc }),
+                }).catch((e) => { logger.error('Failed to sync project info to server', e) })
+            }
         }
         setShowEdit(false)
     }
@@ -354,25 +394,25 @@ export default function ProjectPage() {
                         概览
                     </button>
                     {(sharingEnabled && connected) && (
-                    <button onClick={() => setSettingsTab('publish')}
-                        className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
-                            settingsTab === 'publish' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
-                        发布
-                    </button>
-                     )}
-                     {sharingEnabled && !isMember && (
-                     <button onClick={() => setSettingsTab('members')}
-                         className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
-                             settingsTab === 'members' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
-                         成员
-                     </button>
-                     )}
-                     {!isMember && (
-                    <button onClick={() => setSettingsTab('settings')}
-                        className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
-                            settingsTab === 'settings' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
-                        设置
-                    </button>
+                        <button onClick={() => setSettingsTab('publish')}
+                            className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
+                                settingsTab === 'publish' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
+                            发布
+                        </button>
+                    )}
+                    {sharingEnabled && !isMember && (
+                        <button onClick={() => setSettingsTab('members')}
+                            className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
+                                settingsTab === 'members' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
+                            成员
+                        </button>
+                    )}
+                    {!isMember && (
+                        <button onClick={() => setSettingsTab('settings')}
+                            className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
+                                settingsTab === 'settings' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
+                            设置
+                        </button>
                     )}
                 </div>
 
@@ -412,113 +452,115 @@ export default function ProjectPage() {
                             </Card>
 
                             {!isMember && (
-                            <Card className="p-5">
-                                <h3 className="font-semibold text-gray-800 flex items-center gap-2 mb-4">
-                                    <Users size={18} /> 项目服务器
-                                    {connecting && (
-                                        <span className="text-xs px-2 py-0.5 rounded-full font-medium text-yellow-600 bg-yellow-50">
-                                            连接中...
-                                        </span>
-                                    )}
-                                    {!connecting && hasServer && sharingEnabled && (
-                                        <span className={cn(
-                                            'text-xs px-2 py-0.5 rounded-full font-medium',
-                                            serverOnline ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
-                                        )}>
-                                            {serverOnline ? '已连接' : (connectFailed ? '连接失败' : '已断开')}
-                                        </span>
-                                    )}
-                                    {!connecting && hasServer && !sharingEnabled && (
-                                        <span className="text-xs px-2 py-0.5 rounded-full font-medium text-gray-500 bg-gray-100">
-                                            未共享
-                                        </span>
-                                    )}
-                                </h3>
-
-                                {!hasServer && (
-                                    <div className="space-y-3">
-                                        <input
-                                            value={serverInputUrl}
-                                            onChange={(e) => setServerInputUrl(e.target.value)}
-                                            placeholder="服务器地址 http://localhost:3000"
-                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
-                                        />
-                                        <input
-                                            value={serverKey}
-                                            onChange={(e) => setServerKey(e.target.value.trim())}
-                                            placeholder="服务器密钥（启动时控制台输出）"
-                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
-                                        />
-                                        <div className="flex justify-end gap-2">
-                                            <Button size="sm" onClick={() => {
-                                                if (!serverInputUrl.trim() || !serverKey.trim()) return
-                                                setSharingEnabled(true)
-                                                handleToggleSharing(true)
-                                            }} disabled={connecting || !serverInputUrl.trim() || !serverKey.trim()}>
-                                                {connecting ? '连接中...' : '连接'}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {hasServer && (
-                                    <>
-                                        <input
-                                            value={serverInputUrl}
-                                            readOnly
-                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed mb-4"
-                                        />
-
-                                        {sharingEnabled && serverOnline && (
-                                            <>
-                                                {inviteCode ? (
-                                                    <div className="p-3 bg-zell-50 rounded-lg border border-zell-100 space-y-2 mb-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-sm font-medium text-gray-700">邀请码</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <code className="text-sm bg-white px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-700 flex-1">
-                                                                {inviteCode}
-                                                            </code>
-                                                            <Button size="sm" variant="outline" onClick={handleCopyCode}>
-                                                                <Copy size={14} className="mr-1" />
-                                                                {copied ? '已复制' : '复制'}
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-100 mb-4">
-                                                        <span className="text-sm text-yellow-700">正在获取邀请码...</span>
-                                                    </div>
-                                                )}
-                                            </>
+                                <Card className="p-5">
+                                    <h3 className="font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                                        <Users size={18} /> 项目服务器
+                                        {connecting && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full font-medium text-yellow-600 bg-yellow-50">
+                                                连接中...
+                                            </span>
                                         )}
+                                        {!connecting && hasServer && sharingEnabled && (
+                                            <span className={cn(
+                                                'text-xs px-2 py-0.5 rounded-full font-medium',
+                                                serverOnline ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
+                                            )}>
+                                                {serverOnline ? '已连接' : (connectFailed ? '连接失败' : '已断开')}
+                                            </span>
+                                        )}
+                                        {!connecting && hasServer && !sharingEnabled && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full font-medium text-gray-500 bg-gray-100">
+                                                未共享
+                                            </span>
+                                        )}
+                                    </h3>
 
-                                        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
-                                            {sharingEnabled ? (
-                                                <Button size="sm" variant="outline" onClick={() => {
-                                                    if (!confirm('确定关闭协作吗？成员将暂时无法编辑。')) return
-                                                    handleToggleSharing(false)
-                                                    setSharingEnabled(false)
-                                                }}>
-                                                    关闭共享
-                                                </Button>
-                                            ) : (
+                                    {!hasServer && (
+                                        <div className="space-y-3">
+                                            <input
+                                                value={serverInputUrl}
+                                                onChange={(e) => setServerInputUrl(e.target.value)}
+                                                placeholder="服务器地址 http://localhost:3000"
+                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
+                                            />
+                                            <input
+                                                value={serverKey}
+                                                onChange={(e) => setServerKey(e.target.value.trim())}
+                                                placeholder="服务器密钥（启动时控制台输出）"
+                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zell-400"
+                                            />
+                                            <div className="flex justify-end gap-2">
                                                 <Button size="sm" onClick={() => {
+                                                    if (!serverInputUrl.trim() || !serverKey.trim()) return
                                                     setSharingEnabled(true)
                                                     handleToggleSharing(true)
-                                                }} disabled={connecting}>
-                                                    {connecting ? '连接中...' : '开启共享'}
+                                                }} disabled={connecting || !serverInputUrl.trim() || !serverKey.trim()}>
+                                                    {connecting ? '连接中...' : '连接'}
                                                 </Button>
-                                            )}
-                                            <Button size="sm" variant="ghost" onClick={handleDeleteServer}
-                                                className="text-gray-400 hover:text-red-500">
-                                                删除服务器
-                                            </Button>
+                                            </div>
                                         </div>
-                                    </>
-                                )}
-                            </Card>
+                                    )}
+
+                                    {hasServer && (
+                                        <>
+                                            <input
+                                                value={serverInputUrl}
+                                                readOnly
+                                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed mb-4"
+                                            />
+
+                                            {sharingEnabled && serverOnline && (
+                                                <>
+                                                    {inviteCode ? (
+                                                        <div className="p-3 bg-zell-50 rounded-lg border border-zell-100 space-y-2 mb-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-sm font-medium text-gray-700">邀请码</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <code className="text-sm bg-white px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-700 flex-1">
+                                                                    {inviteCode}
+                                                                </code>
+                                                                <Button size="sm" variant="outline" onClick={handleCopyCode}>
+                                                                    <Copy size={14} className="mr-1" />
+                                                                    {copied ? '已复制' : '复制'}
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-100 mb-4">
+                                                            <span className="text-sm text-yellow-700">正在获取邀请码...</span>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+
+                                            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
+                                                {sharingEnabled ? (
+                                                    <Button size="sm" variant="outline" onClick={() => {
+                                                        if (!confirm('确定关闭协作吗？成员将暂时无法编辑。')) return
+                                                        handleToggleSharing(false)
+                                                        setSharingEnabled(false)
+                                                    }}>
+                                                        关闭共享
+                                                    </Button>
+                                                ) : (
+                                                    <Button size="sm" onClick={() => {
+                                                        setSharingEnabled(true)
+                                                        handleToggleSharing(true)
+                                                    }} disabled={connecting}>
+                                                        {connecting ? '连接中...' : '开启共享'}
+                                                    </Button>
+                                                )}
+                                                <Button size="sm" variant="ghost" onClick={handleDeleteServer}
+                                                    disabled={sharingEnabled}
+                                                    className="text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title={sharingEnabled ? '请先关闭共享后再删除服务器' : '删除服务器配置'}>
+                                                    删除服务器
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
+                                </Card>
                             )}
                         </div>
                     ) : settingsTab === 'publish' ? (

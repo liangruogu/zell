@@ -19,6 +19,7 @@ import { markdownToHtml } from '@/lib/markdown'
 import { open } from '@tauri-apps/plugin-shell'
 import { Plus, Link2, Trash2, ExternalLink as ExternalLinkIcon, Upload, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 function detectLinkType(url: string): string {
   const u = url.toLowerCase()
@@ -75,7 +76,7 @@ export default function ExternalLinksPage() {
     const doSync = async () => {
       for (const link of links) {
         if (link.sync_status !== 'syncing') {
-          try { await syncLink(link.id) } catch { /* skip failed syncs */ }
+          try { await syncLink(link.id) } catch (e) { logger.error('Failed to auto-sync link', e) /* skip failed syncs */ }
         }
       }
     }
@@ -113,6 +114,7 @@ export default function ExternalLinksPage() {
         try {
           await importFile(projectId!, sourcePath)
         } catch (err) {
+          logger.error('Failed to import file from drag-drop', err)
           console.error('Import failed:', sourcePath, err)
         }
       }
@@ -180,7 +182,7 @@ export default function ExternalLinksPage() {
   }, [projectId, title, url, linkDescription, linkType, apiToken, isNewLink, currentLink, createLink, updateLink, setCurrentLink])
 
   const handleOpenUrl = useCallback(async (linkUrl: string) => {
-    try { await open(linkUrl) } catch { window.open(linkUrl, '_blank') }
+    try { await open(linkUrl) } catch (e) { logger.error('Failed to open URL', e); window.open(linkUrl, '_blank') }
   }, [])
 
   const confirmDelete = useCallback((link: ExternalLink) => setDeleteTarget(link), [])
@@ -208,6 +210,7 @@ export default function ExternalLinksPage() {
         await importFile(projectId, path)
         console.log('[file-import] imported:', path)
       } catch (e) {
+        logger.error('Failed to import file', e)
         console.error('[file-import] Failed:', path, e)
       }
     }
@@ -276,6 +279,7 @@ export default function ExternalLinksPage() {
       const path = await getFilePath(projectId, currentFile.file_name)
       await invoke('open_in_system', { filePath: path })
     } catch (e) {
+      logger.error('Failed to open file', e)
       console.error('Failed to open file:', e)
     }
   }, [projectId, currentFile, getFilePath])
@@ -635,6 +639,7 @@ export default function ExternalLinksPage() {
                         }
                         await fetchFiles(projectId!)
                       } catch (err) {
+                        logger.error('Failed to re-extract text', err)
                         console.error('重新提取失败:', err)
                       }
                     }}

@@ -70,7 +70,15 @@ func main() {
 			serverApi.POST("/projects/:pid/invite/rotate", inviteH.RotateInvite)
 			serverApi.GET("/projects/:pid/members", inviteH.ListMembers)
 			serverApi.DELETE("/projects/:pid/members/:client_id", inviteH.RemoveMember)
-			serverApi.DELETE("/projects/:pid/articles/:aid", articleH.Delete)
+			serverApi.PUT("/projects/:pid/info", inviteH.UpdateProjectInfo)
+		}
+
+		// Delete article (Server Key or JWT)
+		sharedApi := api.Group("")
+		sharedApi.Use(middleware.ServerKeyOrAuthMiddleware(cfg))
+		sharedApi.Use(middleware.MemberCheckMiddleware(db))
+		{
+			sharedApi.DELETE("/projects/:pid/articles/:aid", articleH.Delete)
 		}
 
 		// Article read/write (JWT token — both owner and members)
@@ -81,8 +89,8 @@ func main() {
 			memberApi.GET("/projects/:pid/articles", articleH.List)
 			memberApi.POST("/projects/:pid/articles", articleH.Create)
 			memberApi.PUT("/projects/:pid/articles/:aid", articleH.Update)
+			memberApi.GET("/projects/:pid/info", inviteH.GetProjectInfo)
 			memberApi.GET("/projects/:pid/invite-code", inviteH.GetInviteJWT)
-			memberApi.PUT("/projects/:pid/info", inviteH.UpdateProjectInfo)
 		}
 
 		// Member self-service (JWT auth but no state check — handlers do their own)

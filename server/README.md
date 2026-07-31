@@ -42,6 +42,7 @@ ZELL_PORT=8080 ZELL_DATA_DIR=./mydata ./zell-server
 | `GET` | `/api/v1/projects/:pid/invite-code` | JWT | 获取邀请码（JWT） |
 | `POST` | `/api/v1/projects/:pid/invite/rotate` | Server Key | 轮换邀请码 |
 | `PUT` | `/api/v1/projects/:pid/info` | Server Key | 更新项目名称/描述 |
+| `GET` | `/api/v1/projects/:pid/info` | JWT | 获取项目名称/描述 |
 | `GET` | `/api/v1/projects/:pid/members` | Server Key | 成员列表 |
 | `DELETE` | `/api/v1/projects/:pid/members/:client_id` | Server Key | 踢出成员 |
 | `POST` | `/api/v1/projects/:pid/leave` | JWT | Member 主动退出 |
@@ -50,7 +51,7 @@ ZELL_PORT=8080 ZELL_DATA_DIR=./mydata ./zell-server
 | `GET` | `/api/v1/projects/:pid/articles` | JWT | 文章列表 |
 | `POST` | `/api/v1/projects/:pid/articles` | JWT | 创建文章 |
 | `PUT` | `/api/v1/projects/:pid/articles/:aid` | JWT | 更新文章 |
-| `DELETE` | `/api/v1/projects/:pid/articles/:aid` | JWT + Server Key | 删除文章 |
+| `DELETE` | `/api/v1/projects/:pid/articles/:aid` | Server Key 或 JWT | 删除文章（Owner 或 Member 均可） |
 | `WS` | `/ws/:pid/:aid?token=<jwt>` | JWT | Yjs 实时协作连接 |
 
 ---

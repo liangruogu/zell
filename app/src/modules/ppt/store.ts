@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Editor } from '@tiptap/core'
 import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager'
+import { logger } from '@/lib/logger'
 import type { Slide, CanvasElement, PptData } from './types'
 
 function clone(slides: Slide[]): Slide[] {
@@ -258,7 +259,7 @@ export const usePptStore = create<PptState>((set, get) => ({
     const slide = slides.find(s => s.id === currentSlideId)
     if (!slide || selectedIds.length === 0) return
     const elements = slide.elements.filter(e => selectedIds.includes(e.id))
-    try { await writeText('ZELL_ELEMENTS:' + JSON.stringify(clone(elements))) } catch {}
+    try { await writeText('ZELL_ELEMENTS:' + JSON.stringify(clone(elements))) } catch (e) { logger.error('Failed to write clipboard', e) }
   },
   pasteElements: async (): Promise<boolean> => {
     const { slides, currentSlideId } = get()
@@ -279,7 +280,7 @@ export const usePptStore = create<PptState>((set, get) => ({
           return true
         }
       }
-    } catch {}
+    } catch (e) { logger.error('Failed to paste elements from clipboard', e) }
     return false
   },
   setResizing: (v: boolean) => { _isResizing = v },

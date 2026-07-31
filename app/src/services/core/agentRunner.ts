@@ -2,6 +2,7 @@ import { ChatOpenAI } from '@langchain/openai'
 import { HumanMessage, SystemMessage, AIMessage, AIMessageChunk } from '@langchain/core/messages'
 import { tool } from '@langchain/core/tools'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { logger } from '@/lib/logger'
 
 export interface AgentToolCall {
   toolCallId: string
@@ -31,7 +32,7 @@ export async function runAgent(
 ) {
   const providersRaw = useSettingsStore.getState().settings['ai_providers']
   let providers: Array<{ id: string; name: string; baseUrl: string; apiKey: string; model: string }> = []
-  try { providers = JSON.parse(providersRaw || '[]') } catch { /* empty */ }
+  try { providers = JSON.parse(providersRaw || '[]') } catch (e) { logger.error('Failed to parse AI providers', e) }
 
   const activeId = useSettingsStore.getState().settings['ai_active_provider']
   const prov = activeId
@@ -121,6 +122,7 @@ export async function runAgent(
           const matchedTool = config.tools.find(t => t.name === tc.name)
           entry.result = matchedTool ? await matchedTool.invoke(tc.args) : 'Tool not found'
         } catch (e: any) {
+          logger.error('Tool execution failed', e)
           entry.result = `Error: ${e.message}`
         }
         callbacks.onToolResult?.(entry)
@@ -133,6 +135,7 @@ export async function runAgent(
         } as any)
       }
     } catch (e: any) {
+      logger.error('Agent run failed', e)
       if (e.name === 'AbortError') return
       callbacks.onError?.(`请求失败: ${e.message || String(e)}`)
       return

@@ -7,13 +7,14 @@ import type { CanvasElement } from './types'
 import { useRichText } from './elements/RichTextEditor'
 import { renderRichTextHTML } from './elements/RichTextEditor'
 import { toggleListInJSON, hasListInJSON, removeListFromJSON } from './elements/TextElement'
+import { logger } from '@/lib/logger'
 
 const SCRUB = { threshold: 3, speed: 1 }
 
 // recent color palette — persisted to localStorage
 const STORAGE_KEY = 'zell_recent_colors'
 function loadRecentColors(): string[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch { return [] }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch (e) { logger.error('Failed to load recent colors', e); return [] }
 }
 function saveRecentColors() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(recentColors))
@@ -824,7 +825,7 @@ function FontSelect({ value, onChange }: { value: string; onChange: (v: string) 
   const label = value || builtin[0]
 
   useEffect(() => {
-    invoke<string[]>('list_system_fonts').then(setSysFonts).catch(() => {})
+    invoke<string[]>('list_system_fonts').then(setSysFonts).catch((e) => { logger.error('Failed to list system fonts', e) })
   }, [])
 
   useEffect(() => {

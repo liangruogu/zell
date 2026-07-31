@@ -14,6 +14,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
 import { Plus, FileText, Trash2, FileOutput, Search, X, ListTree, ChevronRight, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 type ListTab = 'files' | 'outline'
 
@@ -67,7 +68,7 @@ export default function KnowledgeBasePage() {
     const [editorMd, setEditorMd] = useState('')
     const psCollab = parseProjectSettings(useProjectStore(s => s.currentProject?.settings) || '{}')
     const isCollab = !!(psCollab.token || psCollab.serverKey)
-    const [serverOnline, setServerOnline] = useState(!isCollab)
+    const [serverOnline, setServerOnline] = useState(true)
 
     useEffect(() => {
         if (projectId) {
@@ -133,7 +134,7 @@ export default function KnowledgeBasePage() {
             method: isNew ? 'POST' : 'PUT',
             headers,
             body: JSON.stringify({ id: aid, project_id: projectId, title, content, content_json: contentJson }),
-        }).catch(() => { })
+        }).catch((e) => { logger.error('Failed to sync article to server', e) })
     }, [projectId])
 
     // Listen for server article change broadcasts via WebSocket + initial sync
@@ -172,7 +173,7 @@ export default function KnowledgeBasePage() {
                         } else {
                             alert('访问被拒绝，即将返回首页')
                         }
-                    } catch { alert('访问被拒绝，即将返回首页') }
+                    } catch (e) { logger.error('Failed to parse 403 response', e); alert('访问被拒绝，即将返回首页') }
                     deleteProject(projectId!)
                     window.location.href = '/'
                     return
@@ -191,10 +192,18 @@ export default function KnowledgeBasePage() {
                     if (existing) {
                         // Update content if server has newer version
                         if (srv.content && srv.content !== existing.content) {
-                            try { await store.updateArticle(srv.id, srv.title || existing.title, srv.content, srv.content_json) } catch { /* ignore */ }
+                            try { await store.updateArticle(srv.id, srv.title || existing.title, srv.content, srv.content_json) } catch (e) { logger.error('Failed to update synced article', e) /* ignore */ }
                         }
                     } else {
-                        try { await store.createArticle(projectId, srv.title || '', srv.content || '', undefined, srv.id, srv.content_json) } catch { /* already exists */ }
+                        try { await store.createArticle(projectId, srv.title || '', srv.content || '', undefined, srv.id, srv.content_json) } catch (e) { logger.error('Failed to create synced article', e) /* already exists */ }
+                    }
+                }
+
+                // Delete local articles no longer on server
+                const serverIds = new Set(serverArticles.map((a: any) => a.id))
+                for (const la of localArticles) {
+                    if (!serverIds.has(la.id)) {
+                        try { await store.deleteArticle(la.id) } catch (e) { logger.error('Failed to delete synced article', e) }
                     }
                 }
 
@@ -205,7 +214,7 @@ export default function KnowledgeBasePage() {
                 if (cur && !serverArticles.some((a: any) => a.id === cur.id)) {
                     useKnowledgeStore.getState().setCurrentArticle(null)
                 }
-            } catch { setServerOnline(false) }
+            } catch (e) { logger.error('Failed to sync articles from server', e); setServerOnline(false) }
         }
         syncFromServer()
 
@@ -223,6 +232,7 @@ export default function KnowledgeBasePage() {
             ws = new WebSocket(wsUrl)
             ws.onopen = () => {
                 console.log('[sync] WS connected')
+                setServerOnline(true)
                 syncFromServer()
                 // Pull offline notifications on reconnect
                 if (token && serverUrl && projectId) {
@@ -233,7 +243,7 @@ export default function KnowledgeBasePage() {
                                 if (n.type === 'removed' || n.type === 'collab_disabled' || n.type === 'project_deleted') {
                                     const msg = n.type === 'project_deleted' ? '项目已被管理员删除'
                                         : n.type === 'collab_disabled' ? '协作已被管理员关闭'
-                                        : '你已被移出项目'
+                                            : '你已被移出项目'
                                     alert(msg + '，即将返回首页')
                                     deleteProject(projectId!)
                                     window.location.href = '/'
@@ -244,7 +254,7 @@ export default function KnowledgeBasePage() {
                     })
                 }
             }
-            ws.onerror = () => {}
+            ws.onerror = () => { }
             ws.onclose = () => {
                 setServerOnline(false)
                 useSyncStore.getState().setReadOnly(true)
@@ -274,6 +284,11 @@ export default function KnowledgeBasePage() {
                         return
                     }
                     if (msg.type && msg.type.startsWith('article_')) {
+                        // If this is an update to the article we're editing, skip —
+                        // Yjs WebSocket already handles real-time sync for it.
+                        if (msg.type === 'article_updated' && msg.data?.id && msg.data.id === useKnowledgeStore.getState().currentArticle?.id) {
+                            return
+                        }
                         syncFromServer()
                     }
                     if (msg.type === 'project_updated') {
@@ -286,7 +301,7 @@ export default function KnowledgeBasePage() {
                             })
                         }
                     }
-                } catch { /* not JSON */ }
+                } catch (e) { logger.error('Failed to parse WebSocket message', e) /* not JSON */ }
             }
         }
         connect()
@@ -301,7 +316,7 @@ export default function KnowledgeBasePage() {
 
     const handleCreate = useCallback(async () => {
         if (!projectId || !newTitle.trim()) return
-        const mdContent = `# ${newTitle.trim()}\n\n开始编写内容...`
+        const mdContent = ""
         const article = await createArticle(projectId, newTitle.trim(), mdContent)
         setNewTitle('')
         setShowCreate(false)
@@ -341,6 +356,7 @@ export default function KnowledgeBasePage() {
         try {
             await invoke('export_article', { markdown: article.content, outputPath, format })
         } catch (e: any) {
+            logger.error('Failed to export article', e)
             alert(`导出失败: ${e}\n\n请确认已安装 Pandoc：https://pandoc.org/installing.html`)
         }
     }, [])
@@ -355,9 +371,36 @@ export default function KnowledgeBasePage() {
 
     const handleDelete = useCallback(async () => {
         if (!deleteTarget) return
+        const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
+        const serverUrl = ps.serverUrl
+        const token = ps.token
+        const serverKey = ps.serverKey
+        if (serverUrl && projectId) {
+            const headers: Record<string, string> = {}
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`
+            } else if (serverKey) {
+                headers['X-Server-Key'] = serverKey
+            }
+            if (headers['Authorization'] || headers['X-Server-Key']) {
+                try {
+                    const res = await fetch(`${serverUrl}/api/v1/projects/${projectId}/articles/${deleteTarget.id}`, {
+                        method: 'DELETE',
+                        headers,
+                    })
+                    if (!res.ok) {
+                        logger.error('Server failed to delete article', new Error(`HTTP ${res.status}`))
+                        return
+                    }
+                } catch (e) {
+                    logger.error('Failed to delete article on server', e)
+                    return
+                }
+            }
+        }
         await deleteArticle(deleteTarget.id)
         setDeleteTarget(null)
-    }, [deleteTarget, deleteArticle])
+    }, [deleteTarget, deleteArticle, projectId])
 
     // Drag-and-drop file import
     const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -595,7 +638,7 @@ export default function KnowledgeBasePage() {
                                 content={currentArticle.content}
                                 contentJson={
                                     currentArticle.content_json && currentArticle.content_json !== '{}'
-                                        ? (() => { try { return JSON.parse(currentArticle.content_json) } catch { return null } })()
+                                        ? (() => { try { return JSON.parse(currentArticle.content_json) } catch (e) { logger.error('Failed to parse article content JSON', e); return null } })()
                                         : null
                                 }
                                 editable={!isCollab || serverOnline}

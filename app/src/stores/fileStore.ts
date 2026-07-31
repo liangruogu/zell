@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ProjectFile } from '@/types/share'
 import { invoke } from '@tauri-apps/api/core'
+import { logger } from '@/lib/logger'
 
 interface FileState {
   files: ProjectFile[]
@@ -28,7 +29,7 @@ export const useFileStore = create<FileState>((set) => ({
     try {
       const files = await invoke<ProjectFile[]>('get_project_files', { projectId })
       set({ files, loading: false })
-    } catch { set({ loading: false }) }
+    } catch (e) { logger.error('Failed to fetch files', e); set({ loading: false }) }
   },
 
   importFile: async (projectId, sourcePath) => {

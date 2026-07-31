@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Project } from '@/types/project'
 import { invoke } from '@tauri-apps/api/core'
+import { logger } from '@/lib/logger'
 
 interface ProjectState {
   projects: Project[]
@@ -43,6 +44,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const projects = await invoke<Project[]>('get_projects')
       set({ projects, loading: false })
     } catch (e) {
+      logger.error('Failed to fetch projects', e)
       set({ error: String(e), loading: false })
     }
   },
@@ -53,6 +55,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const project = await invoke<Project>('get_project', { id })
       set({ currentProject: project, loading: false })
     } catch (e) {
+      logger.error('Failed to fetch project', e)
       set({ error: String(e), loading: false })
     }
   },
@@ -66,7 +69,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       icon: '',
       settings: data.settings || '{}',
     })
-    set((state) => ({ projects: [project, ...state.projects] }))
+    set((state) => {
+      const idx = state.projects.findIndex((p) => p.id === project.id)
+      if (idx >= 0) {
+        const next = [...state.projects]
+        next[idx] = project
+        return { projects: next }
+      }
+      return { projects: [project, ...state.projects] }
+    })
     return project
   },
 

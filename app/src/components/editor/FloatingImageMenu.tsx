@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { type Editor } from '@tiptap/react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface FloatingImageMenuProps {
   editor: Editor
@@ -96,7 +97,7 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
     }
 
     let dom: HTMLElement
-    try { dom = editor.view.dom } catch { return }
+    try { dom = editor.view.dom } catch (e) { logger.error('FloatingImageMenu: failed to access editor dom', e); return }
     dom.addEventListener('contextmenu', contextMenuHandler)
     document.addEventListener('click', closeHandler)
     return () => {
@@ -131,7 +132,8 @@ export function FloatingImageMenu({ editor }: FloatingImageMenuProps) {
       await navigator.clipboard.write([
         new ClipboardItem({ [blob.type]: blob }),
       ])
-    } catch {
+    } catch (e) {
+      logger.error('FloatingImageMenu: failed to copy image via clipboard', e)
       navigator.clipboard.writeText(imgSrc)
     }
   }, [imgSrc])

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Whiteboard } from '@/types/whiteboard'
 import { invoke } from '@tauri-apps/api/core'
+import { logger } from '@/lib/logger'
 
 interface WhiteboardState {
   whiteboards: Whiteboard[]
@@ -25,7 +26,8 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
     try {
       const boards = await invoke<Whiteboard[]>('get_whiteboards', { projectId })
       set({ whiteboards: boards, loading: false })
-    } catch (e: any){
+    } catch (e: any) {
+      logger.error('Failed to fetch whiteboards', e)
       set({ loading: false })
     }
   },

@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger'
+
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']
 
 const IMAGE_PATH_RE = new RegExp(
@@ -25,7 +27,7 @@ export function extractImagePaths(text: string): ImageFileRef[] {
     if (seen.has(raw)) continue
     seen.add(raw)
     let filePath = raw.replace(/^file:\/\//, '')
-    try { filePath = decodeURIComponent(filePath) } catch { /* keep as-is */ }
+    try { filePath = decodeURIComponent(filePath) } catch (e) { logger.error('Failed to decode URI component', e) }
     const ext = filePath.split('.').pop()?.toLowerCase() || ''
     if (!IMAGE_EXTS.includes(ext)) continue
     results.push({ path: filePath, raw })
@@ -43,7 +45,7 @@ export function clipboardDataToText(data: DataTransfer | null): string {
   const types = data.types
   if (types) {
     for (const t of types) {
-      try { parts.push(data.getData(t)) } catch { /* data may not be readable */ }
+      try { parts.push(data.getData(t)) } catch (e) { logger.error('Failed to read clipboard data', e) }
     }
   }
   // Also try DataTransferItem.getAsString for platforms where getData returns empty

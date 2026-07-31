@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { logger } from '@/lib/logger'
 import { useForm } from 'react-hook-form'
 
 interface SettingsFormData {
@@ -53,7 +54,7 @@ export default function SettingsPage() {
           editorDefaultMode: parsed.defaultMode || 'wysiwyg',
         }
       }
-    } catch { /* ignore */ }
+    } catch (e) { logger.error('Failed to parse editor preferences', e) /* ignore */ }
     try {
       const ai = aiConfig ? JSON.parse(aiConfig) : {}
       reset({
@@ -67,7 +68,8 @@ export default function SettingsPage() {
         serverUrl: serverUrl || '',
         ...editorData,
       })
-    } catch {
+    } catch (e) {
+      logger.error('Failed to parse AI config settings', e)
       // ignore parse errors
     }
   }, [settings, reset])

@@ -1,7 +1,6 @@
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import type * as Y from 'yjs'
 
 interface CursorUser { name: string; color: string }
 
@@ -29,7 +28,7 @@ export function createCursorExtension(getAwareness: () => any, getClientId: () =
             },
           },
           view(editorView) {
-            const update = () => {
+            const buildDecorations = () => {
               const awareness = getAwareness()
               const clientId = getClientId()
               if (!awareness) return
@@ -47,20 +46,43 @@ export function createCursorExtension(getAwareness: () => any, getClientId: () =
                 const color = user.color || '#999'
 
                 const span = document.createElement('span')
-                span.className = 'collab-cursor'
-                span.style.borderLeft = `2px solid ${color}`
+                span.className = 'collaboration-cursor__caret'
+                span.style.cssText = `
+                  border-left: 1.5px solid ${color};
+                  border-right: 1.5px solid ${color};
+                  margin-left: -1px;
+                  margin-right: -1px;
+                  position: relative;
+                  word-break: normal;
+                  pointer-events: none;
+                  display: inline;
+                `
 
                 const label = document.createElement('span')
+                label.className = 'collaboration-cursor__label'
                 label.textContent = name
                 label.style.cssText = `
-                  position:absolute;top:-1.2em;left:-1px;font-size:10px;line-height:1;
-                  padding:1px 4px;border-radius:3px 3px 3px 0;white-space:nowrap;
-                  background:${color};color:#fff;pointer-events:none;
+                  position: absolute;
+                  top: -1.4em;
+                  left: -1px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  line-height: 1;
+                  padding: 1px 4px;
+                  border-radius: 3px 3px 3px 0;
+                  white-space: nowrap;
+                  background: ${color};
+                  color: #fff;
+                  user-select: none;
+                  pointer-events: none;
                 `
                 span.appendChild(label)
 
-                decos.push(Decoration.widget(pos, () => span, {
+                const size = editorView.state.doc.content.size
+                const safePos = Math.max(0, Math.min(pos, size))
+                decos.push(Decoration.widget(safePos, () => span, {
                   key: `cursor-${remoteId}`,
+                  side: -1,
                 }))
               })
 
@@ -69,15 +91,38 @@ export function createCursorExtension(getAwareness: () => any, getClientId: () =
               )
             }
 
+            const onBlur = () => {
+              const aw = getAwareness()
+              if (aw) aw.setLocalStateField('cursor', null)
+            }
+            editorView.dom.addEventListener('blur', onBlur)
+
             const awareness = getAwareness()
             if (awareness) {
-              awareness.on('change', update)
-              update()
+              awareness.on('change', buildDecorations)
+              buildDecorations()
             }
 
             return {
+              update(view, prevState) {
+                const sel = view.state.selection
+                if (!prevState.selection.eq(sel)) {
+                  const aw = getAwareness()
+                  if (aw) {
+                    aw.setLocalStateField('cursor', {
+                      anchor: sel.anchor,
+                      head: sel.head,
+                    })
+                  }
+                }
+              },
               destroy: () => {
-                if (awareness) awareness.off('change', update)
+                editorView.dom.removeEventListener('blur', onBlur)
+                const aw = getAwareness()
+                if (aw) {
+                  aw.setLocalStateField('cursor', null)
+                  aw.off('change', buildDecorations)
+                }
               },
             }
           },

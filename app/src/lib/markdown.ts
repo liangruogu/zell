@@ -2,6 +2,7 @@ import TurndownService from 'turndown'
 import { gfm } from 'turndown-plugin-gfm'
 import { marked } from 'marked'
 import katex from 'katex'
+import { logger } from '@/lib/logger'
 
 const turndown = new TurndownService({
   headingStyle: 'atx',
@@ -75,7 +76,8 @@ export function htmlToMarkdown(html: string): string {
     let result = turndown.turndown(html)
     result = result.replace(/```(\w*)\n([\s\S]*?)\n+```/g, '```$1\n$2\n```')
     return result
-  } catch {
+  } catch (e) {
+    logger.error('Failed to convert HTML to markdown', e)
     return html
   }
 }
@@ -95,7 +97,8 @@ function escapeText(s: string): string {
 function renderKatex(latex: string, display: boolean): string {
   try {
     return katex.renderToString(latex, { displayMode: display, throwOnError: false })
-  } catch {
+  } catch (e) {
+    logger.error('Failed to render katex', e)
     return `<span style="color:#ef4444">${escapeText(latex)}</span>`
   }
 }
@@ -135,7 +138,8 @@ export function markdownToHtml(md: string): string {
     }
 
     return html
-  } catch {
+  } catch (e) {
+    logger.error('Failed to convert markdown to HTML', e)
     return md
   }
 }
@@ -175,7 +179,8 @@ export function markdownToPreviewHtml(md: string): string {
     }
 
     return html
-  } catch {
+  } catch (e) {
+    logger.error('Failed to render markdown preview', e)
     return md
   }
 }

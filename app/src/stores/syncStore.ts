@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { logger } from '@/lib/logger'
 
 interface SyncState {
   serverUrl: string
@@ -44,7 +45,7 @@ export const useSyncStore = create<SyncState>((set) => ({
       if (!res.ok) return
       const data = await res.json()
       set({ notifications: data.notifications || [] })
-    } catch { /* ignore */ }
+    } catch (e) { logger.error('Failed to pull notifications', e); /* ignore */ }
   },
 
   pullStatus: async (projectId, token, serverUrl) => {
@@ -54,6 +55,6 @@ export const useSyncStore = create<SyncState>((set) => ({
       })
       const data = await res.json()
       return data
-    } catch { return null }
+    } catch (e) { logger.error('Failed to pull status', e); return null }
   },
 }))

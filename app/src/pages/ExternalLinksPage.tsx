@@ -12,6 +12,7 @@ import { Plus, PenTool, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PptCanvas } from '@/modules/ppt/PptCanvas'
 import type { PptData } from '@/modules/ppt/types'
+import { logger } from '@/lib/logger'
 
 export default function WhiteboardPage() {
   const { id: projectId } = useParams<{ id: string }>()
@@ -43,7 +44,7 @@ export default function WhiteboardPage() {
   // Load PPT data from whiteboard snapshot
   useEffect(() => {
     if (currentWhiteboard?.wb_type === 'ppt' && currentWhiteboard.snapshot) {
-      try { setPptData(JSON.parse(currentWhiteboard.snapshot)) } catch { setPptData({ slides: [] }) }
+      try { setPptData(JSON.parse(currentWhiteboard.snapshot)) } catch (e) { logger.error('Failed to parse whiteboard snapshot', e); setPptData({ slides: [] }) }
     } else if (currentWhiteboard?.wb_type === 'ppt') {
       setPptData({ slides: [] })
     } else {
@@ -54,7 +55,7 @@ export default function WhiteboardPage() {
   const handlePptChange = useCallback((data: PptData) => {
     if (!currentWhiteboard) return
     const json = JSON.stringify(data)
-    invoke('save_whiteboard_snapshot', { id: currentWhiteboard.id, snapshot: json }).catch(console.error)
+    invoke('save_whiteboard_snapshot', { id: currentWhiteboard.id, snapshot: json }).catch((e) => { logger.error('Failed to save whiteboard snapshot', e); console.error(e) })
     setCurrentWhiteboard({ ...currentWhiteboard, snapshot: json })
   }, [currentWhiteboard])
 
@@ -117,7 +118,7 @@ export default function WhiteboardPage() {
                   <div className="text-center">
                     <PenTool size={48} strokeWidth={1} className="mx-auto mb-3" />
                     <p className="text-lg">{currentWhiteboard.name}</p>
-                    <p className="text-sm mt-1">{currentWhiteboard.wb_type} canvas ¡ª coming soon</p>
+                    <p className="text-sm mt-1">{currentWhiteboard.wb_type} canvas ï¿½ï¿½ coming soon</p>
                   </div>
                 </div>
               )

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useSyncStore } from '@/stores/syncStore'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 import { Play, Square } from 'lucide-react'
 
 interface ServerManagerProps {
@@ -26,7 +27,7 @@ export function ServerManager({ onSave }: ServerManagerProps) {
 
   // Get local IP
   useEffect(() => {
-    invoke<string>('get_local_ip').then(setLocalIp).catch(() => setLocalIp('未知'))
+    invoke<string>('get_local_ip').then(setLocalIp).catch((e) => { logger.error('ServerManager: failed to get local IP', e); setLocalIp('未知') })
   }, [])
 
   // Poll server status from Rust backend
@@ -36,7 +37,7 @@ export function ServerManager({ onSave }: ServerManagerProps) {
         const s = await invoke<{ running: boolean; pid: number | null }>('get_server_status')
         setLocalRunning(s.running)
         setServerRunning(s.running)
-      } catch { /* ignore */ }
+      } catch (e) { logger.error('ServerManager: failed to get server status', e); /* ignore */ }
     }
     poll()
     pollRef.current = setInterval(poll, 3000)
@@ -55,7 +56,8 @@ export function ServerManager({ onSave }: ServerManagerProps) {
         setStatus('offline')
         setConnected(false)
       }
-    } catch {
+    } catch (e) {
+      logger.error('ServerManager: failed to check server health', e)
       setStatus('offline')
       setConnected(false)
     }
@@ -103,6 +105,7 @@ export function ServerManager({ onSave }: ServerManagerProps) {
         checkHealth(url)
       }, 1500)
     } catch (err) {
+      logger.error('ServerManager: failed to start server', err)
       console.error('[server] start failed:', err)
       alert(String(err))
     } finally {
@@ -120,6 +123,7 @@ export function ServerManager({ onSave }: ServerManagerProps) {
       setServerRunning(false)
       setStatus('idle')
     } catch (err) {
+      logger.error('ServerManager: failed to stop server', err)
       console.error('[server] stop failed:', err)
     } finally {
       setStopping(false)

@@ -8,6 +8,7 @@ import { Color } from '@tiptap/extension-color'
 import { Highlight } from '@tiptap/extension-highlight'
 import { generateHTML } from '@tiptap/html'
 import { usePptStore } from '../store'
+import { logger } from '@/lib/logger'
 
 const extensions = [
   StarterKit.configure({
@@ -206,7 +207,8 @@ export function renderRichTextHTML(content: any): string {
     const fixed = html.replaceAll('<p></p>', '<p><br /></p>')
     htmlCache.set(content, fixed)
     return fixed
-  } catch {
+  } catch (e) {
+    logger.error('Failed to generate HTML from content', e)
     return ''
   }
 }

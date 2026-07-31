@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { readText } from '@tauri-apps/plugin-clipboard-manager'
+import { logger } from '@/lib/logger'
 import { PptToolbar } from './PptToolbar'
 import { SlideStrip } from './SlideStrip'
 import { CanvasViewport } from './CanvasViewport'
@@ -46,7 +47,7 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
           })
           // Re-enter fullscreen if previewing (focus lost during paste)
           if (st._previewing) {
-            const reenter = () => getCurrentWindow().setFullscreen(true).catch(() => {})
+            const reenter = () => getCurrentWindow().setFullscreen(true).catch((e) => { logger.error('Failed to set fullscreen', e) })
             requestAnimationFrame(reenter)
             setTimeout(reenter, 20)
             setTimeout(reenter, 50)
@@ -98,7 +99,8 @@ export function PptCanvas({ data, onDataChange }: PptCanvasProps) {
           div.focus()
           requestAnimationFrame(() => { document.execCommand('paste') })
         }
-      }).catch(() => {
+      }).catch((e) => {
+        logger.error('Failed to read clipboard text', e)
         div.innerHTML = ''
         div.focus()
         requestAnimationFrame(() => { document.execCommand('paste') })

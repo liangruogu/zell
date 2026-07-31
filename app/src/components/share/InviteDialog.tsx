@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
@@ -45,7 +46,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
     if (!/^https?:\/\//i.test(serverUrl)) { setJoinMessage('服务器地址格式错误'); setJoining(false); return }
     try {
       try { await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) }) }
-      catch { setJoinMessage('无法连接到服务器'); setJoining(false); return }
+      catch (e) { logger.error('InviteDialog: failed to connect to server for health check', e); setJoinMessage('无法连接到服务器'); setJoining(false); return }
       const res = await fetch(`${serverUrl}/api/v1/projects/${projectId || '0'}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,7 +75,8 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
                   role: 'member',
                 }),
               })
-            } catch {
+            } catch (e) {
+              logger.error('InviteDialog: failed to create project after joining', e)
               // Project might already exist, fetch it
               await useProjectStore.getState().fetchProject(realPid)
               proj = useProjectStore.getState().currentProject
@@ -111,6 +113,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
         setJoinMessage('加入失败')
       }
     } catch (e: any) {
+      logger.error('InviteDialog: failed to join project', e)
       if (e?.name === 'AbortError') { setJoinMessage('请求超时') }
       else { setJoinMessage('无法连接服务器') }
     }

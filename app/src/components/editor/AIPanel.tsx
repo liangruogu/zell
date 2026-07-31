@@ -3,6 +3,7 @@ import { useAIStore } from '@/stores/aiStore'
 import { sendMessage, getProviders, getActiveProviderId } from '@/services/aiService'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 import { markdownToHtml } from '@/lib/markdown'
 import { useProjectStore } from '@/stores/projectStore'
 import hljs from 'highlight.js/lib/core'
@@ -57,7 +58,7 @@ function renderMarkdown(content: string): string {
     }
     try {
       hljs.highlightElement(block as HTMLElement)
-    } catch { /* unsupported language */ }
+    } catch (e) { logger.error('AIPanel: failed to highlight code block', e); /* unsupported language */ }
   })
   return div.innerHTML
 }

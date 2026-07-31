@@ -18,6 +18,40 @@ pub fn create_project(
     let id = id.unwrap_or_else(|| Uuid::now_v7().to_string());
     let now = Utc::now().to_rfc3339();
 
+    let existing: Option<Project> = conn
+        .query_row(
+            "SELECT id, name, description, background, icon, settings, created_at, updated_at, deleted_at FROM projects WHERE id = ?1",
+            rusqlite::params![id],
+            |row| {
+                Ok(Project {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    background: row.get(3)?,
+                    icon: row.get(4)?,
+                    settings: row.get(5)?,
+                    created_at: row.get(6)?,
+                    updated_at: row.get(7)?,
+                    deleted_at: row.get(8)?,
+                })
+            },
+        )
+        .ok();
+
+    if let Some(existing) = existing {
+        conn.execute(
+            "UPDATE projects SET settings = ?1, updated_at = ?2, deleted_at = NULL WHERE id = ?3",
+            rusqlite::params![settings, now, id],
+        )
+        .map_err(|e| e.to_string())?;
+
+        return Ok(Project {
+            updated_at: now,
+            deleted_at: None,
+            ..existing
+        });
+    }
+
     // Auto-suffix duplicate names
     let mut final_name = name.clone();
     let mut suffix = 1;
@@ -118,6 +152,17 @@ pub fn update_project(
 ) -> Result<Project, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
+
+    let exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) > 0 FROM projects WHERE name = ?1 AND id != ?2 AND deleted_at IS NULL",
+            rusqlite::params![name, id],
+            |row| row.get(0),
+        )
+        .unwrap_or(false);
+    if exists {
+        return Err(format!("项目名称 \"{}\" 已存在", name));
+    }
 
     conn.execute(
         "UPDATE projects SET name = ?1, description = ?2, background = ?3, icon = ?4, settings = ?5, updated_at = ?6 WHERE id = ?7",

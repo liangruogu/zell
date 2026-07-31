@@ -19,6 +19,7 @@ import { EditorToolbar } from './EditorToolbar'
 import { FloatingImageMenu } from './FloatingImageMenu'
 import { TableToolbar } from './TableToolbar'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
 import { MathExtension } from '@/lib/mathExtension'
 import { MathInlineNode, MathDisplayNode } from '@/lib/mathNodes'
@@ -103,7 +104,8 @@ export function MarkdownEditor({
                     document.head.appendChild(styleEl)
                 }
                 styleEl.textContent = css
-            } catch {
+            } catch (e) {
+                logger.error('MarkdownEditor: failed to load theme', e)
                 document.documentElement.removeAttribute('data-zell-theme')
                 document.documentElement.removeAttribute('data-zell-custom-theme')
             }
@@ -143,12 +145,20 @@ export function MarkdownEditor({
         })
         collabProviderRef.current = provider
         // Set user info for cursor awareness
-        const displayName = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').displayName || 'Anonymous'
-        const userColor = '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0')
+        const settings = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
+        const displayName = settings.displayName || (settings.serverKey ? 'Owner' : 'Anonymous')
+        const colors = ['#958DF1','#F98181','#FBBC88','#FAF594','#70CFF8','#94FADB','#B9F18D','#C3E2C2','#EEC759','#9BB8CD','#FF90BC','#7ED7C1','#D0BFFF','#9BABB8']
+        const userColor = colors[Math.floor(Math.random() * colors.length)]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
         requestAnimationFrame(() => setCollabKey(k => k + 1))
         return () => {
-            try { provider.disconnect() } catch {}
+            provider.awareness.setLocalStateField('cursor', null)
+            try {
+                const ws = (provider as any).ws as WebSocket | undefined
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    provider.disconnect()
+                }
+            } catch (e) { logger.error('MarkdownEditor: failed to disconnect collaboration provider', e) }
             collabYDocRef.current = null
             collabProviderRef.current = null
         }
@@ -183,6 +193,7 @@ export function MarkdownEditor({
             setJustSaved(true)
             setTimeout(() => setJustSaved(false), 2000)
         } catch (e: any) {
+            logger.error('MarkdownEditor: failed to export article', e)
             alert(`导出失败: ${e}`)
         }
     }, [content])
@@ -218,7 +229,7 @@ export function MarkdownEditor({
             try {
                 const parsed = typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
                 return parsed
-            } catch { /* fall through */ }
+            } catch (e) { logger.error('MarkdownEditor: failed to parse content json', e); /* fall through */ }
         }
         const html = markdownToHtml(content || '')
         return html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
@@ -263,7 +274,7 @@ export function MarkdownEditor({
             MathExtension,
             createCursorExtension(
                 () => collabProviderRef.current?.awareness,
-                () => collabYDocRef.current?.clientID ?? 0
+                () => collabProviderRef.current?.awareness?.clientID ?? 0
             ),
             trimCodeBlockPlugin,
             markdownLinkPlugin,
@@ -301,7 +312,7 @@ export function MarkdownEditor({
     useEffect(() => {
         if (!editor) return
         let dom: HTMLElement
-        try { dom = editor.view.dom } catch { return }
+        try { dom = editor.view.dom } catch (e) { logger.error('MarkdownEditor: failed to access editor dom', e); return }
         const keyHandler = (e: KeyboardEvent) => {
             if (!editor.isEditable) return
             if (!editor.isActive('heading')) return

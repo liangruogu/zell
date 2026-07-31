@@ -42,6 +42,7 @@ func (db *DB) migrateProjects() error {
 	}
 	// Add columns that may be missing from older DBs
 	db.conn.Exec(`ALTER TABLE projects ADD COLUMN name TEXT DEFAULT ''`)
+	db.conn.Exec(`ALTER TABLE projects ADD COLUMN description TEXT DEFAULT ''`)
 	db.conn.Exec(`ALTER TABLE projects ADD COLUMN owner_token TEXT DEFAULT ''`)
 	db.conn.Exec(`ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'`)
 	db.conn.Exec(`ALTER TABLE project_members ADD COLUMN status TEXT DEFAULT 'active'`)
@@ -74,6 +75,7 @@ func (db *DB) SetCollabEnabled(projectID string, enabled bool, ownerToken string
 
 func (db *DB) GetProject(projectID string) (*struct {
 	Name            string
+	Description     string
 	CollabEnabled   bool
 	InviteCode      string
 	InviteUpdatedAt string
@@ -82,21 +84,22 @@ func (db *DB) GetProject(projectID string) (*struct {
 }, error) {
 	db.EnsureProject(projectID)
 	var enabled int
-	var code, updatedAt, ownerToken, name, status string
+	var code, updatedAt, ownerToken, name, description, status string
 	err := db.conn.QueryRow(
-		`SELECT COALESCE(name,''), collab_enabled, invite_code, invite_updated_at, COALESCE(owner_token,''), COALESCE(status,'active') FROM projects WHERE id = ?`, projectID,
-	).Scan(&name, &enabled, &code, &updatedAt, &ownerToken, &status)
+		`SELECT COALESCE(name,''), COALESCE(description,''), collab_enabled, invite_code, invite_updated_at, COALESCE(owner_token,''), COALESCE(status,'active') FROM projects WHERE id = ?`, projectID,
+	).Scan(&name, &description, &enabled, &code, &updatedAt, &ownerToken, &status)
 	if err != nil {
 		return nil, err
 	}
 	return &struct {
 		Name            string
+		Description     string
 		CollabEnabled   bool
 		InviteCode      string
 		InviteUpdatedAt string
 		OwnerToken      string
 		Status          string
-	}{name, enabled == 1, code, updatedAt, ownerToken, status}, nil
+	}{name, description, enabled == 1, code, updatedAt, ownerToken, status}, nil
 }
 
 func (db *DB) SetCollabDeleted(projectID string) error {

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { useEffect } from 'react'
 import type { Editor } from '@tiptap/react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
@@ -48,7 +49,7 @@ export function useEditorDragDrop({ editorRef, insertImage }: UseEditorDragDropP
           const base64 = toBase64(bytes)
           const dataUrl = `data:${mime};base64,${base64}`
           insertImage(dataUrl, filePath)
-        }).catch(() => { })
+        }).catch((e) => { logger.error('useEditorDragDrop: failed to read dropped image file', e) })
       }
     })
     return () => { promise.then((fn) => fn()) }

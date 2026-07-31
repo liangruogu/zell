@@ -83,9 +83,70 @@ func ServerKeyMiddleware(key string) gin.HandlerFunc {
 	}
 }
 
+func ServerKeyOrAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+	jwtSecret := []byte(cfg.JWTSecret)
+	serverKey := cfg.ServerKey
+	return func(c *gin.Context) {
+		if sk := c.GetHeader("X-Server-Key"); sk != "" && sk == serverKey {
+			c.Next()
+			return
+		}
+
+		auth := c.GetHeader("Authorization")
+		if auth == "" {
+			auth = c.Query("token")
+			if auth != "" {
+				auth = "Bearer " + auth
+			}
+		}
+
+		tokenStr := strings.TrimPrefix(auth, "Bearer ")
+		if tokenStr == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+			c.Abort()
+			return
+		}
+
+		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+			return jwtSecret, nil
+		})
+		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.Abort()
+			return
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid claims"})
+			c.Abort()
+			return
+		}
+
+		sub, _ := claims["sub"].(string)
+		pid, _ := claims["project_id"].(string)
+
+		c.Set("session", &Session{
+			ClientID:    sub,
+			ProjectID:   pid,
+			DisplayName: sub,
+		})
+		c.Next()
+	}
+}
+
 func MemberCheckMiddleware(db *repository.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		session := c.MustGet("session").(*Session)
+		sessionVal, exists := c.Get("session")
+		if !exists {
+			// Server Key auth — skip member check
+			c.Next()
+			return
+		}
+		session := sessionVal.(*Session)
 		pid := c.Param("pid")
 
 		proj, err := db.GetProject(pid)

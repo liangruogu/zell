@@ -90,6 +90,19 @@ func (h *InviteHandler) CollabToggle(c *gin.Context) {
 	})
 }
 
+func (h *InviteHandler) GetProjectInfo(c *gin.Context) {
+	pid := c.Param("pid")
+	proj, err := h.db.GetProject(pid)
+	if err != nil || proj == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"name":        proj.Name,
+		"description": proj.Description,
+	})
+}
+
 func (h *InviteHandler) UpdateProjectInfo(c *gin.Context) {
 	pid := c.Param("pid")
 	var req struct {
