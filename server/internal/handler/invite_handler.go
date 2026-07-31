@@ -169,6 +169,31 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		displayName = req.ClientID[:8]
 	}
 
+	// Already a member? Return token directly
+	if isMember, _ := h.db.IsMember(realPID, req.ClientID); isMember {
+		log.Printf("[join] client=%s already member, returning token", displayName)
+		projectName := realPID[:8]
+		if proj, _ := h.db.GetProject(realPID); proj != nil {
+			projectName = proj.Name
+		}
+		claims := jwt.MapClaims{
+			"sub":        req.ClientID,
+			"project_id": realPID,
+			"iat":        time.Now().Unix(),
+			"exp":        time.Now().Add(365 * 24 * time.Hour).Unix(),
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenStr, _ := token.SignedString(h.jwtSecret)
+		c.JSON(http.StatusOK, gin.H{
+			"status":       "approved",
+			"project_id":   realPID,
+			"project_name": projectName,
+			"token":        tokenStr,
+			"display_name": displayName,
+		})
+		return
+	}
+
 	// Check display name uniqueness
 	nameExists, _ := h.db.IsDisplayNameTaken(realPID, displayName)
 	if nameExists {
