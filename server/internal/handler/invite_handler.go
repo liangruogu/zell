@@ -90,6 +90,27 @@ func (h *InviteHandler) CollabToggle(c *gin.Context) {
 	})
 }
 
+func (h *InviteHandler) UpdateProjectInfo(c *gin.Context) {
+	pid := c.Param("pid")
+	var req struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+	if err := h.db.UpdateProjectInfo(pid, req.Name, req.Description); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	h.hub.BroadcastProject(pid, "project_updated", gin.H{
+		"name":        req.Name,
+		"description": req.Description,
+	})
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 func (h *InviteHandler) GetInvite(c *gin.Context) {
 	pid := c.Param("pid")
 	proj, err := h.db.GetProject(pid)

@@ -107,6 +107,11 @@ func (db *DB) SetCollabDeleted(projectID string) error {
 	return err
 }
 
+func (db *DB) UpdateProjectInfo(projectID, name, description string) error {
+	_, err := db.conn.Exec(`UPDATE projects SET name = ?, description = ? WHERE id = ?`, name, description, projectID)
+	return err
+}
+
 func (db *DB) RotateInviteCode(projectID string) (string, error) {
 	code := generateCode(projectID)
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -145,7 +150,7 @@ func (db *DB) AddMember(projectID, clientID, displayName string) error {
 func (db *DB) IsMember(projectID, clientID string) (bool, error) {
 	var count int
 	err := db.conn.QueryRow(
-		`SELECT COUNT(*) FROM project_members WHERE project_id = ? AND client_id = ?`,
+		`SELECT COUNT(*) FROM project_members WHERE project_id = ? AND client_id = ? AND COALESCE(status,'active') = 'active'`,
 		projectID, clientID).Scan(&count)
 	return count > 0, err
 }

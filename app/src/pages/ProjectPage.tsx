@@ -301,6 +301,15 @@ export default function ProjectPage() {
             name: editName, description: editDesc, background: editBg,
             settings: stringifyProjectSettings(oldSettings),
         })
+        // Sync to server if sharing
+        if (sharingEnabled && serverOnline && serverUrl) {
+            const key = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').serverKey
+            fetch(`${serverUrl}/api/v1/projects/${id}/info`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-Server-Key': key || '' },
+                body: JSON.stringify({ name: editName, description: editDesc }),
+            }).catch(() => {})
+        }
         setShowEdit(false)
     }
 
@@ -321,7 +330,7 @@ export default function ProjectPage() {
                 actions={
                     <>
                         <Button variant="outline" size="sm" onClick={() => setShowEdit(true)}
-                            disabled={isMember || readOnly} title={isMember ? '协作者不能修改项目配置' : readOnly ? '服务器离线，请关闭共享后编辑' : '编辑项目'}>
+                            disabled={isMember || (sharingEnabled && !serverOnline)} title={isMember ? '协作者不能修改项目配置' : (sharingEnabled && !serverOnline) ? '服务器离线，请关闭共享后编辑' : '编辑项目'}>
                             <Edit3 size={14} /> 编辑
                         </Button>
                         {isMember ? (
