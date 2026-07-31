@@ -41,11 +41,10 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
     setJoinNameError('')
     setJoinMessage('')
     const clientId = getJoinClientId()
+    if (!serverUrl) { setJoinMessage('请先配置服务器地址'); setJoining(false); return }
     try {
-      if (serverUrl) {
-        try { await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) }) }
-        catch { setJoinMessage('无法连接到服务器'); setJoining(false); return }
-      }
+      try { await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) }) }
+      catch { setJoinMessage('无法连接到服务器'); setJoining(false); return }
       const res = await fetch(`${serverUrl}/api/v1/projects/${projectId || '0'}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,9 +65,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
             ps.token = data.token
             ps.displayName = data.display_name
             ps.serverUrl = serverUrl
-            // Immediate in-memory update
             useProjectStore.getState().setCurrentProject({ ...proj, settings: stringifyProjectSettings(ps) })
-            // Persist to backend
             useProjectStore.getState().updateProject(proj.id, {
               name: proj.name,
               description: proj.description,
@@ -83,6 +80,8 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
             setJoinDisplayName('')
             setJoinMessage('')
           }, 1500)
+        } else if (data.status === 'already_member') {
+          setJoinMessage('你已是该项目成员，无需重复加入')
         }
       } else if (res.status === 409) {
         setJoinNameError('此名称已被占用，请换一个')
