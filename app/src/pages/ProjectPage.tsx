@@ -363,6 +363,16 @@ export default function ProjectPage() {
                                     <button
                                         onClick={() => {
                                             if (!sharingEnabled) {
+                                                const proj = useProjectStore.getState().currentProject
+                                                const ps = proj ? parseProjectSettings(proj.settings) : {}
+                                                if (ps.serverUrl && ps.serverKey) {
+                                                    setServerInputUrl(ps.serverUrl)
+                                                    setServerKey(ps.serverKey)
+                                                    setSharingEnabled(true)
+                                                    // Auto-connect since we have saved credentials
+                                                    handleToggleSharing(true)
+                                                    return
+                                                }
                                                 setSharingEnabled(true)
                                             } else {
                                                 if (!confirm('确定关闭协作吗？所有成员将被移出项目。')) return
