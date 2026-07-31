@@ -50,7 +50,7 @@ export default function HomePage() {
     }
   }, [])
 
-  const handleJoin = useCallback(async () => {
+   const handleJoin = useCallback(async () => {
     if (!joinCode.trim() || !joinServerUrl.trim() || !joinDisplayName.trim()) return
     setJoining(true)
     setJoinStatus('连接中...')
@@ -70,55 +70,16 @@ export default function HomePage() {
         return
       }
       const data = await res.json()
-      if (data.status === 'rejected') {
-        setJoinStatus('申请已被拒绝')
+      if (data.status === 'already_member') {
+        setJoinStatus('你已是该项目成员')
         setJoining(false)
         return
       }
-      if (data.status === 'pending') {
-        setJoinStatus('等待管理员审批...')
-        joinPollRef.current = setInterval(async () => {
-          try {
-            const pollRes = await fetch(`${joinServerUrl}/api/v1/projects/join`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim(), poll: true }),
-            })
-            if (!pollRes.ok) return
-            const pollData = await pollRes.json()
-            if (pollData.status === 'rejected' || pollData.status === 'expired') {
-              clearPoll()
-              setJoinStatus('申请已被拒绝')
-              setJoining(false)
-              return
-            }
-            if (pollData.status !== 'pending') {
-              clearPoll()
-              await createProject({
-                id: pollData.project_id,
-                name: `${pollData.project_name || pollData.project_id.slice(0, 8)} (协作)`,
-                description: '',
-                background: '',
-                settings: JSON.stringify({
-                  serverUrl: joinServerUrl,
-                  token: pollData.token,
-                  displayName: joinDisplayName.trim(),
-                  role: 'member',
-                }),
-              })
-              // Sync articles from server
-              syncArticles(joinServerUrl, pollData.project_id, pollData.token)
-              setShowJoin(false)
-              setJoinCode('')
-              setJoinServerUrl('')
-              setJoinDisplayName('')
-              setJoinStatus('')
-            }
-          } catch { /* server might be down, keep polling */ }
-        }, 3000)
+      if (data.status !== 'approved') {
+        setJoinStatus('加入失败')
+        setJoining(false)
         return
       }
-      // Already approved — create/sync local project with server's ID
       await createProject({
         id: data.project_id,
         name: `${data.project_name || data.project_id.slice(0, 8)} (协作)`,
@@ -128,6 +89,7 @@ export default function HomePage() {
           serverUrl: joinServerUrl,
           token: data.token,
           displayName: joinDisplayName.trim(),
+          role: 'member',
         }),
       })
       syncArticles(joinServerUrl, data.project_id, data.token)
@@ -135,9 +97,10 @@ export default function HomePage() {
       setJoinCode('')
       setJoinServerUrl('')
       setJoinDisplayName('')
+      setJoining(false)
+      setJoinStatus('')
     } catch {
-      alert('无法连接服务器')
-    } finally {
+      setJoinStatus('无法连接服务器')
       setJoining(false)
     }
   }, [joinCode, joinServerUrl, joinDisplayName, createProject])

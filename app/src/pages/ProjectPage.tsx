@@ -131,11 +131,16 @@ export default function ProjectPage() {
         return () => clearTimeout(t)
     }, [serverToast])
 
-    const handleToggleSharing = useCallback(async (enable: boolean) => {
+     const handleToggleSharing = useCallback(async (enable: boolean) => {
         const key = serverKey.trim()
         if (enable) {
             const url = serverInputUrl.trim()
             if (!url || !id || !currentProject || !key) return
+            if (!/^https?:\/\//i.test(url)) {
+              alert('服务器地址格式不正确，需要以 http:// 或 https:// 开头')
+              setConnecting(false)
+              return
+            }
             setConnecting(true)
             setConnectFailed(false)
             try {

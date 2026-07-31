@@ -42,6 +42,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
     setJoinMessage('')
     const clientId = getJoinClientId()
     if (!serverUrl) { setJoinMessage('请先配置服务器地址'); setJoining(false); return }
+    if (!/^https?:\/\//i.test(serverUrl)) { setJoinMessage('服务器地址格式错误'); setJoining(false); return }
     try {
       try { await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) }) }
       catch { setJoinMessage('无法连接到服务器'); setJoining(false); return }
