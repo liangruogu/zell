@@ -225,7 +225,10 @@ func (h *InviteHandler) Join(c *gin.Context) {
 	isRejected, err := h.db.IsRejected(realPID, req.ClientID)
 	if err == nil && isRejected {
 		log.Printf("[join] client=%s was previously rejected", displayName)
-		c.JSON(http.StatusForbidden, gin.H{"error": "申请已被拒绝"})
+		c.JSON(http.StatusOK, gin.H{
+			"status":     "rejected",
+			"project_id": realPID,
+		})
 		return
 	}
 

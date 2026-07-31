@@ -130,17 +130,15 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim() }),
         })
-        if (!res.ok) {
-          if (res.status === 403) {
-            if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null }
-            clearJoinState(joinCode)
-            setJoinStatus('idle')
-            setJoinMessage('申请已被拒绝')
-            setJoinCode('')
-          }
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.status === 'rejected') {
+          if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null }
+          clearJoinState(joinCode)
+          setJoinStatus('idle')
+          setJoinMessage('申请已被拒绝')
           return
         }
-        const data = await res.json()
         if (data.status !== 'pending') {
           if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null }
           clearJoinState(joinCode)
@@ -181,15 +179,20 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: name }),
       })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.status === 'pending') {
-          setJoinStatus('pending')
-          setJoinMessage('申请已提交，等待管理员审批...')
-          setJoinState(joinCode, { pending: true, projectId: data.project_id })
-          startPolling(data.project_id)
-          return
-        }
+        if (res.ok) {
+          const data = await res.json()
+          if (data.status === 'pending') {
+            setJoinStatus('pending')
+            setJoinMessage('申请已提交，等待管理员审批...')
+            setJoinState(joinCode, { pending: true, projectId: data.project_id })
+            startPolling(data.project_id)
+            return
+          }
+          if (data.status === 'rejected') {
+            setJoinStatus('idle')
+            setJoinMessage('申请已被拒绝')
+            return
+          }
         clearJoinState(joinCode)
         const proj = useProjectStore.getState().currentProject
         if (proj && data.token) {
