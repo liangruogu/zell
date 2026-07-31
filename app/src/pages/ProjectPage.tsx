@@ -109,7 +109,7 @@ export default function ProjectPage() {
         const jwtH = { 'Authorization': `Bearer ${parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').token || ''}` }
         try {
             const [invRes, memRes, penRes] = await Promise.all([
-                fetch(`${serverUrl}/api/v1/projects/${id}/invite`, { headers: jwtH, signal: AbortSignal.timeout(3000) }),
+                fetch(`${serverUrl}/api/v1/projects/${id}/invite-code`, { headers: jwtH, signal: AbortSignal.timeout(3000) }),
                 fetch(`${serverUrl}/api/v1/projects/${id}/members`, { headers: h, signal: AbortSignal.timeout(3000) }),
                 fetch(`${serverUrl}/api/v1/projects/${id}/pending`, { headers: h, signal: AbortSignal.timeout(3000) }),
             ])
