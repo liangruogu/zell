@@ -12,6 +12,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { Collaboration } from '@tiptap/extension-collaboration'
+import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { common, createLowlight } from 'lowlight'
@@ -241,6 +242,13 @@ export function MarkdownEditor({
             TaskItem.configure({ nested: true }),
             StarterKit.configure({ codeBlock: false, link: false }),
             ...(collabYDocRef.current ? [Collaboration.configure({ document: collabYDocRef.current, field: 'content' })] : []),
+            ...(collabYDocRef.current ? [CollaborationCursor.configure({
+                provider: collabProviderRef.current as any,
+                user: {
+                    name: parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').displayName || 'Anonymous',
+                    color: '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0'),
+                },
+            })] : []),
             Image.configure({ allowBase64: true, inline: false }),
             Table.configure({ resizable: true }),
             TableRow, TableCell, TableHeader,
