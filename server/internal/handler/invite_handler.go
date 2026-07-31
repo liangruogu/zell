@@ -1,23 +1,26 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"time"
 
+	"zell-server/internal/middleware"
 	"zell-server/internal/repository"
+	"zell-server/internal/ws"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("zell-secret-change-me")
-
 type InviteHandler struct {
-	db *repository.DB
+	db        *repository.DB
+	jwtSecret []byte
+	hub       *ws.Hub
 }
 
-func NewInviteHandler(db *repository.DB) *InviteHandler {
-	return &InviteHandler{db: db}
+func NewInviteHandler(db *repository.DB, jwtSecret string, hub *ws.Hub) *InviteHandler {
+	return &InviteHandler{db: db, jwtSecret: []byte(jwtSecret), hub: hub}
 }
 
 func (h *InviteHandler) CollabToggle(c *gin.Context) {
@@ -25,21 +28,66 @@ func (h *InviteHandler) CollabToggle(c *gin.Context) {
 	var req struct {
 		Enabled    bool   `json:"enabled"`
 		OwnerToken string `json:"owner_token"`
+		Name       string `json:"name"`
+		Deleted    bool   `json:"deleted"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	if err := h.db.SetCollabEnabled(pid, req.Enabled, req.OwnerToken); err != nil {
+	if err := h.db.SetCollabEnabled(pid, req.Enabled, req.OwnerToken, req.Name); err != nil {
+		log.Printf("[CollabToggle] SetCollabEnabled error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	proj, _ := h.db.GetProject(pid)
+	if req.Deleted {
+		memberIDs, err := h.db.ListMemberIDs(pid)
+		if err == nil {
+			for _, mid := range memberIDs {
+				h.db.CreateNotification(pid, mid, "project_deleted", "{}")
+			}
+		}
+		h.db.RemoveAllMembers(pid)
+		h.db.SetCollabDeleted(pid)
+		h.hub.BroadcastProject(pid, "project_deleted", gin.H{"project_id": pid})
+	}
+
+	if !req.Enabled && !req.Deleted {
+		memberIDs, err := h.db.ListMemberIDs(pid)
+		if err == nil {
+			for _, mid := range memberIDs {
+				h.db.CreateNotification(pid, mid, "collab_disabled", "{}")
+			}
+		}
+		h.db.RemoveAllMembers(pid)
+		h.hub.BroadcastProject(pid, "collab_disabled", gin.H{"project_id": pid})
+	}
+
+	proj, err := h.db.GetProject(pid)
+	if err != nil || proj == nil {
+		log.Printf("[CollabToggle] GetProject error: %v, proj: %v", err, proj)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get project"})
+		return
+	}
+
+	var ownerJWT string
+	if req.Enabled {
+		claims := jwt.MapClaims{
+			"sub":        req.OwnerToken,
+			"project_id": pid,
+			"iat":        time.Now().Unix(),
+			"exp":        time.Now().Add(365 * 24 * time.Hour).Unix(),
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		ownerJWT, _ = token.SignedString(h.jwtSecret)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"collab_enabled": req.Enabled,
 		"invite_code":    proj.InviteCode,
+		"token":          ownerJWT,
 	})
 }
 
@@ -101,6 +149,35 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		displayName = req.ClientID[:8]
 	}
 
+	// If already an approved member, return token directly
+	isMember, err := h.db.IsMember(realPID, req.ClientID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check membership"})
+		return
+	}
+	if isMember {
+		projectName := realPID[:8]
+		if proj, err := h.db.GetProject(realPID); err == nil {
+			projectName = proj.Name
+		}
+		claims := jwt.MapClaims{
+			"sub":        req.ClientID,
+			"project_id": realPID,
+			"iat":        time.Now().Unix(),
+			"exp":        time.Now().Add(365 * 24 * time.Hour).Unix(),
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenStr, _ := token.SignedString(h.jwtSecret)
+		c.JSON(http.StatusOK, gin.H{
+			"status":       "approved",
+			"project_id":   realPID,
+			"project_name": projectName,
+			"token":        tokenStr,
+			"display_name": displayName,
+		})
+		return
+	}
+
 	// Add to pending — owner must approve
 	if err := h.db.AddPending(realPID, req.ClientID, displayName); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add pending request"})
@@ -128,10 +205,14 @@ func (h *InviteHandler) ListMembers(c *gin.Context) {
 func (h *InviteHandler) RemoveMember(c *gin.Context) {
 	pid := c.Param("pid")
 	clientID := c.Param("client_id")
+	if err := h.db.CreateNotification(pid, clientID, "removed", "{}"); err != nil {
+		log.Printf("[invite] notification write error: %v", err)
+	}
 	if err := h.db.RemoveMember(pid, clientID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.BroadcastProject(pid, "member_removed", gin.H{"client_id": clientID})
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -180,10 +261,13 @@ func (h *InviteHandler) ApprovePending(c *gin.Context) {
 		"exp":        time.Now().Add(365 * 24 * time.Hour).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, _ := token.SignedString(jwtSecret)
+	tokenStr, _ := token.SignedString(h.jwtSecret)
 
 	// Add to members
 	h.db.AddMember(pid, clientID, displayName)
+
+	// Write notification for offline member
+	h.db.CreateNotification(pid, clientID, "approved", `{}`)
 
 	c.JSON(http.StatusOK, gin.H{
 		"ok":           true,
@@ -195,9 +279,96 @@ func (h *InviteHandler) ApprovePending(c *gin.Context) {
 func (h *InviteHandler) RejectPending(c *gin.Context) {
 	pid := c.Param("pid")
 	clientID := c.Param("client_id")
+
+	pending, _ := h.db.ListPending(pid)
+	var displayName string
+	for _, p := range pending {
+		if p.ClientID == clientID {
+			displayName = p.DisplayName
+			break
+		}
+	}
+
+	if err := h.db.CreateNotification(pid, clientID, "rejected", `{}`); err != nil {
+		log.Printf("[invite] notification write error: %v", err)
+	}
 	if err := h.db.RemovePending(pid, clientID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	h.hub.BroadcastProject(pid, "member_rejected", gin.H{"client_id": clientID, "display_name": displayName})
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *InviteHandler) Leave(c *gin.Context) {
+	pid := c.Param("pid")
+	session := c.MustGet("session").(*middleware.Session)
+	clientID := session.ClientID
+
+	if err := h.db.RemoveMember(pid, clientID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.hub.BroadcastProject(pid, "member_left", gin.H{"client_id": clientID})
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *InviteHandler) Notifications(c *gin.Context) {
+	pid := c.Param("pid")
+	session := c.MustGet("session").(*middleware.Session)
+	clientID := session.ClientID
+
+	notifs, err := h.db.GetNotifications(clientID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.db.MarkNotificationsRead(clientID)
+	h.db.CleanupOldNotifications()
+
+	var filtered []repository.Notification
+	for _, n := range notifs {
+		if n.ProjectID == pid {
+			filtered = append(filtered, n)
+		}
+	}
+	if filtered == nil {
+		filtered = []repository.Notification{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"notifications": filtered})
+}
+
+func (h *InviteHandler) Status(c *gin.Context) {
+	pid := c.Param("pid")
+	session := c.MustGet("session").(*middleware.Session)
+	clientID := session.ClientID
+
+	proj, err := h.db.GetProject(pid)
+	if err != nil || proj == nil {
+		c.JSON(http.StatusGone, gin.H{"project_status": "deleted", "collab_enabled": false, "member_status": "removed"})
+		return
+	}
+
+	memberStatus, err := h.db.GetMemberStatus(pid, clientID)
+	if err != nil {
+		memberStatus = "removed"
+	}
+
+	httpStatus := http.StatusOK
+	if proj.Status == "deleted" {
+		httpStatus = http.StatusGone
+	} else if !proj.CollabEnabled || memberStatus != "active" {
+		httpStatus = http.StatusForbidden
+	}
+
+	c.JSON(httpStatus, gin.H{
+		"project_status": proj.Status,
+		"collab_enabled": proj.CollabEnabled,
+		"member_status":  memberStatus,
+	})
 }
