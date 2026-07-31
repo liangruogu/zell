@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSyncStore } from '@/stores/syncStore'
@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
 import { Textarea } from '@/components/ui/Textarea'
 import { format } from '@/lib/format'
-import { Trash2, Edit3, Users, Copy, X, Check } from 'lucide-react'
+import { Trash2, Edit3, Users, Copy, X, Check, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PublishSettings } from '@/components/project/PublishSettings'
 import { parseProjectSettings, stringifyProjectSettings } from '@/types/project'
@@ -20,6 +20,7 @@ export default function ProjectPage() {
     const { currentProject, fetchProject, updateProject, deleteProject, setCurrentProject } = useProjectStore()
     const [showEdit, setShowEdit] = useState(false)
     const [showDelete, setShowDelete] = useState(false)
+    const [showExit, setShowExit] = useState(false)
     const [editName, setEditName] = useState('')
     const [editDesc, setEditDesc] = useState('')
     const [editBg, setEditBg] = useState('')
@@ -27,6 +28,9 @@ export default function ProjectPage() {
     // Server management
     const { serverUrl, setServerUrl, setConnected, connected } = useSyncStore()
     const [settingsTab, setSettingsTab] = useState<'overview' | 'publish'>('overview')
+
+    const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
+    const isMember = ps.role === 'member'
     const [sharingEnabled, setSharingEnabled] = useState(false)
     const [serverInputUrl, setServerInputUrl] = useState('http://localhost:3000')
     const [serverKey, setServerKey] = useState('')
@@ -36,15 +40,18 @@ export default function ProjectPage() {
     const [members, setMembers] = useState<{ client_id: string; display_name: string; online: boolean }[]>([])
     const [pending, setPending] = useState<{ client_id: string; display_name: string; created_at: string }[]>([])
     const [serverOnline, setServerOnline] = useState(false)
+    const wasOnlineRef = useRef<boolean | null>(null)
+    const [showDisconnected, setShowDisconnected] = useState(false)
+    const [serverToast, setServerToast] = useState<string | null>(null)
 
     // Init from project settings
     useEffect(() => {
         if (currentProject) {
             const ps = parseProjectSettings(currentProject.settings)
             if (ps.serverUrl) setServerInputUrl(ps.serverUrl)
-            if (ps.ownerToken && ps.serverKey) {
+            if (ps.collabEnabled && ps.serverKey) {
                 setSharingEnabled(true)
-                setServerKey(ps.serverKey.trim())
+                setServerKey(ps.serverKey)
                 setServerUrl(ps.serverUrl || '')
                 setConnected(true)
             }
@@ -64,9 +71,32 @@ export default function ProjectPage() {
         }
     }, [currentProject, showEdit])
 
-    // Fetch collab data when sharing is active
+    // Fetch collab data and health check
     const fetchCollabData = useCallback(async () => {
         if (!sharingEnabled || !serverUrl || !id || !serverKey || !connected) return
+        try {
+            // Health check first
+            const healthRes = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) })
+            if (!healthRes.ok) throw new Error('unhealthy')
+        } catch {
+            // Server went offline
+            setServerOnline(false)
+            useSyncStore.getState().setReadOnly(true)
+            if (wasOnlineRef.current === true) {
+                setServerToast('服务器连接已断开，编辑已锁定')
+            }
+            wasOnlineRef.current = false
+            return
+        }
+        // Server is online
+        const wasPrev = wasOnlineRef.current
+        wasOnlineRef.current = true
+        setServerOnline(true)
+        setShowDisconnected(false)
+        useSyncStore.getState().setReadOnly(false)
+        if (wasPrev === false) setServerToast('服务器已恢复连接')
+
+        // Fetch collab data
         const h = { 'X-Server-Key': serverKey }
         try {
             const [invRes, memRes, penRes] = await Promise.all([
@@ -77,21 +107,18 @@ export default function ProjectPage() {
             if (invRes.ok) setInviteCode((await invRes.json()).invite_code || '')
             if (memRes.ok) setMembers((await memRes.json()) || [])
             if (penRes.ok) setPending((await penRes.json()) || [])
-            setServerOnline(true)
             useSyncStore.getState().setReadOnly(false)
-        } catch {
-            setServerOnline(false)
-            // Joined project: lock editing when server offline
-            if (currentProject) {
-                const ps = parseProjectSettings(currentProject.settings)
-                if (!ps.ownerToken) {
-                    useSyncStore.getState().setReadOnly(true)
-                }
-            }
-        }
-    }, [sharingEnabled, serverUrl, id, serverKey, connected])
+        } catch { /* collab API might fail, but health passed */ }
+    }, [sharingEnabled, serverUrl, id, serverKey, connected, isMember, navigate])
 
     useEffect(() => { fetchCollabData(); const t = setInterval(fetchCollabData, 5000); return () => clearInterval(t) }, [fetchCollabData])
+
+    // Toast auto-clear
+    useEffect(() => {
+        if (!serverToast) return
+        const t = setTimeout(() => setServerToast(null), 3000)
+        return () => clearTimeout(t)
+    }, [serverToast])
 
     const handleToggleSharing = useCallback(async (enable: boolean) => {
         const key = serverKey.trim()
@@ -107,7 +134,7 @@ export default function ProjectPage() {
             const res = await fetch(`${url}/api/v1/projects/${id}/collab`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Server-Key': key },
-                body: JSON.stringify({ enabled: true, owner_token: ownerToken }),
+                body: JSON.stringify({ enabled: true, owner_token: ownerToken, name: currentProject.name }),
             })
             if (!res.ok) {
                 const err = await res.json().catch(() => ({ error: '未知错误' }))
@@ -115,6 +142,7 @@ export default function ProjectPage() {
                 setConnecting(false); setSharingEnabled(false); return
             }
 
+            const collabData = await res.json()
             setServerUrl(url)
             setConnected(true)
             setConnecting(false)
@@ -122,7 +150,8 @@ export default function ProjectPage() {
             const ps = parseProjectSettings(currentProject.settings)
             ps.serverUrl = url
             ps.serverKey = key
-            ps.ownerToken = ownerToken
+            ps.token = collabData.token || ownerToken
+            ps.collabEnabled = true
             await updateProject(currentProject.id, {
                 name: currentProject.name, description: currentProject.description,
                 background: currentProject.background,
@@ -143,6 +172,14 @@ export default function ProjectPage() {
             setInviteCode('')
             setServerOnline(false)
             useSyncStore.getState().setReadOnly(false)
+            const ps = parseProjectSettings(currentProject!.settings)
+            ps.collabEnabled = false
+            ps.token = undefined
+            await updateProject(currentProject!.id, {
+                name: currentProject!.name, description: currentProject!.description,
+                background: currentProject!.background,
+                settings: stringifyProjectSettings(ps),
+            })
         }
     }, [serverInputUrl, id, currentProject, serverUrl, serverKey, setServerUrl, setConnected, updateProject, fetchCollabData])
 
@@ -178,8 +215,24 @@ export default function ProjectPage() {
 
     const handleDelete = async () => {
         if (!currentProject) return
+        // Notify server so members get kicked
+        const ps = parseProjectSettings(currentProject.settings)
+        if (ps.serverUrl && ps.serverKey) {
+            fetch(`${ps.serverUrl}/api/v1/projects/${currentProject.id}/collab`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Server-Key': ps.serverKey },
+                body: JSON.stringify({ enabled: false, deleted: true }),
+            }).catch(() => { })
+        }
         await deleteProject(currentProject.id)
         setShowDelete(false)
+        navigate('/')
+    }
+
+    const handleExit = async () => {
+        if (!currentProject) return
+        await deleteProject(currentProject.id)
+        setShowExit(false)
         navigate('/')
     }
 
@@ -209,12 +262,19 @@ export default function ProjectPage() {
                 backTo="/"
                 actions={
                     <>
-                        <Button variant="outline" size="sm" onClick={() => setShowEdit(true)}>
+                        <Button variant="outline" size="sm" onClick={() => setShowEdit(true)}
+                            disabled={isMember} title={isMember ? '协作者不能修改项目配置' : '编辑项目'}>
                             <Edit3 size={14} /> 编辑
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setShowDelete(true)}>
-                            <Trash2 size={14} className="text-red-500" />
-                        </Button>
+                        {isMember ? (
+                            <Button variant="ghost" size="sm" onClick={() => setShowExit(true)}>
+                                <LogOut size={14} className="text-orange-500" />
+                            </Button>
+                        ) : (
+                            <Button variant="ghost" size="sm" onClick={() => setShowDelete(true)}>
+                                <Trash2 size={14} className="text-red-500" />
+                            </Button>
+                        )}
                     </>
                 }
             />
@@ -226,16 +286,20 @@ export default function ProjectPage() {
                             settingsTab === 'overview' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
                         概览
                     </button>
+                    {(sharingEnabled && connected) && (
                     <button onClick={() => setSettingsTab('publish')}
                         className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
                             settingsTab === 'publish' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
                         发布
                     </button>
+                    )}
+                    {!isMember && (
                     <button onClick={() => setSettingsTab('settings')}
                         className={cn('w-full text-left px-3 py-1.5 rounded text-sm transition-colors',
                             settingsTab === 'settings' ? 'bg-zell-50 text-zell-700 font-medium' : 'text-gray-500 hover:bg-gray-50')}>
                         设置
                     </button>
+                    )}
                 </div>
 
                 {/* Right: Tab content */}
@@ -273,7 +337,7 @@ export default function ProjectPage() {
                                 )}
                             </Card>
 
-                            {/* Server Management */}
+                            {!isMember && (
                             <Card className="p-5">
                                 <div className="flex items-center justify-between">
                                     <h3 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -292,6 +356,7 @@ export default function ProjectPage() {
                                             if (!sharingEnabled) {
                                                 setSharingEnabled(true)
                                             } else {
+                                                if (!confirm('确定关闭协作吗？所有成员将被移出项目。')) return
                                                 handleToggleSharing(false)
                                                 setSharingEnabled(false)
                                             }
@@ -370,7 +435,10 @@ export default function ProjectPage() {
                                                                         <div className={m.online ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-gray-300'} />
                                                                         <span className="text-gray-700">{m.display_name}</span>
                                                                     </div>
-                                                                    <button onClick={() => handleKick(m.client_id)}
+                                                                    <button onClick={() => {
+                                                                        if (!confirm(`确定将 ${m.display_name} 移出项目吗？对方将失去所有编辑权限。`)) return
+                                                                        handleKick(m.client_id)
+                                                                    }}
                                                                         className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500" title="踢出">
                                                                         <X size={13} />
                                                                     </button>
@@ -388,11 +456,17 @@ export default function ProjectPage() {
                                                                 <div key={p.client_id} className="flex items-center justify-between py-1.5 px-2 rounded bg-amber-50 border border-amber-100 text-sm">
                                                                     <span className="text-gray-700">{p.display_name}</span>
                                                                     <div className="flex items-center gap-1">
-                                                                        <button onClick={() => handleApprove(p.client_id)}
+                                                                        <button onClick={() => {
+                                                                            if (!confirm(`确定通过 ${p.display_name} 的加入申请吗？`)) return
+                                                                            handleApprove(p.client_id)
+                                                                        }}
                                                                             className="p-1 rounded hover:bg-green-200 text-gray-400 hover:text-green-600" title="通过">
                                                                             <Check size={13} />
                                                                         </button>
-                                                                        <button onClick={() => handleReject(p.client_id)}
+                                                                        <button onClick={() => {
+                                                                            if (!confirm(`确定拒绝 ${p.display_name} 的加入申请吗？操作不可撤销。`)) return
+                                                                            handleReject(p.client_id)
+                                                                        }}
                                                                             className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500" title="拒绝">
                                                                             <X size={13} />
                                                                         </button>
@@ -407,6 +481,7 @@ export default function ProjectPage() {
                                     </div>
                                 )}
                             </Card>
+                            )}
                         </div>
                     ) : settingsTab === 'publish' ? (
                         <PublishSettings />
@@ -446,6 +521,41 @@ export default function ProjectPage() {
                     <Button variant="destructive" onClick={handleDelete}>确认删除</Button>
                 </div>
             </Dialog>
+
+            <Dialog open={showExit} onOpenChange={setShowExit} title="退出项目"
+                description="退出后项目将从本地删除，不再接收协作更新。确定退出吗？">
+                <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" onClick={() => setShowExit(false)}>取消</Button>
+                    <Button variant="destructive" onClick={handleExit}>确认退出</Button>
+                </div>
+            </Dialog>
+
+            {/* Server disconnect overlay — members only */}
+            {showDisconnected && isMember && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl p-8 max-w-sm text-center space-y-4">
+                        <p className="text-lg font-semibold text-gray-800">服务器连接已断开</p>
+                        {isMember ? (
+                            <>
+                                <p className="text-sm text-gray-500">协作者无法离线编辑，5秒后返回首页</p>
+                                <button onClick={() => navigate('/')}
+                                    className="px-4 py-2 bg-zell-500 text-white rounded-lg text-sm hover:bg-zell-600">
+                                    立即返回
+                                </button>
+                            </>
+                        ) : (
+                            <p className="text-sm text-gray-500">检测到连接后将自动恢复</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Server toast */}
+            {serverToast && (
+                <div className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-lg shadow text-sm bg-gray-800 text-white">
+                    {serverToast}
+                </div>
+            )}
         </AppShell>
     )
 }

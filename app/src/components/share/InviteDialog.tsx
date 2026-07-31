@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
-import { useSyncStore } from '@/stores/syncStore'
+import { useProjectStore } from '@/stores/projectStore'
+import { parseProjectSettings, stringifyProjectSettings } from '@/types/project'
 import { Copy, Trash2, Plus, Users } from 'lucide-react'
 
 interface InviteCode {
@@ -22,12 +23,17 @@ interface InviteDialogProps {
 }
 
 export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProps) {
-  const { serverUrl, token } = useSyncStore()
+  const currentProject = useProjectStore((s) => s.currentProject)
+  const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
+  const serverUrl = ps.serverUrl || ''
+  const token = ps.token || ''
   const [invites, setInvites] = useState<InviteCode[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [joinVisible, setJoinVisible] = useState(false)
+  const [joinStatus, setJoinStatus] = useState<'idle' | 'pending' | 'approved'>('idle')
+  const [joinMessage, setJoinMessage] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
 
   const fetchInvites = useCallback(async () => {
@@ -83,8 +89,24 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
       })
       if (res.ok) {
         const data = await res.json()
-        useSyncStore.getState().setToken(data.token)
-        useSyncStore.getState().setDisplayName(data.display_name)
+        if (data.status === 'pending') {
+          setJoinStatus('pending')
+          setJoinMessage(`申请已提交，等待管理员 "${data.project_id ? data.project_id.slice(0, 8) : '项目'}" 审批...`)
+          return
+        }
+        const proj = useProjectStore.getState().currentProject
+        if (proj) {
+          const ps = parseProjectSettings(proj.settings)
+          ps.token = data.token
+          ps.displayName = data.display_name
+          ps.role = 'owner'
+          useProjectStore.getState().updateProject(proj.id, {
+            name: proj.name,
+            description: proj.description,
+            background: proj.background,
+            settings: stringifyProjectSettings(ps),
+          })
+        }
         setJoinVisible(false)
         setJoinCode('')
       } else {
@@ -121,6 +143,11 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
               <Button size="sm" onClick={handleJoin} disabled={!joinCode.trim()}>
                 加入
               </Button>
+            </div>
+          )}
+          {joinStatus === 'pending' && (
+            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-700">
+              {joinMessage}
             </div>
           )}
         </div>
