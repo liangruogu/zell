@@ -1,7 +1,6 @@
 # Build outputs
-bindle-server.exe
-server/bindle-server.exe
-server/tmp/
+server/zell-server
+server/zell-server.exe
 server/data/
 
 # Rust
