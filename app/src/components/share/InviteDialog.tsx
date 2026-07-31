@@ -63,16 +63,22 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
           }
           // Create project if it doesn't exist locally
           if (!proj) {
-            proj = await useProjectStore.getState().createProject({
-              id: realPid,
-              name: data.project_name || realPid.slice(0, 8),
-              settings: JSON.stringify({
-                serverUrl,
-                token: data.token,
-                displayName: data.display_name,
-                role: 'member',
-              }),
-            })
+            try {
+              proj = await useProjectStore.getState().createProject({
+                id: realPid,
+                name: data.project_name || realPid.slice(0, 8),
+                settings: JSON.stringify({
+                  serverUrl,
+                  token: data.token,
+                  displayName: data.display_name,
+                  role: 'member',
+                }),
+              })
+            } catch {
+              // Project might already exist, fetch it
+              await useProjectStore.getState().fetchProject(realPid)
+              proj = useProjectStore.getState().currentProject
+            }
           }
           if (proj) {
             const ps = parseProjectSettings(proj.settings)
