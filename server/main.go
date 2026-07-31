@@ -1,7 +1,10 @@
 package main
 
 import (
+	"io"
 	"log"
+	"os"
+	"path/filepath"
 
 	"zell-server/internal/config"
 	"zell-server/internal/handler"
@@ -14,16 +17,24 @@ import (
 func main() {
 	cfg := config.Load()
 
+	// Log to file
+	logFile, err := os.OpenFile(filepath.Join(cfg.DataDir, "server.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err == nil {
+		log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+		gin.DefaultWriter = io.MultiWriter(os.Stdout, logFile)
+	}
+
 	db, err := repository.New(cfg.DBPath)
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 	defer db.Close()
 
-	articleH := handler.NewArticleHandler(db)
-	inviteH := handler.NewInviteHandler(db)
 	wsH := handler.NewWSHandler(db)
 	wsH.Start()
+
+	articleH := handler.NewArticleHandler(db, wsH.GetHub())
+	inviteH := handler.NewInviteHandler(db, cfg.JWTSecret, wsH.GetHub())
 
 	r := gin.Default()
 
@@ -46,11 +57,11 @@ func main() {
 
 	api := r.Group("/api/v1")
 	{
-	// Public: join project with invite code (with or without project ID)
-	api.POST("/projects/join", inviteH.Join)
-	api.POST("/projects/:pid/join", inviteH.Join)
+		// Public: join project with invite code (with or without project ID)
+		api.POST("/projects/join", inviteH.Join)
+		api.POST("/projects/:pid/join", inviteH.Join)
 
-	// Collab management (requires server key)
+		// Collab management (requires server key)
 		serverApi := api.Group("")
 		serverApi.Use(middleware.ServerKeyMiddleware(cfg.ServerKey))
 		{
@@ -62,11 +73,26 @@ func main() {
 			serverApi.GET("/projects/:pid/pending", inviteH.ListPending)
 			serverApi.POST("/projects/:pid/pending/:client_id/approve", inviteH.ApprovePending)
 			serverApi.POST("/projects/:pid/pending/:client_id/reject", inviteH.RejectPending)
-			// Article sync (desktop → server)
-			serverApi.GET("/projects/:pid/articles", articleH.List)
-			serverApi.POST("/projects/:pid/articles", articleH.Create)
-			serverApi.PUT("/projects/:pid/articles/:aid", articleH.Update)
 			serverApi.DELETE("/projects/:pid/articles/:aid", articleH.Delete)
+		}
+
+		// Article read/write (JWT token — both owner and members)
+		memberApi := api.Group("")
+		memberApi.Use(middleware.AuthMiddleware(cfg))
+		memberApi.Use(middleware.MemberCheckMiddleware(db))
+		{
+			memberApi.GET("/projects/:pid/articles", articleH.List)
+			memberApi.POST("/projects/:pid/articles", articleH.Create)
+			memberApi.PUT("/projects/:pid/articles/:aid", articleH.Update)
+		}
+
+		// Member self-service (JWT auth but no state check — handlers do their own)
+		selfApi := api.Group("")
+		selfApi.Use(middleware.AuthMiddleware(cfg))
+		{
+			selfApi.POST("/projects/:pid/leave", inviteH.Leave)
+			selfApi.GET("/projects/:pid/notifications", inviteH.Notifications)
+			selfApi.GET("/projects/:pid/status", inviteH.Status)
 		}
 	}
 
@@ -93,10 +119,11 @@ func main() {
 	}
 
 	if cfg.ServerKey != "" {
-		log.Printf("========== 服务器密钥 ==========")
+		log.Printf("========== 本次服务器密钥 ==========")
 		log.Printf("  %s", cfg.ServerKey)
-		log.Printf("  请妥善保存此密钥，填入 Zell 的项目服务器设置中即可使用")
-		log.Printf("=================================")
+		log.Printf("  此密钥仅本次启动有效，用于初次验证管理员身份")
+		log.Printf("  项目连接后获得的 token 永久有效，不受密钥变更影响")
+		log.Printf("=====================================")
 	}
 	log.Printf("Zell server starting on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
