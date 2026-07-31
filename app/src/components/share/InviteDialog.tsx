@@ -128,7 +128,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
         const res = await fetch(`${serverUrl}/api/v1/projects/${pid}/join`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim() }),
+          body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim(), poll: true }),
         })
         if (!res.ok) return
         const data = await res.json()
@@ -188,7 +188,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
             startPolling(data.project_id)
             return
           }
-          if (data.status === 'rejected') {
+        if (data.status === 'rejected' || data.status === 'expired') {
             setJoinStatus('idle')
             setJoinMessage('申请已被拒绝')
             return

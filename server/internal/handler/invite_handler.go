@@ -144,6 +144,7 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		Code        string `json:"code"`
 		ClientID    string `json:"client_id"`
 		DisplayName string `json:"display_name"`
+		Poll        bool   `json:"poll"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -213,6 +214,16 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		return
 	}
 
+	// If polling and not pending/not member → expired (was rejected)
+	if req.Poll && !isMember {
+		log.Printf("[join] client=%s poll expired (no longer pending)", displayName)
+		c.JSON(http.StatusOK, gin.H{
+			"status":     "expired",
+			"project_id": realPID,
+		})
+		return
+	}
+
 	// Check display name uniqueness
 	nameExists, err := h.db.IsDisplayNameTaken(realPID, displayName)
 	if err == nil && nameExists {
@@ -221,15 +232,11 @@ func (h *InviteHandler) Join(c *gin.Context) {
 		return
 	}
 
-	// Check if previously rejected
+	// Check if previously rejected — clear rejection and allow re-apply
 	isRejected, err := h.db.IsRejected(realPID, req.ClientID)
 	if err == nil && isRejected {
-		log.Printf("[join] client=%s was previously rejected", displayName)
-		c.JSON(http.StatusOK, gin.H{
-			"status":     "rejected",
-			"project_id": realPID,
-		})
-		return
+		log.Printf("[join] client=%s was previously rejected, clearing and re-adding to pending", displayName)
+		h.db.RemoveRejected(realPID, req.ClientID)
 	}
 
 	// Add to pending — owner must approve

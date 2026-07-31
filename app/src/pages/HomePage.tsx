@@ -82,11 +82,11 @@ export default function HomePage() {
             const pollRes = await fetch(`${joinServerUrl}/api/v1/projects/join`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim() }),
+              body: JSON.stringify({ code: joinCode.trim(), client_id: clientId, display_name: joinDisplayName.trim(), poll: true }),
             })
             if (!pollRes.ok) return
             const pollData = await pollRes.json()
-            if (pollData.status === 'rejected') {
+            if (pollData.status === 'rejected' || pollData.status === 'expired') {
               clearPoll()
               setJoinStatus('申请已被拒绝')
               setJoining(false)
