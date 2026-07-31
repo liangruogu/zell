@@ -37,6 +37,7 @@ export default function ProjectPage() {
     const [serverKey, setServerKey] = useState('')
     const [connecting, setConnecting] = useState(false)
     const [connectFailed, setConnectFailed] = useState(false)
+    const [kickTarget, setKickTarget] = useState<{ clientId: string; displayName: string } | null>(null)
     const [inviteCode, setInviteCode] = useState('')
     const [copied, setCopied] = useState(false)
     const [members, setMembers] = useState<{ client_id: string; display_name: string; online: boolean }[]>([])
@@ -233,13 +234,19 @@ export default function ProjectPage() {
     }, [serverUrl, id, serverKey, fetchCollabData])
 
     const handleKick = useCallback(async (clientId: string, displayName: string) => {
-        if (!serverUrl || !id) return
-        if (!confirm(`确定将 ${displayName} 移出项目吗？对方将失去所有编辑权限。`)) return
-        await fetch(`${serverUrl}/api/v1/projects/${id}/members/${clientId}`, {
-            method: 'DELETE', headers: { 'X-Server-Key': serverKey },
+        setKickTarget({ clientId, displayName })
+    }, [])
+
+    const confirmKick = useCallback(async () => {
+        if (!kickTarget || !serverUrl || !id) return
+        const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
+        const key = ps.serverKey || serverKey
+        await fetch(`${serverUrl}/api/v1/projects/${id}/members/${kickTarget.clientId}`, {
+            method: 'DELETE', headers: { 'X-Server-Key': key },
         })
+        setKickTarget(null)
         fetchCollabData()
-    }, [serverUrl, id, serverKey, fetchCollabData])
+    }, [kickTarget, serverUrl, id, serverKey, fetchCollabData])
 
     const handleDeleteServer = useCallback(async () => {
         if (!currentProject || !id) return
@@ -570,6 +577,16 @@ export default function ProjectPage() {
                     )}
                 </div>
             </div>
+
+            {/* Kick member confirmation */}
+            <Dialog open={!!kickTarget} onOpenChange={() => setKickTarget(null)}
+                title="移出成员"
+                description={`确定将 ${kickTarget?.displayName || ''} 移出项目吗？对方将失去所有编辑权限。`}>
+                <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" onClick={() => setKickTarget(null)}>取消</Button>
+                    <Button variant="destructive" onClick={confirmKick}>确认移出</Button>
+                </div>
+            </Dialog>
 
             {/* Edit Dialog */}
             <Dialog open={showEdit} onOpenChange={setShowEdit} title="编辑项目">
