@@ -12,3 +12,11 @@ node_modules/
 
 # Docs
 docs/superpowers
+
+# reference
+references/
+
+# others
+image_interact.html
+Thinkings.md
+opencode.jsonc
