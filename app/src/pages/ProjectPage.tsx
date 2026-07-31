@@ -122,7 +122,7 @@ export default function ProjectPage() {
         } catch { /* collab API might fail, but health passed */ }
     }, [sharingEnabled, serverUrl, id, serverKey, isMember, navigate])
 
-    useEffect(() => { fetchCollabData(); const t = setInterval(fetchCollabData, 5000); return () => clearInterval(t) }, [fetchCollabData])
+    useEffect(() => { if (!isMember) { fetchCollabData(); const t = setInterval(fetchCollabData, 5000); return () => clearInterval(t) } }, [fetchCollabData, isMember])
 
     // Toast auto-clear
     useEffect(() => {
