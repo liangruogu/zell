@@ -271,12 +271,8 @@ func (db *DB) IsRejected(projectID, clientID string) (bool, error) {
 func (db *DB) IsDisplayNameTaken(projectID, displayName string) (bool, error) {
 	var count int
 	err := db.conn.QueryRow(
-		`SELECT COUNT(*) FROM (
-			SELECT display_name FROM project_members WHERE project_id = ? AND status = 'active'
-			UNION ALL
-			SELECT display_name FROM pending_members WHERE project_id = ?
-		) WHERE display_name = ?`,
-		projectID, projectID, displayName).Scan(&count)
+		`SELECT COUNT(*) FROM project_members WHERE project_id = ? AND status = 'active' AND display_name = ?`,
+		projectID, displayName).Scan(&count)
 	return count > 0, err
 }
 
