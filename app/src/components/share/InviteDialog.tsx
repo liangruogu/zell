@@ -87,6 +87,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
             ps.token = data.token
             ps.displayName = data.display_name
             ps.serverUrl = serverUrl
+            ps.collabEnabled = true
             useProjectStore.getState().setCurrentProject({ ...proj, settings: stringifyProjectSettings(ps) })
             useProjectStore.getState().updateProject(proj.id, {
               name: proj.name,

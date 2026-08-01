@@ -65,7 +65,7 @@ export default function KnowledgeBasePage() {
     const searchInputRef = useRef<HTMLInputElement>(null)
     const [editorMd, setEditorMd] = useState('')
     const psCollab = parseProjectSettings(useProjectStore(s => s.currentProject?.settings) || '{}')
-    const isCollab = !!(psCollab.token || psCollab.serverKey)
+    const isCollab = !!psCollab.collabEnabled
     const [serverOnline, setServerOnline] = useState(true)
     const syncDoneRef = useRef(false)
     const [collabReady, setCollabReady] = useState(!isCollab)
