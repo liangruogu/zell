@@ -22,9 +22,9 @@ type PublishHandler struct {
 	db   *repository.DB
 }
 
-func NewPublishHandler(db *repository.DB) *PublishHandler {
+func NewPublishHandler(db *repository.DB, publishRepo *repository.PublishRepo) *PublishHandler {
 	return &PublishHandler{
-		repo: repository.NewPublishRepo(db),
+		repo: publishRepo,
 		db:   db,
 	}
 }

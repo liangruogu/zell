@@ -21,24 +21,7 @@ type WSHandler struct {
 	hub *ws.Hub
 }
 
-func NewWSHandler(db *repository.DB) *WSHandler {
-	var hub *ws.Hub
-	hub = ws.NewHub(
-		func(docID string, state []byte) {
-			if err := db.SaveSnapshot(docID, state); err != nil {
-				log.Printf("[ws] snapshot save error: %v", err)
-			}
-		},
-		func(projectID, clientID string, online bool) {
-			if online {
-				db.SetMemberOnline(projectID, clientID, true)
-				hub.BroadcastProject(projectID, "member_online", gin.H{"client_id": clientID})
-			} else {
-				db.SetMemberOnline(projectID, clientID, false)
-				hub.BroadcastProject(projectID, "member_offline", gin.H{"client_id": clientID})
-			}
-		},
-	)
+func NewWSHandler(db *repository.DB, hub *ws.Hub) *WSHandler {
 	hub.SetLoadSnapshot(func(docID string) []byte {
 		state, err := db.GetSnapshot(docID)
 		if err != nil {
@@ -115,6 +98,3 @@ func (h *WSHandler) Handle(c *gin.Context) {
 	h.hub.HandleWebSocket(conn, room, clientID, pid)
 }
 
-func (h *WSHandler) Start() {
-	go h.hub.Run()
-}
