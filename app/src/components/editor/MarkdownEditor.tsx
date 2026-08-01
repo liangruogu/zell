@@ -136,7 +136,6 @@ export function MarkdownEditor({
     const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
     const collabYDocRef = useRef<Y.Doc>(new Y.Doc())
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
-    const contentLoadedKey = currentArticleId ? `${currentArticleId}:loaded` : ''
 
     useEffect(() => {
         if (!collabEnabled) {
@@ -146,11 +145,7 @@ export function MarkdownEditor({
             }
             // In local mode, set content from props into Y.Doc
             if (editorRef.current && initialHtml) {
-                const config = collabYDocRef.current.getMap('config')
-                if (!config.get(contentLoadedKey)) {
-                    editorRef.current.commands.setContent(initialHtml)
-                    // Don't mark as loaded in local mode — it's not synced
-                }
+                editorRef.current.commands.setContent(initialHtml)
             }
             return
         }
@@ -174,15 +169,12 @@ export function MarkdownEditor({
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
 
-        // Follow TipTap docs: set initial content only once, tracked via Y.Doc map
+        // Set initial content only if Y.Doc is still empty after sync
         provider.on('sync', (synced: boolean) => {
             if (!synced) return
-            const config = collabYDocRef.current.getMap('config')
-            if (!config.get(contentLoadedKey) && editorRef.current) {
-                if (initialHtml) {
-                    editorRef.current.commands.setContent(initialHtml)
-                }
-                config.set(contentLoadedKey, true)
+            const yContent = collabYDocRef.current.getXmlFragment('content')
+            if (yContent.length === 0 && initialHtml && editorRef.current) {
+                editorRef.current.commands.setContent(initialHtml)
             }
         })
 
