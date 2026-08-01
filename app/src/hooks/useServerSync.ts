@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSyncStore } from '@/stores/syncStore'
-import { parseProjectSettings, stringifyProjectSettings, applyProjectConfig } from '@/types/project'
+import { parseProjectSettings, applyProjectConfig } from '@/types/project'
 import { invoke } from '@tauri-apps/api/core'
 import { logger } from '@/lib/logger'
 
@@ -30,29 +30,9 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
 
   useEffect(() => {
     if (!projectId) return
-    const { serverUrl, token, serverKey } = getSettings()
     if (!isCollab) {
       setServerOnline(true)
       useSyncStore.getState().setReadOnly(false)
-      // Try a lightweight check: if server says collab is enabled, update local state
-      if (serverUrl && (token || serverKey)) {
-        fetch(`${serverUrl}/api/v1/projects/${projectId}/articles`, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : { 'X-Server-Key': serverKey },
-        }).then(async (res) => {
-          if (res.ok) {
-            const proj = useProjectStore.getState().currentProject
-            if (proj) {
-              const s = parseProjectSettings(proj.settings)
-              s.collabEnabled = true
-              useProjectStore.getState().updateProject(proj.id, {
-                name: proj.name, description: proj.description,
-                background: proj.background,
-                settings: stringifyProjectSettings(s),
-              }).catch(() => {})
-            }
-          }
-        }).catch(() => {})
-      }
       return
     }
 
@@ -80,17 +60,7 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
                         alert(body.code === 'COLLAB_DISABLED' ? '协作已被管理员关闭，即将返回首页'
                             : body.code === 'MEMBER_REMOVED' ? '你已被移出项目，即将返回首页' : '访问被拒绝，即将返回首页')
                     } catch { alert('访问被拒绝，即将返回首页') }
-                    const proj = useProjectStore.getState().currentProject
-                    if (proj) {
-                        const settings = parseProjectSettings(proj.settings)
-                        settings.collabEnabled = false
-                        useProjectStore.getState().updateProject(proj.id, {
-                            name: proj.name, description: proj.description,
-                            background: proj.background,
-                            settings: stringifyProjectSettings(settings),
-                        }).catch(() => {})
-                    }
-                    window.location.href = '/'; return
+                    deleteProject(projectId!); window.location.href = '/'; return
                 }
                 if (!res.ok) { setServerOnline(false); useSyncStore.getState().setReadOnly(true); return }
                 setServerOnline(true)
@@ -174,23 +144,9 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
                         const notifs = useSyncStore.getState().notifications
                         if (notifs) {
                             for (const n of notifs) {
-                if (n.type === 'removed') {
-                  alert('你已被移出项目，即将返回首页'); deleteProject(projectId!); window.location.href = '/'; return
-                }
-                if (n.type === 'collab_disabled') {
-                  const proj = useProjectStore.getState().currentProject
-                  if (proj) {
-                    const s = parseProjectSettings(proj.settings)
-                    s.collabEnabled = false
-                    useProjectStore.getState().updateProject(proj.id, {
-                      name: proj.name, description: proj.description,
-                      background: proj.background, settings: stringifyProjectSettings(s),
-                    }).catch(() => {})
-                  }
-                  alert('协作已被管理员关闭，即将返回首页'); window.location.href = '/'; return
-                }
-                if (n.type === 'project_deleted') {
-                  alert('项目已被管理员删除，即将返回首页'); deleteProject(projectId!); window.location.href = '/'; return
+                if (n.type === 'removed' || n.type === 'collab_disabled' || n.type === 'project_deleted') {
+                  const msg = n.type === 'project_deleted' ? '项目已被管理员删除' : n.type === 'collab_disabled' ? '协作已被管理员关闭' : '你已被移出项目'
+                  alert(msg + '，即将返回首页'); deleteProject(projectId!); window.location.href = '/'; return
                                 }
                             }
                         }
@@ -206,24 +162,10 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
             ws.onmessage = async (event) => {
                 try {
                     const msg = JSON.parse(event.data)
-          if (msg.type === 'project_deleted') {
-            alert('项目已被管理员删除，即将返回首页'); deleteProject(projectId!); window.location.href = '/'; return
-          }
-          if (msg.type === 'collab_disabled') {
-            alert('协作已被管理员关闭，即将返回首页')
-            const proj = useProjectStore.getState().currentProject
-            if (proj) {
-              const s = parseProjectSettings(proj.settings)
-              s.collabEnabled = false
-              useProjectStore.getState().updateProject(proj.id, {
-                name: proj.name, description: proj.description,
-                background: proj.background, settings: stringifyProjectSettings(s),
-              }).catch(() => {})
-            }
-            window.location.href = '/'; return
-          }
-          if (msg.type === 'member_removed') {
-            alert('你已被管理员移出项目，即将返回首页'); deleteProject(projectId!); window.location.href = '/'; return
+          if (msg.type === 'project_deleted' || msg.type === 'collab_disabled' || msg.type === 'member_removed') {
+            alert(msg.type === 'project_deleted' ? '项目已被管理员删除，即将返回首页'
+              : msg.type === 'collab_disabled' ? '协作已被管理员关闭，即将返回首页' : '你已被管理员移出项目，即将返回首页')
+            deleteProject(projectId!); window.location.href = '/'; return
                     }
                     if (msg.type && msg.type.startsWith('article_')) {
                         if (msg.type === 'article_updated' && msg.data?.id && msg.data.id === useKnowledgeStore.getState().currentArticle?.id) return
