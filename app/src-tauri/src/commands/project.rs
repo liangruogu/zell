@@ -45,6 +45,7 @@ pub fn create_project_core(
         .map_err(|e| e.to_string())?;
 
         return Ok(Project {
+            settings,
             updated_at: now,
             deleted_at: None,
             ..existing
