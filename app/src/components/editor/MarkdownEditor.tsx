@@ -72,6 +72,7 @@ export function MarkdownEditor({
     updatedAt,
     collabReady = true,
 }: MarkdownEditorProps) {
+    console.log('[EDITOR] render', { contentLen: content.length, hasJson: !!contentJson, editable, collabReady, collabEnabled: !!collabServerUrl && !!collabToken && collabReady })
     const isAIOpen = useAIStore((s) => s.isOpen)
     const openPanel = useAIStore((s) => s.openPanel)
     const onChangeRef = useRef(onChange)
@@ -138,10 +139,12 @@ export function MarkdownEditor({
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
 
     useEffect(() => {
+        console.log('[EDITOR] collab effect', { collabEnabled, collabServerUrl: !!collabServerUrl, collabToken: !!collabToken, currentArticleId })
         if (!collabEnabled) {
             if (collabProviderRef.current) {
                 collabProviderRef.current.disconnect()
                 collabProviderRef.current = null
+                console.log('[EDITOR] collab disabled, provider disconnected')
             }
             return
         }
@@ -158,6 +161,13 @@ export function MarkdownEditor({
             params: { token: collabToken },
         })
         collabProviderRef.current = provider
+        console.log('[EDITOR] WS provider created', { url: `${wsBase}/ws/${projectId}/${article.id}` })
+
+        provider.on('status', (e: any) => { console.log('[EDITOR] WS status', e.status) })
+        provider.on('sync', (synced: boolean) => {
+            const yf = collabYDocRef.current.getXmlFragment('content')
+            console.log('[EDITOR] WS sync', { synced, yContentLen: yf.length, hasEditor: !!editorRef.current })
+        })
         const settings = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
         const displayName = settings.displayName || (settings.serverKey ? 'Owner' : 'Anonymous')
         const userColors = ['#8B7EC8', '#D98B7A', '#D4A76A', '#C2C06A', '#7AB8D4', '#7AC8A8', '#8EC87A', '#A0C8C0', '#C8B868', '#8AA8C8', '#C88AAA', '#7AC0B8', '#B89ACA', '#9AA0B0']
@@ -301,10 +311,12 @@ export function MarkdownEditor({
         if (contentJson) {
             try {
                 const parsed = typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
+                console.log('[EDITOR] initialHtml from json', { hasText: JSON.stringify(parsed).includes('"text"'), len: JSON.stringify(parsed).length })
                 return parsed
             } catch (e) { logger.error('MarkdownEditor: failed to parse content json', e); /* fall through */ }
         }
         const html = markdownToHtml(content || '')
+        console.log('[EDITOR] initialHtml from markdown', { contentLen: (content || '').length, htmlLen: html.length })
         return html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
             return open + body.replace(/\n+$/, '') + close
         })
@@ -318,6 +330,7 @@ export function MarkdownEditor({
             ignoreNextSync.current = true
             const html = editor.getHTML()
             const md = htmlToMarkdown(html)
+            console.log('[EDITOR] onUpdate', { textLen: editor.getText().length, text: editor.getText().slice(0, 40) })
             onChangeRef.current?.(html, md, editor.getJSON())
         },
         []

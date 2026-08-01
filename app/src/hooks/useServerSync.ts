@@ -45,6 +45,7 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
         const syncArticlesFromServer = async () => {
             if (syncing) return
             syncing = true
+            console.log('[SYNC] syncArticlesFromServer start')
             const { serverUrl, token, serverKey } = getSettings()
             if (!serverUrl || (!token && !serverKey)) { syncing = false; return }
             try {
@@ -100,6 +101,7 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
                 }
 
                 if (!syncDoneRef.current) { syncDoneRef.current = true; setCollabReady(true) }
+                console.log('[SYNC] syncArticlesFromServer done', { articleCount: serverArticles.length })
             } catch (e) { logger.error('Failed to sync articles from server', e); setServerOnline(false) }
             finally { syncing = false }
         }
@@ -173,6 +175,7 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
 
     function trySetup() {
       const { serverUrl } = getSettings()
+      console.log('[SYNC] trySetup', { serverUrl: !!serverUrl, projectSubscribed })
       if (!serverUrl) return
             projectSubscribed = true
             syncProjectInfoFromServer()

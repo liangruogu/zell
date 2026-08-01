@@ -39,10 +39,13 @@ export default function KnowledgeBasePage() {
 
     const psCollab = parseProjectSettings(useProjectStore(s => s.currentProject?.settings) || '{}')
     const isCollab = !!psCollab.collabEnabled
+    console.log('[KB] state', { projectId, isCollab, collabEnabled: psCollab.collabEnabled, articlesLen: articles.length, currentArticleId: currentArticle?.id })
     const { serverOnline, collabReady } = useServerSync({ projectId, isCollab, deleteProject })
 
     useEffect(() => {
-        if (projectId) { fetchProject(projectId); fetchArticles(projectId) }
+        if (projectId) { fetchProject(projectId); fetchArticles(projectId).then(() => {
+            console.log('[KB] fetchArticles done', { count: useKnowledgeStore.getState().articles.length })
+        }) }
     }, [projectId, fetchProject, fetchArticles])
 
     useKnowledgeShortcuts({
