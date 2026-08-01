@@ -28,13 +28,15 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
     const [collabReady, setCollabReady] = useState(!isCollab)
     const syncDoneRef = useRef(false)
 
-    useEffect(() => {
-        if (!projectId) return
-        if (!isCollab) {
-            setServerOnline(true)
-            useSyncStore.getState().setReadOnly(false)
-            return
-        }
+  useEffect(() => {
+    console.log('[sync] effect running', { projectId, isCollab })
+    if (!projectId) return
+    if (!isCollab) {
+      console.log('[sync] isCollab=false, skipping')
+      setServerOnline(true)
+      useSyncStore.getState().setReadOnly(false)
+      return
+    }
 
         let ws: WebSocket | null = null
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -128,10 +130,11 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
             } catch (e) { logger.error('Failed to sync project info from server', e) }
         }
 
-        function connect() {
-            if (stopped) return
-            const { serverUrl, token } = getSettings()
-            if (!serverUrl) return
+    function connect() {
+      if (stopped) return
+      const { serverUrl, token } = getSettings()
+      console.log('[sync] connect() called', { serverUrl: !!serverUrl, hasToken: !!token, projectId })
+      if (!serverUrl) return
             const wsBase = serverUrl.replace(/^http/, 'ws')
             const wsUrl = `${wsBase}/ws/${projectId}/__notifications__${token ? '?token=' + encodeURIComponent(token) : ''}`
             ws = new WebSocket(wsUrl)
@@ -184,9 +187,10 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
             }
         }
 
-        function trySetup() {
-            const { serverUrl } = getSettings()
-            if (!serverUrl) return
+    function trySetup() {
+      const { serverUrl } = getSettings()
+      console.log('[sync] trySetup', { hasServerUrl: !!serverUrl, projectSubscribed })
+      if (!serverUrl) return
             projectSubscribed = true
             syncProjectInfoFromServer()
             syncArticlesFromServer()
