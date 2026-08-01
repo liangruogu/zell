@@ -68,7 +68,7 @@ export default function KnowledgeBasePage() {
     const isCollab = !!(psCollab.token || psCollab.serverKey)
     const [serverOnline, setServerOnline] = useState(true)
     const syncDoneRef = useRef(false)
-    const [collabReady, setCollabReady] = useState(false)
+    const [collabReady, setCollabReady] = useState(!isCollab)
 
     useEffect(() => {
         if (projectId) {
@@ -415,6 +415,7 @@ export default function KnowledgeBasePage() {
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
             saveTimerRef.current = setTimeout(() => {
                 const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
+                if (markdown === currentArticle.content && contentJson === (currentArticle.content_json || '{}')) return
                 updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
                 syncToServer(currentArticle.id, currentArticle.title, markdown, contentJson)
             }, 800)
@@ -425,6 +426,7 @@ export default function KnowledgeBasePage() {
         if (!currentArticle) return
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
         const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
+        if (markdown === currentArticle.content && contentJson === (currentArticle.content_json || '{}')) return
         updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
         syncToServer(currentArticle.id, currentArticle.title, markdown, contentJson)
     }, [currentArticle, updateArticle, syncToServer])

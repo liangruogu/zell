@@ -345,6 +345,7 @@ export function MarkdownEditor({
     const handleUpdate = useCallback(
         ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
             if (!editor) return
+            if (initLockRef.current) return
             ignoreNextSync.current = true
             const html = editor.getHTML()
             const md = htmlToMarkdown(html)
