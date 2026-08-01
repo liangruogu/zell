@@ -36,7 +36,7 @@ pub fn create_knowledge_article_core(
         .unwrap_or(-1);
 
     conn.execute(
-        "INSERT INTO knowledge_articles (id, project_id, title, content, content_json, parent_id, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        "INSERT INTO knowledge_articles (id, project_id, title, content, content_json, parent_id, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) ON CONFLICT(id) DO UPDATE SET title=excluded.title, content=excluded.content, content_json=excluded.content_json, parent_id=excluded.parent_id, updated_at=excluded.updated_at",
         rusqlite::params![id, project_id, title, content, cj, parent_id, max_order + 1, now, now],
     )
     .map_err(|e| e.to_string())?;

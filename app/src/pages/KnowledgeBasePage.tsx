@@ -8,6 +8,7 @@ import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSyncStore } from '@/stores/syncStore'
 import { parseProjectSettings, applyProjectConfig } from '@/types/project'
+import { invoke } from '@tauri-apps/api/core'
 import { ResizablePanel, useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { KnowledgeArticle } from '@/types/knowledge'
 import { Plus, FileText, Trash2, Search, X, ListTree, ChevronRight, Upload } from 'lucide-react'
@@ -190,35 +191,29 @@ export default function KnowledgeBasePage() {
                 if (!res.ok) { setServerOnline(false); useSyncStore.getState().setReadOnly(true); return }
                 setServerOnline(true)
                 useSyncStore.getState().setReadOnly(false)
-                const serverArticles: { id: string }[] = await res.json()
-                console.log('[sync] server articles count=' + serverArticles.length
-                    + ', local articles count=' + useKnowledgeStore.getState().articles.length
-                    + ', sample content=' + (serverArticles[0] ? JSON.stringify((serverArticles[0] as any).content).slice(0, 50) : 'none'))
-                const store = useKnowledgeStore.getState()
-                const localArticles = store.articles
 
-                for (const a of serverArticles) {
-                    const srv = a as any
-                    const existing = localArticles.find(la => la.id === srv.id)
-                    if (existing) {
-                        if (srv.content && srv.content !== existing.content) {
-                            try { await store.updateArticle(srv.id, srv.title || existing.title, srv.content, srv.content_json) } catch (e) { logger.error('Failed to update synced article', e) }
-                        }
-                    } else {
-                        try {
-                            await store.createArticle(projectId, srv.title || '', srv.content || '', undefined, srv.id, srv.content_json)
-                        } catch (e) {
-                            // Article already exists locally (store.articles raced with Tauri DB load on startup)
-                            console.log('[sync] create failed for ' + srv.id + ', updating instead. server content len=' + (srv.content || '').length)
-                            await store.updateArticle(srv.id, srv.title || '', srv.content || '', srv.content_json || '{}')
-                        }
-                    }
+                const serverArticles: any[] = await res.json()
+                const store = useKnowledgeStore.getState()
+                const localIds = new Set(store.articles.map(a => a.id))
+                const serverIds = new Set<string>()
+
+                // Upsert every article from server (server is source of truth)
+                for (const srv of serverArticles) {
+                    serverIds.add(srv.id)
+                    await invoke('create_knowledge_article', {
+                        projectId,
+                        title: srv.title || '',
+                        content: srv.content || '',
+                        contentJson: srv.content_json || '{}',
+                        parentId: srv.parent_id || null,
+                        id: srv.id,
+                    })
                 }
 
-                const serverIds = new Set(serverArticles.map((a: any) => a.id))
-                for (const la of localArticles) {
-                    if (!serverIds.has(la.id)) {
-                        try { await store.deleteArticle(la.id) } catch (e) { logger.error('Failed to delete synced article', e) }
+                // Delete local articles not on server
+                for (const lid of localIds) {
+                    if (!serverIds.has(lid)) {
+                        try { await store.deleteArticle(lid) } catch (e) { logger.error('Failed to delete non-server article', e) }
                     }
                 }
 
