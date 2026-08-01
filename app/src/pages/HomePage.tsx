@@ -97,6 +97,7 @@ export default function HomePage() {
                     token: data.token,
                     displayName: joinDisplayName.trim(),
                     role: 'member',
+                    collabEnabled: true,
                 }),
             })
             syncArticles(joinServerUrl, data.project_id, data.token)
