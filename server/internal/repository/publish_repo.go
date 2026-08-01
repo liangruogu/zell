@@ -119,7 +119,7 @@ func placeholders(n int) string {
 	if n == 0 {
 		return ""
 	}
-	s := "?,"
+	s := "?"
 	for i := 1; i < n; i++ {
 		s += ",?"
 	}
