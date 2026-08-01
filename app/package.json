@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "node --import tsx/esm --test src/**/*.test.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:e2e": "npx playwright test --config=e2e/playwright.config.ts --project=browser",
     "test:e2e:tauri": "npx playwright test --config=e2e/playwright.config.ts --project=tauri",
     "preview": "vite preview"
