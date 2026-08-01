@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo, useLayoutEffect } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Image } from '@tiptap/extension-image'
@@ -381,6 +381,17 @@ export function MarkdownEditor({
     }, [])
 
     editorRef.current = editor
+
+    // Restore local content into Y.Doc after Collaboration extension
+    // may have cleared it with empty state during editor creation.
+    useLayoutEffect(() => {
+        if (!editor || !collabYDocRef.current) return
+        const yContent = collabYDocRef.current.getXmlFragment('content')
+        if (yContent.length === 0 && initialHtml) {
+            console.log('[EDITOR] useLayoutEffect restoring content to Y.Doc')
+            editor.commands.setContent(initialHtml)
+        }
+    }, [editor, initialHtml])
 
     useTypewriter({ editor, enabled: typewriterEnabled, scrollRef })
 
