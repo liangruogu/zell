@@ -165,10 +165,7 @@ export function MarkdownEditor({
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
 
-        // Wait for server sync before activating Collaboration in the editor
-        provider.on('sync', () => {
-            setCollabKey(k => k + 1)
-        })
+        requestAnimationFrame(() => setCollabKey(k => k + 1))
 
         return () => {
             provider.awareness.setLocalStateField('cursor', null)
