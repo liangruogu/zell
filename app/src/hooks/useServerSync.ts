@@ -139,19 +139,6 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
                 console.log('[sync] WS connected')
                 setServerOnline(true)
                 syncArticlesFromServer()
-                if (token && serverUrl && projectId) {
-                    useSyncStore.getState().pullNotifications(projectId, token, serverUrl).then(() => {
-                        const notifs = useSyncStore.getState().notifications
-                        if (notifs) {
-                            for (const n of notifs) {
-                if (n.type === 'removed' || n.type === 'collab_disabled' || n.type === 'project_deleted') {
-                  const msg = n.type === 'project_deleted' ? '项目已被管理员删除' : n.type === 'collab_disabled' ? '协作已被管理员关闭' : '你已被移出项目'
-                  alert(msg + '，即将返回首页'); deleteProject(projectId!); window.location.href = '/'; return
-                                }
-                            }
-                        }
-                    })
-                }
             }
             ws.onerror = () => { }
             ws.onclose = (e) => {

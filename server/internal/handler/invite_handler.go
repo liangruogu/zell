@@ -43,24 +43,12 @@ func (h *InviteHandler) CollabToggle(c *gin.Context) {
 	}
 
 	if req.Deleted {
-		memberIDs, err := h.db.ListMemberIDs(pid)
-		if err == nil {
-			for _, mid := range memberIDs {
-				h.db.CreateNotification(pid, mid, "project_deleted", "{}")
-			}
-		}
 		h.db.RemoveAllMembers(pid)
 		h.db.SetCollabDeleted(pid)
 		h.hub.BroadcastProject(pid, "project_deleted", gin.H{"project_id": pid})
 	}
 
 	if !req.Enabled && !req.Deleted {
-		memberIDs, err := h.db.ListMemberIDs(pid)
-		if err == nil {
-			for _, mid := range memberIDs {
-				h.db.CreateNotification(pid, mid, "collab_disabled", "{}")
-			}
-		}
 		h.hub.BroadcastProject(pid, "collab_disabled", gin.H{"project_id": pid})
 	}
 
@@ -270,9 +258,6 @@ func (h *InviteHandler) ListMembers(c *gin.Context) {
 func (h *InviteHandler) RemoveMember(c *gin.Context) {
 	pid := c.Param("pid")
 	clientID := c.Param("client_id")
-	if err := h.db.CreateNotification(pid, clientID, "removed", "{}"); err != nil {
-		log.Printf("[invite] notification write error: %v", err)
-	}
 	if err := h.db.RemoveMember(pid, clientID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
