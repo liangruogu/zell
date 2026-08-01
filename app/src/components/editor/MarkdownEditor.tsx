@@ -173,8 +173,6 @@ export function MarkdownEditor({
         const tryLocalInit = () => {
             const d = collabYDocRef.current
             if (!d || !initJson) return
-            const yContent = d.getXmlFragment('content')
-            if (yContent.length > 0) return
             const states = provider.awareness.getStates()
             if (states.size > 1) return
             if (!editorRef.current) {
