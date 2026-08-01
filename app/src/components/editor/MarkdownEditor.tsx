@@ -72,7 +72,6 @@ export function MarkdownEditor({
     updatedAt,
     collabReady = true,
 }: MarkdownEditorProps) {
-    console.log('[EDITOR] render', { contentLen: content.length, hasJson: !!contentJson, editable, collabReady, collabEnabled: !!collabServerUrl && !!collabToken && collabReady })
     const isAIOpen = useAIStore((s) => s.isOpen)
     const openPanel = useAIStore((s) => s.openPanel)
     const onChangeRef = useRef(onChange)
@@ -137,6 +136,8 @@ export function MarkdownEditor({
     const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
     const collabYDocRef = useRef<Y.Doc>(new Y.Doc())
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
+
+    console.log('[EDITOR] render', { contentLen: content.length, hasJson: !!contentJson, editable, collabReady, collabEnabled, currentArticleId })
 
     useEffect(() => {
         console.log('[EDITOR] collab effect', { collabEnabled, collabServerUrl: !!collabServerUrl, collabToken: !!collabToken, currentArticleId })
