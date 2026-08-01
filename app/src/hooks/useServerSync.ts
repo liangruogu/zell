@@ -110,20 +110,6 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
                 }
 
                 if (!syncDoneRef.current) { syncDoneRef.current = true; setCollabReady(true) }
-
-                // Backfill collabEnabled for legacy members
-                const proj = useProjectStore.getState().currentProject
-                if (proj) {
-                    const settings = parseProjectSettings(proj.settings)
-                    if (!settings.collabEnabled) {
-                        settings.collabEnabled = true
-                        useProjectStore.getState().updateProject(proj.id, {
-                            name: proj.name, description: proj.description,
-                            background: proj.background,
-                            settings: stringifyProjectSettings(settings),
-                        }).catch(() => {})
-                    }
-                }
             } catch (e) { logger.error('Failed to sync articles from server', e); setServerOnline(false) }
             finally { syncing = false }
         }
