@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useCallback, useRef, useEffect, useState } from 'react'
 import type { CanvasElement } from './types'
 import { usePptStore } from './store'

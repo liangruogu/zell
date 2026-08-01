@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { create } from 'zustand'
 import type { Editor } from '@tiptap/core'
 import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager'

@@ -1,0 +1,105 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  # ── Server ──────────────────────────────────────────────────────────
+  server:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            suffix: linux-amd64
+          - os: windows-2025
+            suffix: windows-amd64.exe
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build server
+        working-directory: server
+        run: go build -ldflags="-s -w" -o zell-server-${{ matrix.suffix }} .
+
+      - name: Upload server
+        uses: softprops/action-gh-release@v2
+        with:
+          files: server/zell-server-${{ matrix.suffix }}
+
+  # ── Linux Desktop ───────────────────────────────────────────────────
+  linux:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend deps
+        working-directory: app
+        run: pnpm install
+
+      - name: Build deb + AppImage
+        working-directory: app
+        run: pnpm tauri build --bundles deb,appimage
+
+      - name: Upload artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            app/src-tauri/target/release/bundle/deb/*.deb
+            app/src-tauri/target/release/bundle/appimage/*.AppImage
+
+  # ── Windows ────────────────────────────────────────────────────────
+  windows:
+    runs-on: windows-2025
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install frontend deps
+        working-directory: app
+        run: pnpm install
+
+      - name: Build msi
+        working-directory: app
+        run: pnpm tauri build --bundles msi
+
+      - name: Upload artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            app/src-tauri/target/release/bundle/msi/*.msi

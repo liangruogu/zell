@@ -12,7 +12,7 @@ import { format } from '@/lib/format'
 import { Trash2, Edit3, Users, Copy, X, Check, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PublishSettings } from '@/components/project/PublishSettings'
-import { parseProjectSettings, stringifyProjectSettings } from '@/types/project'
+import { parseProjectSettings, stringifyProjectSettings, extractProjectConfig, applyProjectConfig } from '@/types/project'
 import { logger } from '@/lib/logger'
 
 export default function ProjectPage() {
@@ -28,7 +28,7 @@ export default function ProjectPage() {
 
     // Server management
     const { serverUrl, setServerUrl, setConnected, connected, readOnly } = useSyncStore()
-    const [settingsTab, setSettingsTab] = useState<'overview' | 'publish' | 'members'>('overview')
+    const [settingsTab, setSettingsTab] = useState<'overview' | 'publish' | 'members' | 'settings'>('overview')
 
     const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
     const hasServer = !!(ps.serverUrl && ps.serverKey)
@@ -136,17 +136,25 @@ export default function ProjectPage() {
                 fetch(`${serverUrl}/api/v1/projects/${id}/info`, {
                     headers: { 'Authorization': `Bearer ${token}` }, signal: AbortSignal.timeout(3000),
                 }).then(res => res.ok ? res.json() : null).then(data => {
-                    if (data?.name) {
-                        const proj = useProjectStore.getState().currentProject
-                        if (proj && (data.name !== proj.name || data.description !== (proj.description || ''))) {
-                            updateProject(id, {
-                                name: data.name,
-                                description: data.description || '',
-                                background: proj.background || '',
-                                settings: proj.settings || '{}',
-                            })
-                        }
+                    if (!data?.name) return
+                    const proj = useProjectStore.getState().currentProject
+                    if (!proj) return
+                    let newSettings = proj.settings
+                    if (data.config) {
+                        try { newSettings = applyProjectConfig(newSettings, JSON.parse(data.config)) }
+                        catch (e) { logger.error('Failed to parse project config', e) }
                     }
+                    if (newSettings === proj.settings
+                        && data.name === proj.name
+                        && (data.description || '') === (proj.description || '')) {
+                        return
+                    }
+                    updateProject(id, {
+                        name: data.name,
+                        description: data.description || '',
+                        background: proj.background || '',
+                        settings: newSettings,
+                    })
                 }).catch(() => { /* ignore */ })
             }
             useSyncStore.getState().setReadOnly(false)
@@ -343,10 +351,11 @@ export default function ProjectPage() {
         if (sharingEnabled && serverOnline && serverUrl) {
             const key = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').serverKey
             if (key) {
+                const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
                 fetch(`${serverUrl}/api/v1/projects/${id}/info`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'X-Server-Key': key },
-                    body: JSON.stringify({ name: editName, description: editDesc }),
+                    body: JSON.stringify({ name: editName, description: editDesc, config: JSON.stringify(extractProjectConfig(ps)) }),
                 }).catch((e) => { logger.error('Failed to sync project info to server', e) })
             }
         }
@@ -681,8 +690,8 @@ function SettingsTab() {
     const currentProject = useProjectStore(s => s.currentProject)
     const updateProject = useProjectStore(s => s.updateProject)
     const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
-    const app = (ps as any).appearance || {}
-    const sync = (ps as any).sync || { policy: 'manual', intervalHours: '24' }
+    const app = ps.appearance || {}
+    const sync = ps.sync || { policy: 'manual', intervalHours: '24' }
     const currentTheme = app.theme || 'zell'
     const [toast, setToast] = useState<string | null>(null)
     const showToast = useCallback((msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2000) }, [])
@@ -692,14 +701,27 @@ function SettingsTab() {
         if (!currentProject) return
         const s = parseProjectSettings(currentProject.settings)
         if (key === 'theme') {
-            (s as any).appearance = { ...app, [key]: value }
+            s.appearance = { ...app, [key]: value }
         } else {
-            (s as any).sync = { ...sync, policy: key === 'scheduled' ? 'scheduled' : key, intervalHours: value === 'scheduled' ? sync.intervalHours : sync.intervalHours }
+            s.sync = { ...sync, policy: key === 'scheduled' ? 'scheduled' : key, intervalHours: value === 'scheduled' ? sync.intervalHours : sync.intervalHours }
         }
         await updateProject(currentProject.id, {
             name: currentProject.name, description: currentProject.description,
             background: currentProject.background, settings: stringifyProjectSettings(s),
         })
+        // Sync to server so members receive the config update
+        const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
+        if (ps.collabEnabled && ps.serverUrl && ps.serverKey) {
+            fetch(`${ps.serverUrl}/api/v1/projects/${currentProject.id}/info`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-Server-Key': ps.serverKey },
+                body: JSON.stringify({
+                    name: currentProject.name,
+                    description: currentProject.description,
+                    config: JSON.stringify(extractProjectConfig(s)),
+                }),
+            }).catch((e) => { logger.error('Failed to sync settings to server', e) })
+        }
         showToast('已保存')
     }, [currentProject, app, sync, updateProject, showToast])
 

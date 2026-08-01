@@ -39,6 +39,14 @@ func NewWSHandler(db *repository.DB) *WSHandler {
 			}
 		},
 	)
+	hub.SetLoadSnapshot(func(docID string) []byte {
+		state, err := db.GetSnapshot(docID)
+		if err != nil {
+			log.Printf("[ws] snapshot load error: %v", err)
+			return nil
+		}
+		return state
+	})
 	return &WSHandler{db: db, hub: hub}
 }
 

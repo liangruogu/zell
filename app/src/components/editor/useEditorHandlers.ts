@@ -61,7 +61,7 @@ export function useEditorHandlers({ editorRef, insertImageRef }: UseEditorHandle
     return true
   }
 
-  const handleDrop = (_view: any, event: DragEvent, _moved: boolean, _supported: boolean) => {
+  const handleDrop = (_view: any, event: DragEvent, _slice: any, _moved: boolean) => {
     const files = event.dataTransfer?.files
     if (files && files.length > 0) {
       for (const file of Array.from(files)) {

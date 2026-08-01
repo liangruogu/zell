@@ -55,7 +55,7 @@ pub fn create_knowledge_article(
         project_id,
         title,
         content,
-        content_json: "{}".to_string(),
+        content_json: cj,
         parent_id,
         sort_order: max_order + 1,
         created_at: now.clone(),

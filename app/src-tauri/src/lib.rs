@@ -98,6 +98,8 @@ pub fn run() {
             commands::system::get_local_ip,
             commands::system::list_system_fonts,
             commands::export::export_article,
+            commands::export::export_html_to_pdf,
+            commands::export::export_html_to_docx,
             commands::server::start_server,
             commands::server::stop_server,
             commands::server::get_server_status,

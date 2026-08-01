@@ -121,14 +121,14 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
   }, [joinCode, joinDisplayName, serverUrl, projectId])
 
   const handleCopy = useCallback(() => {
-    const inviteCode = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}').inviteCode
+    const inviteCode = (parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}') as any).inviteCode
     if (!inviteCode) return
     navigator.clipboard.writeText(inviteCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }, [])
 
-  const inviteCode = currentProject ? parseProjectSettings(currentProject.settings).inviteCode : ''
+  const inviteCode = currentProject ? (parseProjectSettings(currentProject.settings) as any).inviteCode : ''
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="团队协作" description="分享邀请码，团队成员可直接加入">

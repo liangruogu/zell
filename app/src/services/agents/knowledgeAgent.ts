@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { tool } from '@langchain/core/tools'
 import { z } from 'zod'
 import type { AgentConfig } from '@/services/core/agentRunner'

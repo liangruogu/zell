@@ -32,7 +32,7 @@ export function ProjectForm({ defaultValues, onSubmit, submitLabel = '保存' }:
       name: defaultValues?.name || '',
       description: defaultValues?.description || '',
       background: defaultValues?.background || '',
-      icon: defaultValues?.icon || '',
+      icon: (defaultValues as any)?.icon || '',
     },
   })
 

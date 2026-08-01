@@ -7,12 +7,10 @@ import { Dialog } from '@/components/ui/Dialog'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSyncStore } from '@/stores/syncStore'
-import { parseProjectSettings } from '@/types/project'
+import { parseProjectSettings, applyProjectConfig } from '@/types/project'
 import { ResizablePanel, useResizablePanel } from '@/components/layout/ResizablePanel'
 import type { KnowledgeArticle } from '@/types/knowledge'
-import { invoke } from '@tauri-apps/api/core'
-import { save } from '@tauri-apps/plugin-dialog'
-import { Plus, FileText, Trash2, FileOutput, Search, X, ListTree, ChevronRight, Upload } from 'lucide-react'
+import { Plus, FileText, Trash2, Search, X, ListTree, ChevronRight, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 
@@ -69,6 +67,8 @@ export default function KnowledgeBasePage() {
     const psCollab = parseProjectSettings(useProjectStore(s => s.currentProject?.settings) || '{}')
     const isCollab = !!(psCollab.token || psCollab.serverKey)
     const [serverOnline, setServerOnline] = useState(true)
+    const syncDoneRef = useRef(false)
+    const [collabReady, setCollabReady] = useState(false)
 
     useEffect(() => {
         if (projectId) {
@@ -139,16 +139,25 @@ export default function KnowledgeBasePage() {
 
     // Listen for server article change broadcasts via WebSocket + initial sync
     useEffect(() => {
-        const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
-        const serverUrl = ps.serverUrl
-        if (!serverUrl || !projectId) return
+        if (!projectId) return
 
-        // Initial sync from server
-        const syncFromServer = async () => {
+        let ws: WebSocket | null = null
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+        let stopped = false
+        let projectSubscribed = false
+
+        function getSettings() {
             const cur = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
-            const token = cur.token
-            const serverKey = cur.serverKey
-            if (!token && !serverKey) return
+            return { serverUrl: cur.serverUrl, token: cur.token, serverKey: cur.serverKey }
+        }
+
+        let syncing = false
+
+        const syncArticlesFromServer = async () => {
+            if (syncing) return
+            syncing = true
+            const { serverUrl, token, serverKey } = getSettings()
+            if (!serverUrl || (!token && !serverKey)) { syncing = false; return }
             try {
                 const headers: Record<string, string> = {}
                 if (token) {
@@ -182,24 +191,30 @@ export default function KnowledgeBasePage() {
                 setServerOnline(true)
                 useSyncStore.getState().setReadOnly(false)
                 const serverArticles: { id: string }[] = await res.json()
+                console.log('[sync] server articles count=' + serverArticles.length
+                    + ', local articles count=' + useKnowledgeStore.getState().articles.length
+                    + ', sample content=' + (serverArticles[0] ? JSON.stringify((serverArticles[0] as any).content).slice(0, 50) : 'none'))
                 const store = useKnowledgeStore.getState()
                 const localArticles = store.articles
 
-                // Create/update articles from server
                 for (const a of serverArticles) {
                     const srv = a as any
                     const existing = localArticles.find(la => la.id === srv.id)
                     if (existing) {
-                        // Update content if server has newer version
                         if (srv.content && srv.content !== existing.content) {
-                            try { await store.updateArticle(srv.id, srv.title || existing.title, srv.content, srv.content_json) } catch (e) { logger.error('Failed to update synced article', e) /* ignore */ }
+                            try { await store.updateArticle(srv.id, srv.title || existing.title, srv.content, srv.content_json) } catch (e) { logger.error('Failed to update synced article', e) }
                         }
                     } else {
-                        try { await store.createArticle(projectId, srv.title || '', srv.content || '', undefined, srv.id, srv.content_json) } catch (e) { logger.error('Failed to create synced article', e) /* already exists */ }
+                        try {
+                            await store.createArticle(projectId, srv.title || '', srv.content || '', undefined, srv.id, srv.content_json)
+                        } catch (e) {
+                            // Article already exists locally (store.articles raced with Tauri DB load on startup)
+                            console.log('[sync] create failed for ' + srv.id + ', updating instead. server content len=' + (srv.content || '').length)
+                            await store.updateArticle(srv.id, srv.title || '', srv.content || '', srv.content_json || '{}')
+                        }
                     }
                 }
 
-                // Delete local articles no longer on server
                 const serverIds = new Set(serverArticles.map((a: any) => a.id))
                 for (const la of localArticles) {
                     if (!serverIds.has(la.id)) {
@@ -209,32 +224,65 @@ export default function KnowledgeBasePage() {
 
                 fetchArticles(projectId)
 
-                // If current article was deleted, clear it
+                if (!syncDoneRef.current) {
+                    syncDoneRef.current = true
+                    setCollabReady(true)
+                }
+
                 const cur = useKnowledgeStore.getState().currentArticle
                 if (cur && !serverArticles.some((a: any) => a.id === cur.id)) {
                     useKnowledgeStore.getState().setCurrentArticle(null)
                 }
             } catch (e) { logger.error('Failed to sync articles from server', e); setServerOnline(false) }
+            finally { syncing = false }
         }
-        syncFromServer()
 
-        // WebSocket listener for live updates — auto-reconnect
-        const wsBase = serverUrl.replace(/^http/, 'ws')
-        let ws: WebSocket
-        let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-        let stopped = false
+        const syncProjectInfoFromServer = async () => {
+            const { serverUrl, token, serverKey } = getSettings()
+            if (!serverUrl || (!token && !serverKey)) return
+            try {
+                const headers: Record<string, string> = {}
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`
+                } else if (serverKey) {
+                    headers['X-Server-Key'] = serverKey
+                }
+                const res = await fetch(`${serverUrl}/api/v1/projects/${projectId}/info`, { headers })
+                if (!res.ok) return
+                const data = await res.json()
+                if (!data?.name) return
+                const proj = useProjectStore.getState().currentProject
+                if (!proj) return
+                let newSettings = proj.settings || '{}'
+                if (data.config) {
+                    try { newSettings = applyProjectConfig(newSettings, JSON.parse(data.config)) }
+                    catch (e) { logger.error('Failed to parse project config', e) }
+                }
+                if (newSettings === proj.settings
+                    && data.name === proj.name
+                    && (data.description || '') === (proj.description || '')) {
+                    return
+                }
+                useProjectStore.getState().updateProject(proj.id, {
+                    name: data.name,
+                    description: data.description || '',
+                    background: proj.background || '',
+                    settings: newSettings,
+                })
+            } catch (e) { logger.error('Failed to sync project info from server', e) }
+        }
 
         function connect() {
             if (stopped) return
-            const cur = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
-            const token = cur.token
+            const { serverUrl, token } = getSettings()
+            if (!serverUrl) return
+            const wsBase = serverUrl.replace(/^http/, 'ws')
             const wsUrl = `${wsBase}/ws/${projectId}/__notifications__${token ? '?token=' + encodeURIComponent(token) : ''}`
             ws = new WebSocket(wsUrl)
             ws.onopen = () => {
                 console.log('[sync] WS connected')
                 setServerOnline(true)
-                syncFromServer()
-                // Pull offline notifications on reconnect
+                syncArticlesFromServer()
                 if (token && serverUrl && projectId) {
                     useSyncStore.getState().pullNotifications(projectId, token, serverUrl).then(() => {
                         const notifs = useSyncStore.getState().notifications
@@ -254,8 +302,9 @@ export default function KnowledgeBasePage() {
                     })
                 }
             }
-            ws.onerror = () => { }
-            ws.onclose = () => {
+            ws.onerror = () => {}
+            ws.onclose = (e) => {
+                console.log('[sync] WS closed, code=' + e.code + ', stopped=' + stopped)
                 setServerOnline(false)
                 useSyncStore.getState().setReadOnly(true)
                 if (!stopped) {
@@ -284,34 +333,69 @@ export default function KnowledgeBasePage() {
                         return
                     }
                     if (msg.type && msg.type.startsWith('article_')) {
-                        // If this is an update to the article we're editing, skip —
-                        // Yjs WebSocket already handles real-time sync for it.
                         if (msg.type === 'article_updated' && msg.data?.id && msg.data.id === useKnowledgeStore.getState().currentArticle?.id) {
                             return
                         }
-                        syncFromServer()
+                        syncArticlesFromServer()
                     }
                     if (msg.type === 'project_updated') {
                         const proj = useProjectStore.getState().currentProject
                         if (proj && msg.data) {
-                            useProjectStore.getState().setCurrentProject({
+                            let newSettings = proj.settings || '{}'
+                            if (msg.data.config) {
+                                try {
+                                    const cfg = JSON.parse(msg.data.config)
+                                    newSettings = applyProjectConfig(newSettings, cfg)
+                                } catch (e) { logger.error('Failed to parse project_updated config', e) }
+                            }
+                            const updated = {
                                 ...proj,
                                 name: msg.data.name || proj.name,
                                 description: msg.data.description || proj.description,
+                                settings: newSettings,
+                            }
+                            useProjectStore.getState().setCurrentProject(updated)
+                            useProjectStore.getState().updateProject(proj.id, {
+                                name: updated.name,
+                                description: updated.description || '',
+                                background: updated.background || '',
+                                settings: newSettings,
                             })
                         }
                     }
                 } catch (e) { logger.error('Failed to parse WebSocket message', e) /* not JSON */ }
             }
         }
-        connect()
+
+        function trySetup() {
+            const { serverUrl } = getSettings()
+            if (!serverUrl) return
+            projectSubscribed = true
+            syncProjectInfoFromServer()
+            syncArticlesFromServer()
+            connect()
+        }
+
+        // Try immediately (project may already be loaded from ProjectPage)
+        trySetup()
+
+        // If project not loaded yet, subscribe to store until it is
+        let unsub: (() => void) | null = null
+        if (!projectSubscribed) {
+            unsub = useProjectStore.subscribe(() => {
+                if (projectSubscribed || stopped) return
+                trySetup()
+                if (projectSubscribed && unsub) { unsub(); unsub = null }
+            })
+        }
 
         return () => {
             stopped = true
             if (reconnectTimer) clearTimeout(reconnectTimer)
-            ws.close()
+            if (ws) ws.close()
+            if (unsub) unsub()
         }
-    }, [projectId, useProjectStore(s => s.currentProject?.settings)])
+    }, [projectId])
 
 
     const handleCreate = useCallback(async () => {
@@ -344,22 +428,6 @@ export default function KnowledgeBasePage() {
         updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
         syncToServer(currentArticle.id, currentArticle.title, markdown, contentJson)
     }, [currentArticle, updateArticle, syncToServer])
-
-    const handleExport = useCallback(async (article: KnowledgeArticle, format: 'pdf' | 'docx') => {
-        const ext = format === 'pdf' ? 'pdf' : 'docx'
-        const outputPath = await save({
-            defaultPath: `${article.title}.${ext}`,
-            filters: [{ name: format.toUpperCase(), extensions: [ext] }],
-        })
-        if (!outputPath) return
-
-        try {
-            await invoke('export_article', { markdown: article.content, outputPath, format })
-        } catch (e: any) {
-            logger.error('Failed to export article', e)
-            alert(`导出失败: ${e}\n\n请确认已安装 Pandoc：https://pandoc.org/installing.html`)
-        }
-    }, [])
 
     const handleRename = useCallback((article: KnowledgeArticle, newTitle: string) => {
         updateArticle(article.id, newTitle, article.content)
@@ -575,7 +643,6 @@ export default function KnowledgeBasePage() {
                                             article={article}
                                             isActive={currentArticle?.id === article.id}
                                             onSelect={setCurrentArticle}
-                                            onExport={handleExport}
                                             onDelete={confirmDelete}
                                             onRename={handleRename}
                                         />
@@ -631,32 +698,33 @@ export default function KnowledgeBasePage() {
 
                 {/* Editor area */}
                 <div className="flex-1 flex flex-col min-w-0">
-                    {currentArticle ? (
-                        <div className="flex-1 overflow-hidden">
-                            <MarkdownEditor
-                                key={currentArticle.id}
-                                content={currentArticle.content}
-                                contentJson={
-                                    currentArticle.content_json && currentArticle.content_json !== '{}'
-                                        ? (() => { try { return JSON.parse(currentArticle.content_json) } catch (e) { logger.error('Failed to parse article content JSON', e); return null } })()
-                                        : null
-                                }
-                                editable={!isCollab || serverOnline}
-                                onChange={handleEditorChange}
-                                onSave={handleImmediateSave}
-                                placeholder="开始编辑知识库文档..."
-                                autofocus={false}
-                                updatedAt={currentArticle.updated_at}
-                            />
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex items-center justify-center text-gray-400">
-                            <div className="text-center">
-                                <FileText size={48} strokeWidth={1} className="mx-auto mb-3" />
-                                <p className="text-lg">选择或创建一篇文章</p>
+                        {currentArticle ? (
+                            <div className="flex-1 overflow-hidden">
+                                <MarkdownEditor
+                                    key={currentArticle.id}
+                                    content={currentArticle.content}
+                                    contentJson={
+                                        currentArticle.content_json && currentArticle.content_json !== '{}'
+                                            ? (() => { try { return JSON.parse(currentArticle.content_json) } catch (e) { logger.error('Failed to parse article content JSON', e); return null } })()
+                                            : null
+                                    }
+                                    editable={(!isCollab || serverOnline) && collabReady}
+                                    collabReady={collabReady}
+                                    onChange={handleEditorChange}
+                                    onSave={handleImmediateSave}
+                                    placeholder="开始编辑知识库文档..."
+                                    autofocus={false}
+                                    updatedAt={(currentArticle as any).updated_at}
+                                />
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center text-gray-400">
+                                <div className="text-center">
+                                    <FileText size={48} strokeWidth={1} className="mx-auto mb-3" />
+                                    <p className="text-lg">选择或创建一篇文章</p>
+                                </div>
+                            </div>
+                        )}
                 </div>
             </div>
 
@@ -675,11 +743,10 @@ export default function KnowledgeBasePage() {
 }
 
 function ArticleItem({
-    article, isActive, onSelect, onExport, onDelete, onRename,
+    article, isActive, onSelect, onDelete, onRename,
 }: {
     article: KnowledgeArticle; isActive: boolean
     onSelect: (a: KnowledgeArticle) => void
-    onExport: (a: KnowledgeArticle, format: 'pdf' | 'docx') => void
     onDelete: (a: KnowledgeArticle) => void
     onRename: (a: KnowledgeArticle, newTitle: string) => void
 }) {
@@ -726,9 +793,6 @@ function ArticleItem({
                 <span className="truncate flex-1">{article.title}</span>
             )}
             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); onExport(article, 'pdf') }} className="p-0.5 rounded hover:bg-zell-200" title="导出 PDF">
-                    <FileOutput size={13} className="text-gray-400 hover:text-zell-600" />
-                </button>
                 <button onClick={(e) => { e.stopPropagation(); onDelete(article) }} className="p-0.5 rounded hover:bg-red-100" title="删除">
                     <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
                 </button>

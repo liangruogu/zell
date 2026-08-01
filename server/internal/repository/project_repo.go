@@ -45,6 +45,7 @@ func (db *DB) migrateProjects() error {
 	db.conn.Exec(`ALTER TABLE projects ADD COLUMN description TEXT DEFAULT ''`)
 	db.conn.Exec(`ALTER TABLE projects ADD COLUMN owner_token TEXT DEFAULT ''`)
 	db.conn.Exec(`ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'`)
+	db.conn.Exec(`ALTER TABLE projects ADD COLUMN config TEXT DEFAULT ''`)
 	db.conn.Exec(`ALTER TABLE project_members ADD COLUMN status TEXT DEFAULT 'active'`)
 	return nil
 }
@@ -76,6 +77,7 @@ func (db *DB) SetCollabEnabled(projectID string, enabled bool, ownerToken string
 func (db *DB) GetProject(projectID string) (*struct {
 	Name            string
 	Description     string
+	Config          string
 	CollabEnabled   bool
 	InviteCode      string
 	InviteUpdatedAt string
@@ -84,22 +86,23 @@ func (db *DB) GetProject(projectID string) (*struct {
 }, error) {
 	db.EnsureProject(projectID)
 	var enabled int
-	var code, updatedAt, ownerToken, name, description, status string
+	var code, updatedAt, ownerToken, name, description, config, status string
 	err := db.conn.QueryRow(
-		`SELECT COALESCE(name,''), COALESCE(description,''), collab_enabled, invite_code, invite_updated_at, COALESCE(owner_token,''), COALESCE(status,'active') FROM projects WHERE id = ?`, projectID,
-	).Scan(&name, &description, &enabled, &code, &updatedAt, &ownerToken, &status)
+		`SELECT COALESCE(name,''), COALESCE(description,''), COALESCE(config,''), collab_enabled, invite_code, invite_updated_at, COALESCE(owner_token,''), COALESCE(status,'active') FROM projects WHERE id = ?`, projectID,
+	).Scan(&name, &description, &config, &enabled, &code, &updatedAt, &ownerToken, &status)
 	if err != nil {
 		return nil, err
 	}
 	return &struct {
 		Name            string
 		Description     string
+		Config          string
 		CollabEnabled   bool
 		InviteCode      string
 		InviteUpdatedAt string
 		OwnerToken      string
 		Status          string
-	}{name, description, enabled == 1, code, updatedAt, ownerToken, status}, nil
+	}{name, description, config, enabled == 1, code, updatedAt, ownerToken, status}, nil
 }
 
 func (db *DB) SetCollabDeleted(projectID string) error {
@@ -110,8 +113,8 @@ func (db *DB) SetCollabDeleted(projectID string) error {
 	return err
 }
 
-func (db *DB) UpdateProjectInfo(projectID, name, description string) error {
-	_, err := db.conn.Exec(`UPDATE projects SET name = ?, description = ? WHERE id = ?`, name, description, projectID)
+func (db *DB) UpdateProjectInfo(projectID, name, description, config string) error {
+	_, err := db.conn.Exec(`UPDATE projects SET name = ?, description = ?, config = ? WHERE id = ?`, name, description, config, projectID)
 	return err
 }
 

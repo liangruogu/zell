@@ -12,22 +12,28 @@ import (
 type roomKey string
 
 type Hub struct {
-	rooms         map[roomKey]map[*Client]bool
-	register      chan *Client
-	unregister    chan *Client
-	mu            sync.RWMutex
-	onSnapshot    func(docID string, state []byte)
-	onMemberEvent func(projectID, clientID string, online bool)
+	rooms          map[roomKey]map[*Client]bool
+	register       chan *Client
+	unregister     chan *Client
+	mu             sync.RWMutex
+	onSnapshot     func(docID string, state []byte)
+	onMemberEvent  func(projectID, clientID string, online bool)
+	onLoadSnapshot func(docID string) []byte
 }
 
 func NewHub(onSnapshot func(docID string, state []byte), onMemberEvent func(projectID, clientID string, online bool)) *Hub {
 	return &Hub{
-		rooms:         make(map[roomKey]map[*Client]bool),
-		register:      make(chan *Client, 256),
-		unregister:    make(chan *Client, 256),
-		onSnapshot:    onSnapshot,
-		onMemberEvent: onMemberEvent,
+		rooms:          make(map[roomKey]map[*Client]bool),
+		register:       make(chan *Client, 256),
+		unregister:     make(chan *Client, 256),
+		onSnapshot:     onSnapshot,
+		onMemberEvent:  onMemberEvent,
+		onLoadSnapshot: nil,
 	}
+}
+
+func (h *Hub) SetLoadSnapshot(fn func(docID string) []byte) {
+	h.onLoadSnapshot = fn
 }
 
 func (h *Hub) Run() {
@@ -86,6 +92,15 @@ func (h *Hub) broadcast(room string, sender *Client, msg []byte) {
 		client.Send(msg)
 	}
 
+	// If sender is the only client and sends SyncStep1, load persisted snapshot
+	if msgType == MsgSyncStep1 && len(clients) == 1 {
+		if _, exists := clients[sender]; exists && h.onLoadSnapshot != nil {
+			if state := h.onLoadSnapshot(room); state != nil && len(state) > 0 {
+				sender.Send(EncodeSyncStep1(state))
+			}
+		}
+	}
+
 	// Save snapshot periodically on updates
 	if msgType == MsgUpdate && h.onSnapshot != nil {
 		h.onSnapshot(room, payload)
@@ -116,11 +131,26 @@ func (h *Hub) BroadcastProject(projectID string, event string, data interface{})
 	defer h.mu.RUnlock()
 
 	// Only broadcast to notification rooms, not Yjs editing rooms
+	notifPrefix := projectID + ":__notifications__"
+	totalClients := 0
 	for key, clients := range h.rooms {
-		if strings.HasPrefix(string(key), projectID+":__notifications__") {
+		if strings.HasPrefix(string(key), notifPrefix) {
 			for client := range clients {
 				client.Send(msg)
+				totalClients++
 			}
 		}
 	}
+	log.Printf("[hub] broadcast %s to project %s: %d client(s) in %d room(s) (total rooms: %d)",
+		event, projectID, totalClients, countNotificationRooms(h.rooms, notifPrefix), len(h.rooms))
+}
+
+func countNotificationRooms(rooms map[roomKey]map[*Client]bool, prefix string) int {
+	count := 0
+	for key := range rooms {
+		if strings.HasPrefix(string(key), prefix) {
+			count++
+		}
+	}
+	return count
 }

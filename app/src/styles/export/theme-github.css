@@ -1,0 +1,19 @@
+/* Zell PDF Export — GitHub Theme */
+
+/* Syntax highlighting — GitHub */
+body { color: #1f2328; }
+
+.hljs-keyword { color: #cf222e; } .hljs-string { color: #0a3069; } .hljs-number { color: #0550ae; }
+.hljs-comment { color: #6e7781; font-style: italic; } .hljs-function { color: #8250df; }
+.hljs-type { color: #0550ae; } .hljs-attr { color: #0550ae; } .hljs-built_in { color: #0550ae; }
+.hljs-title { color: #8250df; } .hljs-params { color: #1f2328; } .hljs-literal { color: #0550ae; }
+.hljs-meta { color: #6e7781; } .hljs-selector-class { color: #cf222e; } .hljs-selector-tag { color: #116329; }
+.hljs-variable { color: #cf222e; } .hljs-name { color: #116329; } .hljs-operator { color: #1f2328; }
+.hljs-regexp { color: #0a3069; } .hljs-punctuation { color: #1f2328; }
+
+/* Blockquote — GitHub style */
+blockquote { border-left-color: #0969da; color: #57606a; }
+
+/* Table — GitHub style */
+th { background: #f6f8fa; }
+th, td { border-color: #d0d7de; }

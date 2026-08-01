@@ -100,6 +100,7 @@ func (h *InviteHandler) GetProjectInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"name":        proj.Name,
 		"description": proj.Description,
+		"config":      proj.Config,
 	})
 }
 
@@ -108,18 +109,21 @@ func (h *InviteHandler) UpdateProjectInfo(c *gin.Context) {
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
+		Config      string `json:"config"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
-	if err := h.db.UpdateProjectInfo(pid, req.Name, req.Description); err != nil {
+	if err := h.db.UpdateProjectInfo(pid, req.Name, req.Description, req.Config); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[invite] UpdateProjectInfo pid=%s name=%s description=%s config=%s", pid, req.Name, req.Description, req.Config)
 	h.hub.BroadcastProject(pid, "project_updated", gin.H{
 		"name":        req.Name,
 		"description": req.Description,
+		"config":      req.Config,
 	})
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

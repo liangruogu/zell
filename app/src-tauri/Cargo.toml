@@ -43,3 +43,9 @@ undoc = "0.5"
 
 [features]
 e2e-testing = ["tauri-plugin-playwright"]
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+opt-level = "s"

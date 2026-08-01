@@ -1,0 +1,12 @@
+/* Zell PDF Export — Zell Theme (default) */
+
+/* Syntax highlighting — dark code block (matches editor) */
+.hljs-keyword { color: #c792ea; } .hljs-string { color: #c3e88d; } .hljs-number { color: #f78c6c; }
+.hljs-comment { color: #676e95; font-style: italic; } .hljs-function { color: #82aaff; }
+.hljs-type { color: #ffcb6b; } .hljs-attr { color: #ffcb6b; } .hljs-built_in { color: #ffcb6b; }
+.hljs-title { color: #82aaff; } .hljs-params { color: #eeffff; } .hljs-literal { color: #f78c6c; }
+.hljs-meta { color: #676e95; } .hljs-selector-class { color: #ff5370; } .hljs-selector-tag { color: #ff5370; }
+.hljs-variable { color: #f07178; } .hljs-name { color: #c792ea; } .hljs-operator { color: #89ddff; }
+.hljs-regexp { color: #c3e88d; } .hljs-punctuation { color: #89ddff; }
+.hljs-property { color: #82aaff; } .hljs-symbol { color: #c3e88d; }
+.hljs-addition { color: #c3e88d; } .hljs-deletion { color: #f07178; }

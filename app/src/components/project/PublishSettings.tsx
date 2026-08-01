@@ -84,7 +84,7 @@ export function PublishSettings() {
         }),
       })
       for (const type of ['ppt', 'ui', 'mood'] as const) {
-        for (const wid of cur.publish[type]) {
+        for (const wid of cur.publish?.[type] || []) {
           const wb = useWhiteboardStore.getState().whiteboards.find(w => w.id === wid)
           if (!wb) continue
           await fetch(`${serverUrl}/api/v1/projects/${currentProject.id}/publish/whiteboards/${wid}`, {

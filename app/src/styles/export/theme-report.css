@@ -1,0 +1,7 @@
+/* Zell PDF Export — Report Theme */
+
+/* Syntax highlighting — Monochrome */
+.hljs-keyword { font-weight: bold; } .hljs-string { font-style: italic; } .hljs-number { font-weight: bold; }
+.hljs-comment { color: #888; font-style: italic; } .hljs-function { font-weight: bold; }
+.hljs-type { font-weight: bold; } .hljs-attr { font-weight: bold; } .hljs-built_in { font-weight: bold; }
+.hljs-title { font-weight: bold; }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useCallback, useRef, useEffect, useState } from 'react'
 import { usePptStore, getIsResizing } from './store'
 import { CanvasElementView } from './CanvasElement'

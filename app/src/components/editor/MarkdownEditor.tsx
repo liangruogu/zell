@@ -33,6 +33,12 @@ import { format } from '@/lib/format'
 import { parseProjectSettings } from '@/types/project'
 import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
+import katex from 'katex'
+import baseCss from '@/styles/export/base.css?raw'
+import zellThemeCss from '@/styles/export/theme-zell.css?raw'
+import githubThemeCss from '@/styles/export/theme-github.css?raw'
+import reportThemeCss from '@/styles/export/theme-report.css?raw'
+import katexCss from 'katex/dist/katex.min.css?raw'
 import { useEditorPlugins } from './useEditorPlugins'
 import { useEditorHandlers } from './useEditorHandlers'
 import { useEditorDragDrop } from './useEditorDragDrop'
@@ -51,6 +57,7 @@ interface MarkdownEditorProps {
     className?: string
     autofocus?: boolean
     updatedAt?: string
+    collabReady?: boolean
 }
 
 export function MarkdownEditor({
@@ -63,6 +70,7 @@ export function MarkdownEditor({
     className,
     autofocus = false,
     updatedAt,
+    collabReady = true,
 }: MarkdownEditorProps) {
     const isAIOpen = useAIStore((s) => s.isOpen)
     const openPanel = useAIStore((s) => s.openPanel)
@@ -73,7 +81,12 @@ export function MarkdownEditor({
     useEffect(() => { loadSettings() }, [loadSettings])
 
     // ---- Theme ----
-    const appearanceSettings = useSettingsStore((s) => s.settings['appearance'])
+    const appearanceSettings = useProjectStore((s) => {
+        if (!s.currentProject) return undefined
+        const ps = parseProjectSettings(s.currentProject.settings)
+        if (!ps.appearance) return undefined
+        return JSON.stringify(ps.appearance)
+    })
     useEffect(() => {
         const apply = async () => {
             try {
@@ -118,7 +131,7 @@ export function MarkdownEditor({
     const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
     const collabServerUrl = ps.serverUrl || ''
     const collabToken = ps.token || ''
-    const collabEnabled = !!collabServerUrl && !!collabToken
+    const collabEnabled = !!collabServerUrl && !!collabToken && collabReady
     const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
     const collabYDocRef = useRef<Y.Doc | null>(null)
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
@@ -147,9 +160,36 @@ export function MarkdownEditor({
         // Set user info for cursor awareness
         const settings = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
         const displayName = settings.displayName || (settings.serverKey ? 'Owner' : 'Anonymous')
-        const colors = ['#958DF1','#F98181','#FBBC88','#FAF594','#70CFF8','#94FADB','#B9F18D','#C3E2C2','#EEC759','#9BB8CD','#FF90BC','#7ED7C1','#D0BFFF','#9BABB8']
-        const userColor = colors[Math.floor(Math.random() * colors.length)]
+        // Softer colors readable on white background, deterministic per user
+        const userColors = ['#8B7EC8','#D98B7A','#D4A76A','#C2C06A','#7AB8D4','#7AC8A8','#8EC87A','#A0C8C0','#C8B868','#8AA8C8','#C88AAA','#7AC0B8','#B89ACA','#9AA0B0']
+        const colorHash = displayName.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+        const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
+
+        // Populate Y.Doc from local only when no other peers are online
+        const initJson = contentJson
+        let initAttempts = 0
+        const tryLocalInit = () => {
+            const d = collabYDocRef.current
+            if (!d || !initJson) return
+            const yContent = d.getXmlFragment('content')
+            if (yContent.length > 0) return
+            // Check if other peers are in the room
+            const states = provider.awareness.getStates()
+            if (states.size > 1) return
+            if (!editorRef.current) {
+                if (initAttempts < 10) {
+                    initAttempts++
+                    setTimeout(tryLocalInit, 100)
+                }
+                return
+            }
+            editorRef.current.commands.setContent(initJson)
+        }
+        provider.on('sync', (synced: boolean) => {
+            if (synced) tryLocalInit()
+        })
+
         requestAnimationFrame(() => setCollabKey(k => k + 1))
         return () => {
             provider.awareness.setLocalStateField('cursor', null)
@@ -171,31 +211,93 @@ export function MarkdownEditor({
     const [justSaved, setJustSaved] = useState(false)
     const [saveMessage, setSaveMessage] = useState('✓ 已保存')
     const [showExport, setShowExport] = useState(false)
+    const [exporting, setExporting] = useState(false)
 
     const editorRef = useRef<ReturnType<typeof useEditor>>(null)
     const insertImageRef = useRef<(dataUrl: string, sourcePath?: string) => void>(() => { })
 
+    // Pre-render math, checkboxes for export
+    function prepareExportHtml(html: string): string {
+        return html
+            .replace(/<input type="checkbox"(\s+checked)?(\s[^>]*)?>/g, (_, checked) => {
+                return `<span class="zell-checkbox${checked ? ' zell-checkbox-checked' : ''}"></span>`
+            })
+            .replace(/<math-inline[^>]*>(.*?)<\/math-inline>/gs, (_, tex) => {
+                try { return katex.renderToString(tex, { throwOnError: false, displayMode: false, output: 'html' }) }
+                catch { return `<em>${tex}</em>` }
+            })
+            .replace(/<math-display[^>]*>(.*?)<\/math-display>/gs, (_, tex) => {
+                try { return katex.renderToString(tex, { throwOnError: false, displayMode: true, output: 'html' }) }
+                catch { return `<p style="text-align:center"><em>${tex}</em></p>` }
+            })
+    }
+
     // ---- Export ----
-    const handleExport = useCallback(async (format: 'pdf' | 'docx') => {
+    const handleExport = useCallback(async (format: 'pdf' | 'docx' | 'html') => {
         setShowExport(false)
+        setExporting(true)
         const article = useKnowledgeStore.getState().currentArticle
         const fileName = article?.title || 'document'
-        const ext = format === 'pdf' ? 'pdf' : 'docx'
-        const outputPath = await save({
-            defaultPath: `${fileName}.${ext}`,
-            filters: [{ name: format.toUpperCase(), extensions: [ext] }],
-        })
-        if (!outputPath) return
-        const markdown = htmlToMarkdown(editorRef.current?.getHTML() || content)
-        try {
-            await invoke('export_article', { markdown, outputPath, format })
-            setSaveMessage('✓ 导出成功')
+
+        const projectSettings = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
+        const theme = (projectSettings as any).appearance?.theme || 'zell'
+        const themeCss: Record<string, string> = { zell: zellThemeCss, github: githubThemeCss, report: reportThemeCss }
+        const fullCss = katexCss + '\n' + baseCss + '\n' + (themeCss[theme] || zellThemeCss)
+        const htmlContent = prepareExportHtml(editorRef.current?.getHTML() || content)
+        const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${fileName}</title><style>${fullCss}</style></head><body>${htmlContent}</body></html>`
+
+        if (format === 'html') {
+            const outputPath = await save({
+                defaultPath: `${fileName}.html`,
+                filters: [{ name: 'HTML', extensions: ['html'] }],
+            })
+            if (!outputPath) { setExporting(false); return }
+            try {
+                const { writeTextFile } = await import('@tauri-apps/plugin-fs')
+                await writeTextFile(outputPath, fullHtml)
+                setSaveMessage('✓ HTML 导出成功')
+            } catch (e: any) {
+                alert(`导出失败: ${e}`)
+            }
             setJustSaved(true)
-            setTimeout(() => setJustSaved(false), 2000)
+            setTimeout(() => setJustSaved(false), 3000)
+            setExporting(false)
+            return
+        }
+
+        if (format === 'pdf') {
+            const outputPath = await save({
+                defaultPath: `${fileName}.pdf`,
+                filters: [{ name: 'PDF', extensions: ['pdf'] }],
+            })
+            if (!outputPath) { setExporting(false); return }
+            try {
+                await invoke('export_html_to_pdf', { html: fullHtml, outputPath })
+                setSaveMessage('✓ PDF 导出成功')
+            } catch (e: any) {
+                alert(`导出失败: ${e}`)
+            }
+            setJustSaved(true)
+            setTimeout(() => setJustSaved(false), 3000)
+            setExporting(false)
+            return
+        }
+
+        // DOCX
+        const docxPath = await save({
+            defaultPath: `${fileName}.docx`,
+            filters: [{ name: 'DOCX', extensions: ['docx'] }],
+        })
+        if (!docxPath) { setExporting(false); return }
+        try {
+            await invoke('export_html_to_docx', { html: fullHtml, outputPath: docxPath })
+            setSaveMessage('✓ DOCX 导出成功')
         } catch (e: any) {
-            logger.error('MarkdownEditor: failed to export article', e)
             alert(`导出失败: ${e}`)
         }
+        setJustSaved(true)
+        setTimeout(() => setJustSaved(false), 3000)
+        setExporting(false)
     }, [content])
 
     const insertImage = useCallback(async (dataUrl: string, _sourcePath?: string) => {
@@ -219,7 +321,7 @@ export function MarkdownEditor({
 
     // ---- Extracted hooks ----
     const scrollRef = useRef<HTMLDivElement>(null)
-    const { trimCodeBlockPlugin, markdownLinkPlugin, keyboardPlugin } = useEditorPlugins({ editorRef, handleSave })
+    const { trimCodeBlockExt, markdownLinkExt, keyboardExt } = useEditorPlugins({ editorRef, handleSave })
     const { handlePaste, handleDrop } = useEditorHandlers({ editorRef, insertImageRef })
     useEditorDragDrop({ editorRef, insertImage })
 
@@ -276,17 +378,19 @@ export function MarkdownEditor({
                 () => collabProviderRef.current?.awareness,
                 () => collabProviderRef.current?.awareness?.clientID ?? 0
             ),
-            trimCodeBlockPlugin,
-            markdownLinkPlugin,
-            keyboardPlugin,
+            trimCodeBlockExt,
+            markdownLinkExt,
+            keyboardExt,
         ],
         content: collabYDocRef.current ? undefined : initialHtml,
         editable: editable,
         autofocus: autofocus ? 'end' : false,
         onUpdate: handleUpdate,
+        onCreate: ({ editor }) => {
+            // Local init is handled by tryLocalInit after 'sync' event confirms peer count
+        },
         editorProps: {
             attributes: { class: 'prose zell-prose focus:outline-none min-h-[300px]' },
-            handleKeyDown: keyboardPlugin.props.handleKeyDown,
             handlePaste,
             handleDrop,
         },
@@ -359,14 +463,16 @@ export function MarkdownEditor({
                 </span>
                 <span className="flex items-center gap-1">
                     <div className="relative">
-                        <button type="button" onClick={() => setShowExport(!showExport)}
-                            className="hover:text-gray-600 transition-colors cursor-pointer flex items-center gap-0.5" title="导出">
+                        <button type="button" onClick={() => setShowExport(!showExport)} disabled={exporting}
+                            className="hover:text-gray-600 transition-colors cursor-pointer flex items-center gap-0.5 disabled:opacity-50" title="导出">
                             <Download size={13} />
+                            {exporting && <span className="text-xs ml-0.5">导出中...</span>}
                         </button>
                         {showExport && (
                             <div className="absolute bottom-full right-0 mb-1 w-24 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 overflow-hidden">
                                 <button onClick={() => handleExport('pdf')} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50">PDF</button>
                                 <button onClick={() => handleExport('docx')} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50">DOCX</button>
+                                <button onClick={() => handleExport('html')} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50">HTML</button>
                             </div>
                         )}
                     </div>
@@ -378,6 +484,17 @@ export function MarkdownEditor({
                     className="absolute bottom-14 right-4 z-10 p-2 bg-zell-500 text-white rounded-full shadow-lg hover:bg-zell-600 transition-all hover:scale-110" title="AI 助手">
                     <Sparkles size={16} />
                 </button>
+            )}
+
+            {/* Export loading overlay */}
+            {exporting && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl px-8 py-6 text-center space-y-3">
+                        <div className="w-8 h-8 border-2 border-zell-500 border-t-transparent rounded-full mx-auto" style={{ animation: 'spin 0.8s linear infinite' }} />
+                        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+                        <p className="text-sm text-gray-600">正在导出...</p>
+                    </div>
+                </div>
             )}
         </div>
     )

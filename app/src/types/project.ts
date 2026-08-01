@@ -23,12 +23,38 @@ export interface ProjectSettings {
     fallback_to_local?: boolean
   }
   publish?: PublishSettings
+  appearance?: {
+    theme?: string
+  }
+  sync?: {
+    policy?: string
+    intervalHours?: string
+  }
   serverUrl?: string
   token?: string
   role?: 'owner' | 'member'
   collabEnabled?: boolean
   displayName?: string
   serverKey?: string
+}
+
+export interface ProjectConfig {
+  appearance?: { theme?: string }
+  sync?: { policy?: string; intervalHours?: string }
+}
+
+export function extractProjectConfig(ps: ProjectSettings): ProjectConfig {
+  const cfg: ProjectConfig = {}
+  if (ps.appearance) cfg.appearance = ps.appearance
+  if (ps.sync) cfg.sync = ps.sync
+  return cfg
+}
+
+export function applyProjectConfig(settings: string, config: ProjectConfig): string {
+  const ps = parseProjectSettings(settings)
+  if (config.appearance) ps.appearance = { ...ps.appearance, ...config.appearance }
+  if (config.sync) ps.sync = { ...ps.sync, ...config.sync }
+  return stringifyProjectSettings(ps)
 }
 
 export interface PublishSettings {

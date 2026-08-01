@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
+import { Extension } from '@tiptap/core'
 import type { Editor } from '@tiptap/react'
 
 interface UseEditorPluginsParams {
@@ -10,6 +11,14 @@ interface UseEditorPluginsParams {
 export function useEditorPlugins({ editorRef, handleSave }: UseEditorPluginsParams) {
   const handleSaveRef = useRef(handleSave)
   handleSaveRef.current = handleSave
+
+  function isInCodeBlock(ed: Editor) {
+    const { $from } = ed.state.selection
+    for (let d = $from.depth; d > 0; d--) {
+      if ($from.node(d).type.name === 'codeBlock') return true
+    }
+    return false
+  }
 
   const trimCodeBlockPlugin = new Plugin({
     key: new PluginKey('trimCodeBlockTrailingNewline'),
@@ -46,7 +55,8 @@ export function useEditorPlugins({ editorRef, handleSave }: UseEditorPluginsPara
         const { tr } = state
         const linkMark = state.schema.marks.link.create({ href })
         tr.delete(matchStart, from)
-        tr.insertText(match[1], matchStart, [linkMark])
+        tr.insertText(match[1], matchStart)
+        tr.addMark(matchStart, matchStart + match[1].length, linkMark)
         view.dispatch(tr)
         return true
       },
@@ -59,10 +69,10 @@ export function useEditorPlugins({ editorRef, handleSave }: UseEditorPluginsPara
       handleKeyDown: (_view, event) => {
         const ed = editorRef.current
 
-        // Smart bracket skip
+        // Smart bracket skip — only in code blocks
         const closeBrackets: Record<string, string> = { '}': '{', ']': '[', ')': '(' }
         if (!event.ctrlKey && !event.metaKey && !event.altKey && event.key in closeBrackets) {
-          if (ed) {
+          if (ed && isInCodeBlock(ed)) {
             const { from } = ed.state.selection
             if (from < ed.state.doc.content.size) {
               const nextChar = ed.state.doc.textBetween(from, from + 1)
@@ -75,10 +85,10 @@ export function useEditorPlugins({ editorRef, handleSave }: UseEditorPluginsPara
           }
         }
 
-        // Bracket auto-pairing: {} () []
+        // Bracket auto-pairing: {} () [] — only in code blocks
         const pairs: Record<string, string> = { '{': '}', '(': ')', '[': ']' }
         if (!event.ctrlKey && !event.metaKey && !event.altKey && event.key in pairs) {
-          if (ed) {
+          if (ed && isInCodeBlock(ed)) {
             const { from, to, empty } = ed.state.selection
             event.preventDefault()
             const open = event.key
@@ -96,9 +106,9 @@ export function useEditorPlugins({ editorRef, handleSave }: UseEditorPluginsPara
           }
         }
 
-        // Quote auto-pairing
+        // Quote auto-pairing — only in code blocks
         if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.key === '"' || event.key === "'")) {
-          if (ed) {
+          if (ed && isInCodeBlock(ed)) {
             const { from, to, empty } = ed.state.selection
             if (empty && from < ed.state.doc.content.size) {
               const nextChar = ed.state.doc.textBetween(from, from + 1)
@@ -158,9 +168,11 @@ export function useEditorPlugins({ editorRef, handleSave }: UseEditorPluginsPara
         }
 
         if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {
-          event.preventDefault()
-          editorRef.current?.chain().focus().insertContent('\t').run()
-          return true
+          if (ed && isInCodeBlock(ed)) {
+            event.preventDefault()
+            editorRef.current?.chain().focus().insertContent('\t').run()
+            return true
+          }
         }
 
         if ((event.ctrlKey || event.metaKey) && event.shiftKey && (event.key === 'X' || event.key === 'x')) {
@@ -217,8 +229,8 @@ export function useEditorPlugins({ editorRef, handleSave }: UseEditorPluginsPara
   })
 
   return {
-    trimCodeBlockPlugin,
-    markdownLinkPlugin,
-    keyboardPlugin,
+    trimCodeBlockExt: Extension.create({ name: 'trimCodeBlock', addProseMirrorPlugins() { return [trimCodeBlockPlugin] } }),
+    markdownLinkExt: Extension.create({ name: 'markdownLink', addProseMirrorPlugins() { return [markdownLinkPlugin] } }),
+    keyboardExt: Extension.create({ name: 'editorKeyboard', addProseMirrorPlugins() { return [keyboardPlugin] } }),
   }
 }
