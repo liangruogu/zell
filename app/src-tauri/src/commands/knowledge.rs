@@ -13,9 +13,8 @@ pub struct ArticleSummary {
     pub updated_at: String,
 }
 
-#[tauri::command]
-pub fn create_knowledge_article(
-    db: State<'_, Database>,
+pub fn create_knowledge_article_core(
+    db: &Database,
     project_id: String,
     title: String,
     content: String,
@@ -44,11 +43,10 @@ pub fn create_knowledge_article(
 
     drop(conn);
 
-    // Index in FTS5
     let _ = crate::commands::resource::index_document(
-        &*db, &project_id, "knowledge", &id, &title, &content,
+        db, &project_id, "knowledge", &id, &title, &content,
     );
-    crate::commands::project::touch_project(&*db, &project_id);
+    crate::commands::project::touch_project(db, &project_id);
 
     Ok(KnowledgeArticle {
         id,
@@ -65,9 +63,21 @@ pub fn create_knowledge_article(
 }
 
 #[tauri::command]
-pub fn get_knowledge_articles(
+pub fn create_knowledge_article(
     db: State<'_, Database>,
     project_id: String,
+    title: String,
+    content: String,
+    parent_id: Option<String>,
+    id: Option<String>,
+    content_json: Option<String>,
+) -> Result<KnowledgeArticle, String> {
+    create_knowledge_article_core(&db, project_id, title, content, parent_id, id, content_json)
+}
+
+pub fn get_knowledge_articles_core(
+    db: &Database,
+    project_id: &str,
 ) -> Result<Vec<KnowledgeArticle>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -97,9 +107,16 @@ pub fn get_knowledge_articles(
 }
 
 #[tauri::command]
-pub fn get_knowledge_article(
+pub fn get_knowledge_articles(
     db: State<'_, Database>,
-    id: String,
+    project_id: String,
+) -> Result<Vec<KnowledgeArticle>, String> {
+    get_knowledge_articles_core(&db, &project_id)
+}
+
+pub fn get_knowledge_article_core(
+    db: &Database,
+    id: &str,
 ) -> Result<KnowledgeArticle, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.query_row(
@@ -124,9 +141,16 @@ pub fn get_knowledge_article(
 }
 
 #[tauri::command]
-pub fn update_knowledge_article(
+pub fn get_knowledge_article(
     db: State<'_, Database>,
     id: String,
+) -> Result<KnowledgeArticle, String> {
+    get_knowledge_article_core(&db, &id)
+}
+
+pub fn update_knowledge_article_core(
+    db: &Database,
+    id: &str,
     title: String,
     content: String,
     content_json: String,
@@ -151,17 +175,27 @@ pub fn update_knowledge_article(
     drop(conn);
 
     let _ = crate::commands::resource::index_document(
-        &*db, &project_id, "knowledge", &id, &title, &content,
+        db, &project_id, "knowledge", id, &title, &content,
     );
-    crate::commands::project::touch_project(&*db, &project_id);
+    crate::commands::project::touch_project(db, &project_id);
 
-    get_knowledge_article(db, id)
+    get_knowledge_article_core(db, id)
 }
 
 #[tauri::command]
-pub fn delete_knowledge_article(
+pub fn update_knowledge_article(
     db: State<'_, Database>,
     id: String,
+    title: String,
+    content: String,
+    content_json: String,
+) -> Result<KnowledgeArticle, String> {
+    update_knowledge_article_core(&db, &id, title, content, content_json)
+}
+
+pub fn delete_knowledge_article_core(
+    db: &Database,
+    id: &str,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
@@ -173,9 +207,8 @@ pub fn delete_knowledge_article(
 
     drop(conn);
 
-    let _ = crate::commands::resource::delete_document_index(&*db, "knowledge", &id);
+    let _ = crate::commands::resource::delete_document_index(db, "knowledge", id);
 
-    // Need project_id for touch_project
     {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
         let pid: Option<String> = conn.query_row(
@@ -185,7 +218,7 @@ pub fn delete_knowledge_article(
         ).ok();
         drop(conn);
         if let Some(pid) = pid {
-            crate::commands::project::touch_project(&*db, &pid);
+            crate::commands::project::touch_project(db, &pid);
         }
     }
 
@@ -193,9 +226,16 @@ pub fn delete_knowledge_article(
 }
 
 #[tauri::command]
-pub fn reorder_knowledge_articles(
+pub fn delete_knowledge_article(
     db: State<'_, Database>,
-    article_ids: Vec<String>,
+    id: String,
+) -> Result<(), String> {
+    delete_knowledge_article_core(&db, &id)
+}
+
+pub fn reorder_knowledge_articles_core(
+    db: &Database,
+    article_ids: &[String],
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     for (i, aid) in article_ids.iter().enumerate() {
@@ -209,9 +249,16 @@ pub fn reorder_knowledge_articles(
 }
 
 #[tauri::command]
-pub fn get_article_summaries(
+pub fn reorder_knowledge_articles(
     db: State<'_, Database>,
-    project_id: String,
+    article_ids: Vec<String>,
+) -> Result<(), String> {
+    reorder_knowledge_articles_core(&db, &article_ids)
+}
+
+pub fn get_article_summaries_core(
+    db: &Database,
+    project_id: &str,
 ) -> Result<Vec<ArticleSummary>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -226,7 +273,6 @@ pub fn get_article_summaries(
     let summaries = stmt
         .query_map(rusqlite::params![project_id], |row| {
             let content: String = row.get(2)?;
-            // Strip common Markdown markers and truncate to 300 chars
             let plain = content
                 .replace('#', " ")
                 .replace('*', "")
@@ -261,4 +307,12 @@ pub fn get_article_summaries(
         .map_err(|e| e.to_string())?;
 
     Ok(summaries)
+}
+
+#[tauri::command]
+pub fn get_article_summaries(
+    db: State<'_, Database>,
+    project_id: String,
+) -> Result<Vec<ArticleSummary>, String> {
+    get_article_summaries_core(&db, &project_id)
 }

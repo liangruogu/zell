@@ -84,7 +84,6 @@ async fn fetch_page_markdown(url: &str) -> Result<String, String> {
         .text()
         .await
         .map_err(|e| format!("Read response body failed: {}", e))?;
-    // Extract body content only to avoid <head> meta/title noise
     let body_html = {
         let doc = Html::parse_document(&html);
         if let Ok(body_sel) = Selector::parse("body") {
@@ -102,12 +101,11 @@ async fn fetch_page_markdown(url: &str) -> Result<String, String> {
     Ok(result.content.unwrap_or_default())
 }
 
-// --- Tauri commands ---
+// --- Core functions ---
 
-#[tauri::command]
-pub async fn create_external_link(
-    db: State<'_, Database>,
-    project_id: String,
+pub async fn create_external_link_core(
+    db: &Database,
+    project_id: &str,
     title: String,
     url: String,
     description: String,
@@ -147,11 +145,11 @@ pub async fn create_external_link(
         }
     }
 
-    crate::commands::project::touch_project(&*db, &project_id);
+    crate::commands::project::touch_project(db, project_id);
 
     Ok(ExternalLink {
         id,
-        project_id,
+        project_id: project_id.to_string(),
         title,
         url,
         description,
@@ -169,9 +167,21 @@ pub async fn create_external_link(
 }
 
 #[tauri::command]
-pub fn get_external_links(
+pub async fn create_external_link(
     db: State<'_, Database>,
     project_id: String,
+    title: String,
+    url: String,
+    description: String,
+    link_type: String,
+    ai_skill: String,
+) -> Result<ExternalLink, String> {
+    create_external_link_core(&db, &project_id, title, url, description, link_type, ai_skill).await
+}
+
+pub fn get_external_links_core(
+    db: &Database,
+    project_id: &str,
 ) -> Result<Vec<ExternalLink>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -208,9 +218,16 @@ pub fn get_external_links(
 }
 
 #[tauri::command]
-pub fn update_external_link(
+pub fn get_external_links(
     db: State<'_, Database>,
-    id: String,
+    project_id: String,
+) -> Result<Vec<ExternalLink>, String> {
+    get_external_links_core(&db, &project_id)
+}
+
+pub fn update_external_link_core(
+    db: &Database,
+    id: &str,
     title: String,
     url: String,
     description: String,
@@ -228,9 +245,21 @@ pub fn update_external_link(
 }
 
 #[tauri::command]
-pub fn delete_external_link(
+pub fn update_external_link(
     db: State<'_, Database>,
     id: String,
+    title: String,
+    url: String,
+    description: String,
+    link_type: String,
+    ai_skill: String,
+) -> Result<(), String> {
+    update_external_link_core(&db, &id, title, url, description, link_type, ai_skill)
+}
+
+pub fn delete_external_link_core(
+    db: &Database,
+    id: &str,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
@@ -243,9 +272,16 @@ pub fn delete_external_link(
 }
 
 #[tauri::command]
-pub async fn sync_link(
+pub fn delete_external_link(
     db: State<'_, Database>,
     id: String,
+) -> Result<(), String> {
+    delete_external_link_core(&db, &id)
+}
+
+pub async fn sync_link_core(
+    db: &Database,
+    id: &str,
 ) -> Result<ExternalLink, String> {
     let (project_id, url, title, link_type, ai_skill, description, favicon, sort_order, created_at) = {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -283,10 +319,10 @@ pub async fn sync_link(
             .map_err(|e| e.to_string())?;
             drop(conn);
 
-            crate::commands::project::touch_project(&*db, &project_id);
+            crate::commands::project::touch_project(db, &project_id);
 
             Ok(ExternalLink {
-                id,
+                id: id.to_string(),
                 project_id,
                 title,
                 url,
@@ -325,7 +361,7 @@ pub async fn sync_link(
                 "SELECT project_id, url, title, description, link_type, favicon, ai_skill, sort_order, created_at FROM external_links WHERE id=?1",
                 rusqlite::params![id],
                 |row| Ok(ExternalLink {
-                    id: id.clone(),
+                    id: id.to_string(),
                     project_id: row.get(0)?,
                     title: row.get(1)?,
                     url: row.get(2)?,
@@ -348,7 +384,6 @@ pub async fn sync_link(
             Ok(link)
         }
         _ => {
-            // Treat unknown as web
             let markdown = fetch_page_markdown(&url).await.unwrap_or_else(|e| {
                 format!("同步失败: {}", e)
             });
@@ -362,10 +397,10 @@ pub async fn sync_link(
             .map_err(|e| e.to_string())?;
             drop(conn);
 
-            crate::commands::project::touch_project(&*db, &project_id);
+            crate::commands::project::touch_project(db, &project_id);
 
             Ok(ExternalLink {
-                id,
+                id: id.to_string(),
                 project_id,
                 title,
                 url,
@@ -387,4 +422,12 @@ pub async fn sync_link(
             })
         }
     }
+}
+
+#[tauri::command]
+pub async fn sync_link(
+    db: State<'_, Database>,
+    id: String,
+) -> Result<ExternalLink, String> {
+    sync_link_core(&db, &id).await
 }

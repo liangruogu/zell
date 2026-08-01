@@ -84,14 +84,13 @@ fn extract_text(path: &Path, file_type: &str) -> Result<String, String> {
     }
 }
 
-#[tauri::command]
-pub fn import_project_file(
-    app: AppHandle,
-    db: tauri::State<Database>,
-    project_id: String,
-    source_path: String,
+pub fn import_project_file_core(
+    app: &AppHandle,
+    db: &Database,
+    project_id: &str,
+    source_path: &str,
 ) -> Result<ProjectFile, String> {
-    let source = Path::new(&source_path);
+    let source = Path::new(source_path);
     if !source.exists() {
         return Err("Source file does not exist".into());
     }
@@ -117,7 +116,7 @@ pub fn import_project_file(
         .map(|m| m.len() as i64)
         .unwrap_or(0);
 
-    let dir = files_dir(&app, &project_id)?;
+    let dir = files_dir(app, project_id)?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
 
     let stored_name = format!("{}.{}", Uuid::now_v7(), ext);
@@ -138,16 +137,15 @@ pub fn import_project_file(
     .map_err(|e| e.to_string())?;
     drop(conn);
 
-    // Index document in FTS5
     if !extracted_text.is_empty() {
-        let _ = resource::index_document(&*db, &project_id, "file", &id, &original_name, &extracted_text);
+        let _ = resource::index_document(db, project_id, "file", &id, &original_name, &extracted_text);
     }
 
-    crate::commands::project::touch_project(&*db, &project_id);
+    crate::commands::project::touch_project(db, project_id);
 
     Ok(ProjectFile {
         id,
-        project_id,
+        project_id: project_id.to_string(),
         file_name: stored_name,
         original_name,
         file_type,
@@ -162,9 +160,18 @@ pub fn import_project_file(
 }
 
 #[tauri::command]
-pub fn get_project_files(
+pub fn import_project_file(
+    app: AppHandle,
     db: tauri::State<Database>,
     project_id: String,
+    source_path: String,
+) -> Result<ProjectFile, String> {
+    import_project_file_core(&app, &db, &project_id, &source_path)
+}
+
+pub fn get_project_files_core(
+    db: &Database,
+    project_id: &str,
 ) -> Result<Vec<ProjectFile>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -202,6 +209,14 @@ pub fn get_project_files(
 }
 
 #[tauri::command]
+pub fn get_project_files(
+    db: tauri::State<Database>,
+    project_id: String,
+) -> Result<Vec<ProjectFile>, String> {
+    get_project_files_core(&db, &project_id)
+}
+
+#[tauri::command]
 pub fn resolve_project_file(
     app: AppHandle,
     project_id: String,
@@ -235,10 +250,9 @@ pub fn get_project_file_path(
     Ok(path.to_string_lossy().to_string())
 }
 
-#[tauri::command]
-pub fn update_project_file(
-    db: tauri::State<Database>,
-    id: String,
+pub fn update_project_file_core(
+    db: &Database,
+    id: &str,
     description: String,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -252,10 +266,18 @@ pub fn update_project_file(
 }
 
 #[tauri::command]
-pub fn delete_project_file(
-    app: AppHandle,
+pub fn update_project_file(
     db: tauri::State<Database>,
     id: String,
+    description: String,
+) -> Result<(), String> {
+    update_project_file_core(&db, &id, description)
+}
+
+pub fn delete_project_file_core(
+    app: &AppHandle,
+    db: &Database,
+    id: &str,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
@@ -267,7 +289,7 @@ pub fn delete_project_file(
         )
         .map_err(|e| e.to_string())?;
 
-    let dir = files_dir(&app, &project_id)?;
+    let dir = files_dir(app, &project_id)?;
     let path = dir.join(&file_name);
     if path.exists() {
         fs::remove_file(&path).map_err(|e| format!("Delete file failed: {}", e))?;
@@ -280,16 +302,24 @@ pub fn delete_project_file(
     )
     .map_err(|e| e.to_string())?;
 
-    let _ = resource::delete_document_index(&db, "file", &id);
+    let _ = resource::delete_document_index(db, "file", id);
 
     Ok(())
 }
 
 #[tauri::command]
-pub fn re_extract_file_text(
+pub fn delete_project_file(
     app: AppHandle,
     db: tauri::State<Database>,
     id: String,
+) -> Result<(), String> {
+    delete_project_file_core(&app, &db, &id)
+}
+
+pub fn re_extract_file_text_core(
+    app: &AppHandle,
+    db: &Database,
+    id: &str,
 ) -> Result<String, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
@@ -301,7 +331,7 @@ pub fn re_extract_file_text(
         )
         .map_err(|e| e.to_string())?;
 
-    let dir = files_dir(&app, &project_id)?;
+    let dir = files_dir(app, &project_id)?;
     let path = dir.join(&file_name);
     let text = extract_text(&path, &file_type).unwrap_or_default();
 
@@ -314,18 +344,26 @@ pub fn re_extract_file_text(
     drop(conn);
 
     if !text.is_empty() {
-        let _ = resource::index_document(&*db, &project_id, "file", &id, &original_name, &text);
+        let _ = resource::index_document(db, &project_id, "file", id, &original_name, &text);
     } else {
-    let _ = resource::delete_document_index(&*db, "file", &id);
+        let _ = resource::delete_document_index(db, "file", id);
     }
 
     Ok(text)
 }
 
 #[tauri::command]
-pub fn rename_project_file(
+pub fn re_extract_file_text(
+    app: AppHandle,
     db: tauri::State<Database>,
     id: String,
+) -> Result<String, String> {
+    re_extract_file_text_core(&app, &db, &id)
+}
+
+pub fn rename_project_file_core(
+    db: &Database,
+    id: &str,
     new_name: String,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -336,4 +374,13 @@ pub fn rename_project_file(
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn rename_project_file(
+    db: tauri::State<Database>,
+    id: String,
+    new_name: String,
+) -> Result<(), String> {
+    rename_project_file_core(&db, &id, new_name)
 }

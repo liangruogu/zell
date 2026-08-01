@@ -35,13 +35,11 @@ pub fn index_document(
     content: &str,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    // Remove existing entry for this source
     conn.execute(
         "DELETE FROM document_search WHERE source_type=?1 AND source_id=?2",
         params![source_type, source_id],
     )
     .map_err(|e| e.to_string())?;
-    // Insert new content
     conn.execute(
         "INSERT INTO document_search (title, content, source_type, source_id, project_id) VALUES (?1, ?2, ?3, ?4, ?5)",
         params![title, content, source_type, source_id, project_id],
@@ -64,13 +62,12 @@ pub fn delete_document_index(
     Ok(())
 }
 
-// ── Tauri commands ─────────────────────────────────────────────────
+// ── Core functions ─────────────────────────────────────────────────
 
-#[tauri::command]
-pub fn search_documents(
-    db: State<'_, Database>,
-    project_id: String,
-    query: String,
+pub fn search_documents_core(
+    db: &Database,
+    project_id: &str,
+    query: &str,
     limit: Option<usize>,
 ) -> Result<Vec<SearchResult>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -105,10 +102,19 @@ pub fn search_documents(
 }
 
 #[tauri::command]
-pub fn search_knowledge(
+pub fn search_documents(
     db: State<'_, Database>,
     project_id: String,
     query: String,
+    limit: Option<usize>,
+) -> Result<Vec<SearchResult>, String> {
+    search_documents_core(&db, &project_id, &query, limit)
+}
+
+pub fn search_knowledge_core(
+    db: &Database,
+    project_id: &str,
+    query: &str,
     limit: Option<usize>,
 ) -> Result<Vec<SearchResult>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -140,10 +146,19 @@ pub fn search_knowledge(
 }
 
 #[tauri::command]
-pub fn search_resources(
+pub fn search_knowledge(
     db: State<'_, Database>,
     project_id: String,
     query: String,
+    limit: Option<usize>,
+) -> Result<Vec<SearchResult>, String> {
+    search_knowledge_core(&db, &project_id, &query, limit)
+}
+
+pub fn search_resources_core(
+    db: &Database,
+    project_id: &str,
+    query: &str,
     limit: Option<usize>,
 ) -> Result<Vec<SearchResult>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -175,14 +190,23 @@ pub fn search_resources(
 }
 
 #[tauri::command]
-pub fn get_resource_content(
+pub fn search_resources(
     db: State<'_, Database>,
-    resource_type: String,
-    id: String,
+    project_id: String,
+    query: String,
+    limit: Option<usize>,
+) -> Result<Vec<SearchResult>, String> {
+    search_resources_core(&db, &project_id, &query, limit)
+}
+
+pub fn get_resource_content_core(
+    db: &Database,
+    resource_type: &str,
+    id: &str,
 ) -> Result<ResourceContent, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
-    match resource_type.as_str() {
+    match resource_type {
         "file" => {
             let (original_name, extracted_text, file_type) = conn
                 .query_row(
@@ -192,8 +216,11 @@ pub fn get_resource_content(
                 )
                 .map_err(|e| format!("File not found: {}", e))?;
             Ok(ResourceContent {
-                id, name: original_name, text: extracted_text,
-                resource_type: format!("file/{}", file_type), url: None,
+                id: id.to_string(),
+                name: original_name,
+                text: extracted_text,
+                resource_type: format!("file/{}", file_type),
+                url: None,
             })
         }
         "link" => {
@@ -210,10 +237,22 @@ pub fn get_resource_content(
                 description
             };
             Ok(ResourceContent {
-                id, name: title, text,
-                resource_type: "link".into(), url: Some(url),
+                id: id.to_string(),
+                name: title,
+                text,
+                resource_type: "link".into(),
+                url: Some(url),
             })
         }
         _ => Err(format!("Unknown resource type: {}", resource_type)),
     }
+}
+
+#[tauri::command]
+pub fn get_resource_content(
+    db: State<'_, Database>,
+    resource_type: String,
+    id: String,
+) -> Result<ResourceContent, String> {
+    get_resource_content_core(&db, &resource_type, &id)
 }

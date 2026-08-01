@@ -4,10 +4,9 @@ use chrono::Utc;
 use tauri::State;
 use uuid::Uuid;
 
-#[tauri::command]
-pub fn create_whiteboard(
-    db: State<'_, Database>,
-    project_id: String,
+pub fn create_whiteboard_core(
+    db: &Database,
+    project_id: &str,
     name: String,
     wb_type: String,
 ) -> Result<Whiteboard, String> {
@@ -23,11 +22,11 @@ pub fn create_whiteboard(
 
     drop(conn);
 
-    crate::commands::project::touch_project(&*db, &project_id);
+    crate::commands::project::touch_project(db, project_id);
 
     Ok(Whiteboard {
         id,
-        project_id,
+        project_id: project_id.to_string(),
         name,
         snapshot: None,
         update_log: None,
@@ -39,9 +38,18 @@ pub fn create_whiteboard(
 }
 
 #[tauri::command]
-pub fn get_whiteboards(
+pub fn create_whiteboard(
     db: State<'_, Database>,
     project_id: String,
+    name: String,
+    wb_type: String,
+) -> Result<Whiteboard, String> {
+    create_whiteboard_core(&db, &project_id, name, wb_type)
+}
+
+pub fn get_whiteboards_core(
+    db: &Database,
+    project_id: &str,
 ) -> Result<Vec<Whiteboard>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -70,9 +78,16 @@ pub fn get_whiteboards(
 }
 
 #[tauri::command]
-pub fn get_whiteboard(
+pub fn get_whiteboards(
     db: State<'_, Database>,
-    id: String,
+    project_id: String,
+) -> Result<Vec<Whiteboard>, String> {
+    get_whiteboards_core(&db, &project_id)
+}
+
+pub fn get_whiteboard_core(
+    db: &Database,
+    id: &str,
 ) -> Result<Whiteboard, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.query_row(
@@ -96,9 +111,16 @@ pub fn get_whiteboard(
 }
 
 #[tauri::command]
-pub fn save_whiteboard_snapshot(
+pub fn get_whiteboard(
     db: State<'_, Database>,
     id: String,
+) -> Result<Whiteboard, String> {
+    get_whiteboard_core(&db, &id)
+}
+
+pub fn save_whiteboard_snapshot_core(
+    db: &Database,
+    id: &str,
     snapshot: String,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -112,9 +134,17 @@ pub fn save_whiteboard_snapshot(
 }
 
 #[tauri::command]
-pub fn rename_whiteboard(
+pub fn save_whiteboard_snapshot(
     db: State<'_, Database>,
     id: String,
+    snapshot: String,
+) -> Result<(), String> {
+    save_whiteboard_snapshot_core(&db, &id, snapshot)
+}
+
+pub fn rename_whiteboard_core(
+    db: &Database,
+    id: &str,
     name: String,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -128,9 +158,17 @@ pub fn rename_whiteboard(
 }
 
 #[tauri::command]
-pub fn delete_whiteboard(
+pub fn rename_whiteboard(
     db: State<'_, Database>,
     id: String,
+    name: String,
+) -> Result<(), String> {
+    rename_whiteboard_core(&db, &id, name)
+}
+
+pub fn delete_whiteboard_core(
+    db: &Database,
+    id: &str,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
@@ -140,4 +178,12 @@ pub fn delete_whiteboard(
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn delete_whiteboard(
+    db: State<'_, Database>,
+    id: String,
+) -> Result<(), String> {
+    delete_whiteboard_core(&db, &id)
 }

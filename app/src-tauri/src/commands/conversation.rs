@@ -4,9 +4,8 @@ use chrono::Utc;
 use tauri::State;
 use uuid::Uuid;
 
-#[tauri::command]
-pub fn create_ai_conversation(
-    db: State<'_, Database>,
+pub fn create_ai_conversation_core(
+    db: &Database,
     project_id: String,
     source_type: String,
 ) -> Result<AiConversation, String> {
@@ -20,23 +19,31 @@ pub fn create_ai_conversation(
     )
     .map_err(|e| e.to_string())?;
 
-        Ok(AiConversation {
-            id,
-            project_id,
-            source_type,
-            source_id: None,
-            selected_text: None,
-            messages: "[]".to_string(),
-            title: String::new(),
-            created_at: now.clone(),
-            updated_at: now,
-        })
+    Ok(AiConversation {
+        id,
+        project_id,
+        source_type,
+        source_id: None,
+        selected_text: None,
+        messages: "[]".to_string(),
+        title: String::new(),
+        created_at: now.clone(),
+        updated_at: now,
+    })
 }
 
 #[tauri::command]
-pub fn get_ai_conversations(
+pub fn create_ai_conversation(
     db: State<'_, Database>,
     project_id: String,
+    source_type: String,
+) -> Result<AiConversation, String> {
+    create_ai_conversation_core(&db, project_id, source_type)
+}
+
+pub fn get_ai_conversations_core(
+    db: &Database,
+    project_id: &str,
 ) -> Result<Vec<AiConversation>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -65,9 +72,16 @@ pub fn get_ai_conversations(
 }
 
 #[tauri::command]
-pub fn save_ai_conversation(
+pub fn get_ai_conversations(
     db: State<'_, Database>,
-    id: String,
+    project_id: String,
+) -> Result<Vec<AiConversation>, String> {
+    get_ai_conversations_core(&db, &project_id)
+}
+
+pub fn save_ai_conversation_core(
+    db: &Database,
+    id: &str,
     messages_json: String,
     title: String,
 ) -> Result<(), String> {
@@ -82,9 +96,18 @@ pub fn save_ai_conversation(
 }
 
 #[tauri::command]
-pub fn delete_ai_conversation(
+pub fn save_ai_conversation(
     db: State<'_, Database>,
     id: String,
+    messages_json: String,
+    title: String,
+) -> Result<(), String> {
+    save_ai_conversation_core(&db, &id, messages_json, title)
+}
+
+pub fn delete_ai_conversation_core(
+    db: &Database,
+    id: &str,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute(
@@ -96,9 +119,16 @@ pub fn delete_ai_conversation(
 }
 
 #[tauri::command]
-pub fn get_ai_conversation(
+pub fn delete_ai_conversation(
     db: State<'_, Database>,
     id: String,
+) -> Result<(), String> {
+    delete_ai_conversation_core(&db, &id)
+}
+
+pub fn get_ai_conversation_core(
+    db: &Database,
+    id: &str,
 ) -> Result<AiConversation, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.query_row(
@@ -119,4 +149,12 @@ pub fn get_ai_conversation(
         },
     )
     .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_ai_conversation(
+    db: State<'_, Database>,
+    id: String,
+) -> Result<AiConversation, String> {
+    get_ai_conversation_core(&db, &id)
 }
