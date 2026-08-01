@@ -46,9 +46,9 @@ pub fn create_knowledge_article(
 
     // Index in FTS5
     let _ = crate::commands::resource::index_document(
-        &db, &project_id, "knowledge", &id, &title, &content,
+        &*db, &project_id, "knowledge", &id, &title, &content,
     );
-    crate::commands::project::touch_project(&db, &project_id);
+    crate::commands::project::touch_project(&*db, &project_id);
 
     Ok(KnowledgeArticle {
         id,
@@ -151,9 +151,9 @@ pub fn update_knowledge_article(
     drop(conn);
 
     let _ = crate::commands::resource::index_document(
-        &db, &project_id, "knowledge", &id, &title, &content,
+        &*db, &project_id, "knowledge", &id, &title, &content,
     );
-    crate::commands::project::touch_project(&db, &project_id);
+    crate::commands::project::touch_project(&*db, &project_id);
 
     get_knowledge_article(db, id)
 }
@@ -173,7 +173,7 @@ pub fn delete_knowledge_article(
 
     drop(conn);
 
-    let _ = crate::commands::resource::delete_document_index(&db, "knowledge", &id);
+    let _ = crate::commands::resource::delete_document_index(&*db, "knowledge", &id);
 
     // Need project_id for touch_project
     {
@@ -185,7 +185,7 @@ pub fn delete_knowledge_article(
         ).ok();
         drop(conn);
         if let Some(pid) = pid {
-            crate::commands::project::touch_project(&db, &pid);
+            crate::commands::project::touch_project(&*db, &pid);
         }
     }
 

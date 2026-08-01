@@ -27,7 +27,7 @@ pub struct ResourceContent {
 // ── FTS5 helpers ───────────────────────────────────────────────────
 
 pub fn index_document(
-    db: &State<'_, Database>,
+    db: &Database,
     project_id: &str,
     source_type: &str,
     source_id: &str,
@@ -51,7 +51,7 @@ pub fn index_document(
 }
 
 pub fn delete_document_index(
-    db: &State<'_, Database>,
+    db: &Database,
     source_type: &str,
     source_id: &str,
 ) -> Result<(), String> {

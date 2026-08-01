@@ -140,10 +140,10 @@ pub fn import_project_file(
 
     // Index document in FTS5
     if !extracted_text.is_empty() {
-        let _ = resource::index_document(&db, &project_id, "file", &id, &original_name, &extracted_text);
+        let _ = resource::index_document(&*db, &project_id, "file", &id, &original_name, &extracted_text);
     }
 
-    crate::commands::project::touch_project(&db, &project_id);
+    crate::commands::project::touch_project(&*db, &project_id);
 
     Ok(ProjectFile {
         id,
@@ -314,9 +314,9 @@ pub fn re_extract_file_text(
     drop(conn);
 
     if !text.is_empty() {
-        let _ = resource::index_document(&db, &project_id, "file", &id, &original_name, &text);
+        let _ = resource::index_document(&*db, &project_id, "file", &id, &original_name, &text);
     } else {
-        let _ = resource::delete_document_index(&db, "file", &id);
+    let _ = resource::delete_document_index(&*db, "file", &id);
     }
 
     Ok(text)

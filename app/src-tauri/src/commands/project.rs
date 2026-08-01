@@ -4,9 +4,8 @@ use chrono::Utc;
 use tauri::State;
 use uuid::Uuid;
 
-#[tauri::command]
-pub fn create_project(
-    db: State<'_, Database>,
+pub fn create_project_core(
+    db: &Database,
     id: Option<String>,
     name: String,
     description: String,
@@ -52,7 +51,6 @@ pub fn create_project(
         });
     }
 
-    // Auto-suffix duplicate names
     let mut final_name = name.clone();
     let mut suffix = 1;
     loop {
@@ -90,7 +88,19 @@ pub fn create_project(
 }
 
 #[tauri::command]
-pub fn get_projects(db: State<'_, Database>) -> Result<Vec<Project>, String> {
+pub fn create_project(
+    db: State<'_, Database>,
+    id: Option<String>,
+    name: String,
+    description: String,
+    background: String,
+    icon: String,
+    settings: String,
+) -> Result<Project, String> {
+    create_project_core(&db, id, name, description, background, icon, settings)
+}
+
+pub fn get_projects_core(db: &Database) -> Result<Vec<Project>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
         .prepare("SELECT id, name, description, background, icon, settings, created_at, updated_at, deleted_at FROM projects WHERE deleted_at IS NULL ORDER BY updated_at DESC")
@@ -118,7 +128,11 @@ pub fn get_projects(db: State<'_, Database>) -> Result<Vec<Project>, String> {
 }
 
 #[tauri::command]
-pub fn get_project(db: State<'_, Database>, id: String) -> Result<Project, String> {
+pub fn get_projects(db: State<'_, Database>) -> Result<Vec<Project>, String> {
+    get_projects_core(&db)
+}
+
+pub fn get_project_core(db: &Database, id: &str) -> Result<Project, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.query_row(
         "SELECT id, name, description, background, icon, settings, created_at, updated_at, deleted_at FROM projects WHERE id = ?1 AND deleted_at IS NULL",
@@ -141,9 +155,13 @@ pub fn get_project(db: State<'_, Database>, id: String) -> Result<Project, Strin
 }
 
 #[tauri::command]
-pub fn update_project(
-    db: State<'_, Database>,
-    id: String,
+pub fn get_project(db: State<'_, Database>, id: String) -> Result<Project, String> {
+    get_project_core(&db, &id)
+}
+
+pub fn update_project_core(
+    db: &Database,
+    id: &str,
     name: String,
     description: String,
     background: String,
@@ -172,11 +190,23 @@ pub fn update_project(
 
     drop(conn);
 
-    get_project(db, id)
+    get_project_core(db, id)
 }
 
 #[tauri::command]
-pub fn delete_project(db: State<'_, Database>, id: String) -> Result<(), String> {
+pub fn update_project(
+    db: State<'_, Database>,
+    id: String,
+    name: String,
+    description: String,
+    background: String,
+    icon: String,
+    settings: String,
+) -> Result<Project, String> {
+    update_project_core(&db, &id, name, description, background, icon, settings)
+}
+
+pub fn delete_project_core(db: &Database, id: &str) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
     conn.execute(
@@ -188,7 +218,11 @@ pub fn delete_project(db: State<'_, Database>, id: String) -> Result<(), String>
 }
 
 #[tauri::command]
-pub fn get_setting(db: State<'_, Database>, key: String) -> Result<Option<String>, String> {
+pub fn delete_project(db: State<'_, Database>, id: String) -> Result<(), String> {
+    delete_project_core(&db, &id)
+}
+
+pub fn get_setting_core(db: &Database, key: &str) -> Result<Option<String>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let result = conn.query_row(
         "SELECT value FROM settings WHERE key = ?1",
@@ -203,7 +237,11 @@ pub fn get_setting(db: State<'_, Database>, key: String) -> Result<Option<String
 }
 
 #[tauri::command]
-pub fn set_setting(db: State<'_, Database>, key: String, value: String) -> Result<(), String> {
+pub fn get_setting(db: State<'_, Database>, key: String) -> Result<Option<String>, String> {
+    get_setting_core(&db, &key)
+}
+
+pub fn set_setting_core(db: &Database, key: &str, value: &str) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
     conn.execute(
@@ -214,7 +252,12 @@ pub fn set_setting(db: State<'_, Database>, key: String, value: String) -> Resul
     Ok(())
 }
 
-pub fn touch_project(db: &State<'_, Database>, project_id: &str) {
+#[tauri::command]
+pub fn set_setting(db: State<'_, Database>, key: String, value: String) -> Result<(), String> {
+    set_setting_core(&db, &key, &value)
+}
+
+pub fn touch_project(db: &Database, project_id: &str) {
     if let Ok(conn) = db.conn.lock() {
         let now = Utc::now().to_rfc3339();
         let _ = conn.execute(

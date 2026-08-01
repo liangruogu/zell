@@ -23,7 +23,7 @@ pub fn create_whiteboard(
 
     drop(conn);
 
-    crate::commands::project::touch_project(&db, &project_id);
+    crate::commands::project::touch_project(&*db, &project_id);
 
     Ok(Whiteboard {
         id,

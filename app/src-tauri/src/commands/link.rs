@@ -147,7 +147,7 @@ pub async fn create_external_link(
         }
     }
 
-    crate::commands::project::touch_project(&db, &project_id);
+    crate::commands::project::touch_project(&*db, &project_id);
 
     Ok(ExternalLink {
         id,
@@ -283,7 +283,7 @@ pub async fn sync_link(
             .map_err(|e| e.to_string())?;
             drop(conn);
 
-            crate::commands::project::touch_project(&db, &project_id);
+            crate::commands::project::touch_project(&*db, &project_id);
 
             Ok(ExternalLink {
                 id,
@@ -362,7 +362,7 @@ pub async fn sync_link(
             .map_err(|e| e.to_string())?;
             drop(conn);
 
-            crate::commands::project::touch_project(&db, &project_id);
+            crate::commands::project::touch_project(&*db, &project_id);
 
             Ok(ExternalLink {
                 id,
