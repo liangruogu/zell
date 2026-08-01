@@ -217,16 +217,20 @@ export default function KnowledgeBasePage() {
                     }
                 }
 
-                fetchArticles(projectId)
+                await fetchArticles(projectId)
+
+                // Refresh currentArticle from updated store before unlocking editor
+                const cur = useKnowledgeStore.getState().currentArticle
+                if (cur && !serverArticles.some((a: any) => a.id === cur.id)) {
+                    useKnowledgeStore.getState().setCurrentArticle(null)
+                } else if (cur) {
+                    const updated = useKnowledgeStore.getState().articles.find(a => a.id === cur.id)
+                    if (updated) useKnowledgeStore.getState().setCurrentArticle(updated)
+                }
 
                 if (!syncDoneRef.current) {
                     syncDoneRef.current = true
                     setCollabReady(true)
-                }
-
-                const cur = useKnowledgeStore.getState().currentArticle
-                if (cur && !serverArticles.some((a: any) => a.id === cur.id)) {
-                    useKnowledgeStore.getState().setCurrentArticle(null)
                 }
             } catch (e) { logger.error('Failed to sync articles from server', e); setServerOnline(false) }
             finally { syncing = false }
