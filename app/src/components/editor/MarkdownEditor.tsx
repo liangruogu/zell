@@ -87,6 +87,7 @@ export function MarkdownEditor({
         if (!ps.appearance) return undefined
         return JSON.stringify(ps.appearance)
     })
+    // ---- Appearance ----
     useEffect(() => {
         const apply = async () => {
             try {
@@ -161,7 +162,7 @@ export function MarkdownEditor({
         const settings = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
         const displayName = settings.displayName || (settings.serverKey ? 'Owner' : 'Anonymous')
         // Softer colors readable on white background, deterministic per user
-        const userColors = ['#8B7EC8','#D98B7A','#D4A76A','#C2C06A','#7AB8D4','#7AC8A8','#8EC87A','#A0C8C0','#C8B868','#8AA8C8','#C88AAA','#7AC0B8','#B89ACA','#9AA0B0']
+        const userColors = ['#8B7EC8', '#D98B7A', '#D4A76A', '#C2C06A', '#7AB8D4', '#7AC8A8', '#8EC87A', '#A0C8C0', '#C8B868', '#8AA8C8', '#C88AAA', '#7AC0B8', '#B89ACA', '#9AA0B0']
         const colorHash = displayName.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
