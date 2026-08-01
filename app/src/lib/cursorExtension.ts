@@ -28,6 +28,8 @@ export function createCursorExtension(getAwareness: () => any, getClientId: () =
             },
           },
           view(editorView) {
+            let awarenessRegistered = false
+
             const buildDecorations = () => {
               const awareness = getAwareness()
               const clientId = getClientId()
@@ -99,12 +101,22 @@ export function createCursorExtension(getAwareness: () => any, getClientId: () =
 
             const awareness = getAwareness()
             if (awareness) {
+              awarenessRegistered = true
               awareness.on('change', buildDecorations)
               buildDecorations()
             }
 
             return {
               update(view, prevState) {
+                // Check if awareness just appeared (provider connected after render)
+                if (!awarenessRegistered) {
+                  const aw = getAwareness()
+                  if (aw) {
+                    awarenessRegistered = true
+                    aw.on('change', buildDecorations)
+                    buildDecorations()
+                  }
+                }
                 const sel = view.state.selection
                 if (!prevState.selection.eq(sel)) {
                   const aw = getAwareness()
