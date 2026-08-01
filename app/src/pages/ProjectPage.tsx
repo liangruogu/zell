@@ -39,6 +39,7 @@ export default function ProjectPage() {
     const [connecting, setConnecting] = useState(false)
     const [connectFailed, setConnectFailed] = useState(false)
     const [kickTarget, setKickTarget] = useState<{ clientId: string; displayName: string } | null>(null)
+    const [showStopSharing, setShowStopSharing] = useState(false)
     const [inviteCode, setInviteCode] = useState('')
     const [copied, setCopied] = useState(false)
     const [members, setMembers] = useState<{ client_id: string; display_name: string; online: boolean }[]>([])
@@ -541,10 +542,7 @@ export default function ProjectPage() {
 
                                             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
                                                 {sharingEnabled ? (
-                                                    <Button size="sm" variant="outline" onClick={() => {
-                                                        if (!confirm('确定关闭协作吗？成员将暂时无法编辑。')) return
-                                                        handleToggleSharing(false)
-                                                    }}>
+                                                    <Button size="sm" variant="outline" onClick={() => setShowStopSharing(true)}>
                                                         关闭共享
                                                     </Button>
                                                 ) : (
@@ -602,6 +600,15 @@ export default function ProjectPage() {
             </div>
 
             {/* Kick member confirmation */}
+            <Dialog open={showStopSharing} onOpenChange={setShowStopSharing}
+                title="关闭共享"
+                description="确定关闭协作吗？成员将暂时无法编辑，但项目不会被删除。">
+                <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" onClick={() => setShowStopSharing(false)}>取消</Button>
+                    <Button variant="destructive" onClick={() => { setShowStopSharing(false); handleToggleSharing(false) }}>确认关闭</Button>
+                </div>
+            </Dialog>
+
             <Dialog open={!!kickTarget} onOpenChange={() => setKickTarget(null)}
                 title="移出成员"
                 description={`确定将 ${kickTarget?.displayName || ''} 移出项目吗？对方将失去所有编辑权限。`}>
