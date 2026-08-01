@@ -169,7 +169,7 @@ export function MarkdownEditor({
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
 
-        // Populate Y.Doc from local only when no other peers are online
+        // Populate Y.Doc from local content only when no other peers are online
         const initJson = contentJson
         let initAttempts = 0
         const tryLocalInit = () => {
@@ -177,7 +177,6 @@ export function MarkdownEditor({
             if (!d || !initJson) return
             const yContent = d.getXmlFragment('content')
             if (yContent.length > 0) return
-            // Check if other peers are in the room
             const states = provider.awareness.getStates()
             if (states.size > 1) return
             if (!editorRef.current) {
@@ -392,7 +391,7 @@ export function MarkdownEditor({
             markdownLinkExt,
             keyboardExt,
         ],
-        content: collabYDocRef.current ? undefined : initialHtml,
+        content: initialHtml,
         editable: editable,
         autofocus: autofocus ? 'end' : false,
         onUpdate: handleUpdate,
