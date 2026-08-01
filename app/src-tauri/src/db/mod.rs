@@ -4,6 +4,8 @@ use std::sync::Mutex;
 
 pub mod migrations;
 pub mod models;
+#[cfg(test)]
+pub mod test_utils;
 
 pub struct Database {
     pub conn: Mutex<Connection>,
@@ -15,6 +17,14 @@ impl Database {
         let db_path = app_dir.join("zell.db");
         let conn = Connection::open(&db_path)?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA synchronous=NORMAL;")?;
+        migrations::run_migrations(&conn)?;
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
+    }
+
+    pub fn from_connection(conn: Connection) -> Result<Self, Box<dyn std::error::Error>> {
+        conn.execute_batch("PRAGMA foreign_keys=ON;")?;
         migrations::run_migrations(&conn)?;
         Ok(Self {
             conn: Mutex::new(conn),

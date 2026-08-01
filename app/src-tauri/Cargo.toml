@@ -44,6 +44,9 @@ undoc = "0.5"
 [features]
 e2e-testing = ["tauri-plugin-playwright"]
 
+[dev-dependencies]
+tempfile = "3"
+
 [profile.release]
 strip = true
 lto = true
