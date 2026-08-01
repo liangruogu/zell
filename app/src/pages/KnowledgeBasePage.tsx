@@ -223,7 +223,7 @@ export default function KnowledgeBasePage() {
                                 key={currentArticle.id}
                                 content={currentArticle.content}
                                 contentJson={editorJson}
-                                editable={(!isCollab || serverOnline) && collabReady}
+                                editable={isCollab ? (serverOnline && collabReady) : true}
                                 collabReady={collabReady}
                                 onChange={handleEditorChange}
                                 onSave={handleImmediateSave}

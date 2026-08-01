@@ -313,13 +313,11 @@ export function MarkdownEditor({
         })
     }, [contentJson, content])
 
-    const initLockRef = useRef(true)
     const ignoreNextSync = useRef(false)
 
     const handleUpdate = useCallback(
         ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
             if (!editor) return
-            if (initLockRef.current) return
             ignoreNextSync.current = true
             const html = editor.getHTML()
             const md = htmlToMarkdown(html)
@@ -376,13 +374,6 @@ export function MarkdownEditor({
     useTypewriter({ editor, enabled: typewriterEnabled, scrollRef })
 
     // ---- Effects ----
-    useEffect(() => {
-        if (!editor) return
-        initLockRef.current = true
-        const timer = setTimeout(() => { initLockRef.current = false }, 1000)
-        return () => clearTimeout(timer)
-    }, [editor])
-
     useEffect(() => {
         if (editor) editor.setEditable(editable)
     }, [editor, editable])
