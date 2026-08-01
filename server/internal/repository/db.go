@@ -30,6 +30,27 @@ func New(dbPath string) (*DB, error) {
 	return db, nil
 }
 
+// NewInMemory creates an in-memory SQLite database for testing.
+func NewInMemory() (*DB, error) {
+	conn, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+	conn.SetMaxOpenConns(1)
+
+	db := &DB{conn: conn}
+	if err := db.migrate(); err != nil {
+		return nil, err
+	}
+	if err := db.migrateProjects(); err != nil {
+		return nil, err
+	}
+	if err := db.migrateNotifications(); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
 func (db *DB) Close() error {
 	return db.conn.Close()
 }
