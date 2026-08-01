@@ -47,7 +47,7 @@ describe('settingsStore', () => {
 
   describe('getSetting', () => {
     it('returns setting by key', async () => {
-      vi.mocked(invoke).mockImplementation((_cmd, args: any) => {
+      vi.mocked(invoke).mockImplementation(async (_cmd, args: any) => {
         return args.key === 'ai_providers' ? 'prov_data' : null
       })
       await useSettingsStore.getState().loadSettings()

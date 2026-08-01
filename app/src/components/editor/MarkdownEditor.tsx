@@ -344,7 +344,7 @@ export function MarkdownEditor({
         extensions: [
             TaskList,
             TaskItem.configure({ nested: true }),
-            StarterKit.configure({ history: false, codeBlock: false, link: false }),
+            StarterKit.configure({ undoRedo: false, codeBlock: false, link: false }),
             Collaboration.configure({ document: collabYDocRef.current, field: 'content' }),
             Image.configure({ allowBase64: true, inline: false }),
             Table.configure({ resizable: true }),
