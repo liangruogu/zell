@@ -172,8 +172,6 @@ pub fn update_knowledge_article_core(
     )
     .map_err(|e| e.to_string())?;
 
-    println!("[RUST UPDATE] article={} content_len={} json_len={}", id, content.len(), content_json.len());
-
     drop(conn);
 
     let _ = crate::commands::resource::index_document(

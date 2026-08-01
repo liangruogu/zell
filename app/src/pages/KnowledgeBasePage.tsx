@@ -416,7 +416,6 @@ export default function KnowledgeBasePage() {
             saveTimerRef.current = setTimeout(() => {
                 const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
                 if (markdown === currentArticle.content && contentJson === (currentArticle.content_json || '{}')) return
-                console.log('[SAVE] updateArticle', { id: currentArticle.id, title: currentArticle.title, contentLen: markdown.length, jsonLen: contentJson.length })
                 updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
                 syncToServer(currentArticle.id, currentArticle.title, markdown, contentJson)
             }, 800)

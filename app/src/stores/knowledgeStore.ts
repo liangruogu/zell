@@ -26,7 +26,6 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
         set({ loading: true })
         try {
             const articles = await invoke<KnowledgeArticle[]>('get_knowledge_articles', { projectId })
-            console.log('[LOAD] fetchArticles', articles.map(a => ({ id: a.id, title: a.title, contentLen: a.content.length })))
             set({ articles, loading: false })
         } catch (e) {
             logger.error('Failed to fetch articles', e)
