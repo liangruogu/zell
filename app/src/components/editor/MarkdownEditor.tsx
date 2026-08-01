@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo, useLayoutEffect } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Image } from '@tiptap/extension-image'
@@ -134,9 +134,9 @@ export function MarkdownEditor({
     const collabToken = ps.token || ''
     const collabEnabled = !!collabServerUrl && !!collabToken && collabReady
     const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
-    const collabYDocRef = useRef<Y.Doc | null>(null)
+    const collabYDocRef = useRef<Y.Doc>(new Y.Doc())
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
-    const [collabKey, setCollabKey] = useState(0)
+    const contentLoadedKey = currentArticleId ? `${currentArticleId}:loaded` : ''
 
     useEffect(() => {
         if (!collabEnabled) {
@@ -144,7 +144,14 @@ export function MarkdownEditor({
                 collabProviderRef.current.disconnect()
                 collabProviderRef.current = null
             }
-            collabYDocRef.current = null
+            // In local mode, set content from props into Y.Doc
+            if (editorRef.current && initialHtml) {
+                const config = collabYDocRef.current.getMap('config')
+                if (!config.get(contentLoadedKey)) {
+                    editorRef.current.commands.setContent(initialHtml)
+                    // Don't mark as loaded in local mode — it's not synced
+                }
+            }
             return
         }
         const article = useKnowledgeStore.getState().currentArticle
@@ -155,10 +162,8 @@ export function MarkdownEditor({
             collabProviderRef.current.disconnect()
             collabProviderRef.current = null
         }
-        const ydoc = new Y.Doc()
-        collabYDocRef.current = ydoc
         const wsBase = collabServerUrl.replace(/^http/, 'ws')
-        const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, ydoc, {
+        const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, collabYDocRef.current, {
             params: { token: collabToken },
         })
         collabProviderRef.current = provider
@@ -169,17 +174,15 @@ export function MarkdownEditor({
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
 
-        // After server sync completes, initialise Y.Doc from local content if empty
-        const initDoneRef = { current: false }
+        // Follow TipTap docs: set initial content only once, tracked via Y.Doc map
         provider.on('sync', (synced: boolean) => {
-            if (!synced || initDoneRef.current) return
-            const yContent = ydoc.getXmlFragment('content')
-            if (yContent.length === 0) {
-                setCollabKey(k => k + 1)
-                initDoneRef.current = true
-            } else {
-                setCollabKey(k => k + 1)
-                initDoneRef.current = true
+            if (!synced) return
+            const config = collabYDocRef.current.getMap('config')
+            if (!config.get(contentLoadedKey) && editorRef.current) {
+                if (initialHtml) {
+                    editorRef.current.commands.setContent(initialHtml)
+                }
+                config.set(contentLoadedKey, true)
             }
         })
 
@@ -191,7 +194,6 @@ export function MarkdownEditor({
                     provider.disconnect()
                 }
             } catch (e) { logger.error('MarkdownEditor: failed to disconnect collaboration provider', e) }
-            collabYDocRef.current = null
             collabProviderRef.current = null
         }
     }, [collabEnabled, collabServerUrl, collabToken, currentArticleId])
@@ -350,7 +352,7 @@ export function MarkdownEditor({
             TaskList,
             TaskItem.configure({ nested: true }),
             StarterKit.configure({ history: false, codeBlock: false, link: false }),
-            ...(collabYDocRef.current ? [Collaboration.configure({ document: collabYDocRef.current, field: 'content' })] : []),
+            Collaboration.configure({ document: collabYDocRef.current, field: 'content' }),
             Image.configure({ allowBase64: true, inline: false }),
             Table.configure({ resizable: true }),
             TableRow, TableCell, TableHeader,
@@ -386,17 +388,9 @@ export function MarkdownEditor({
             handlePaste,
             handleDrop,
         },
-    }, [collabKey])
+    }, [])
 
     editorRef.current = editor
-
-    useLayoutEffect(() => {
-        if (!editor || !collabYDocRef.current) return
-        const yContent = collabYDocRef.current.getXmlFragment('content')
-        if (yContent.length === 0 && initialHtml) {
-            editor.commands.setContent(initialHtml)
-        }
-    }, [collabKey])
 
     useTypewriter({ editor, enabled: typewriterEnabled, scrollRef })
 
