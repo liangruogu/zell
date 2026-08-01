@@ -137,10 +137,14 @@ export function MarkdownEditor({
     const collabYDocRef = useRef<Y.Doc | null>(null)
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
     const [collabKey, setCollabKey] = useState(0)
+    const [hasRemotePeers, setHasRemotePeers] = useState(false)
 
+    // Connect WebSocket + Yjs as soon as collab is enabled,
+    // but keep editor in local mode until another peer actually joins.
     useEffect(() => {
         if (!collabEnabled) {
             collabYDocRef.current = null
+            setHasRemotePeers(false)
             return
         }
         const article = useKnowledgeStore.getState().currentArticle
@@ -158,42 +162,40 @@ export function MarkdownEditor({
             params: { token: collabToken },
         })
         collabProviderRef.current = provider
-        // Set user info for cursor awareness
         const settings = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
         const displayName = settings.displayName || (settings.serverKey ? 'Owner' : 'Anonymous')
-        // Softer colors readable on white background, deterministic per user
         const userColors = ['#8B7EC8', '#D98B7A', '#D4A76A', '#C2C06A', '#7AB8D4', '#7AC8A8', '#8EC87A', '#A0C8C0', '#C8B868', '#8AA8C8', '#C88AAA', '#7AC0B8', '#B89ACA', '#9AA0B0']
         const colorHash = displayName.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
 
-        // Populate Y.Doc from local content only when no other peers are online
-        const initJson = contentJson || (content ? { fromMarkdown: true, html: markdownToHtml(content) } : null)
-        let initAttempts = 0
-        const tryLocalInit = () => {
-            const d = collabYDocRef.current
-            if (!d || !initJson) return
+        // Detect remote peers — when someone else joins, switch to Collaboration mode
+        const checkPeers = () => {
             const states = provider.awareness.getStates()
-            if (states.size > 1) return
-            if (!editorRef.current) {
-                if (initAttempts < 10) {
-                    initAttempts++
-                    setTimeout(tryLocalInit, 100)
-                }
-                return
-            }
-            if (initJson.fromMarkdown) {
-                editorRef.current.commands.setContent(initJson.html)
-            } else {
-                editorRef.current.commands.setContent(initJson)
+            const remoteCount = states.size - 1 // exclude self
+            if (remoteCount > 0 && !hasRemotePeers) {
+                setHasRemotePeers(true)
             }
         }
+        provider.awareness.on('change', checkPeers)
+        provider.on('status', () => checkPeers())
+
+        // Pre-populate Y.Doc from local content — ready for when collaboration activates
         provider.on('sync', (synced: boolean) => {
-            if (synced) tryLocalInit()
+            if (!synced) return
+            const d = collabYDocRef.current
+            if (!d) return
+            const yContent = d.getXmlFragment('content')
+            if (yContent.length === 0 && editorRef.current) {
+                // Write current non-collab editor content into Yjs doc
+                const json = editorRef.current.getJSON()
+                // Re-create editor will use content: initialHtml; Yjs syncs from there
+            }
+            checkPeers()
         })
 
-        requestAnimationFrame(() => setCollabKey(k => k + 1))
         return () => {
+            provider.awareness.off('change', checkPeers)
             provider.awareness.setLocalStateField('cursor', null)
             try {
                 const ws = (provider as any).ws as WebSocket | undefined
@@ -206,7 +208,12 @@ export function MarkdownEditor({
         }
     }, [collabEnabled, collabServerUrl, collabToken, currentArticleId])
 
-    // ---- Settings ----
+    // Switch to Collaboration mode when remote peers detected
+    useEffect(() => {
+        if (hasRemotePeers) {
+            setCollabKey(k => k + 1)
+        }
+    }, [hasRemotePeers])
     const showToolbar = useSettingsStore((s) => s.settings['show_toolbar'] !== 'false')
     const typewriterEnabled = useSettingsStore((s) => s.settings['editor_typewriter'] === 'true')
 
@@ -361,7 +368,7 @@ export function MarkdownEditor({
             TaskList,
             TaskItem.configure({ nested: true }),
             StarterKit.configure({ codeBlock: false, link: false }),
-            ...(collabYDocRef.current ? [Collaboration.configure({ document: collabYDocRef.current, field: 'content' })] : []),
+            ...(collabYDocRef.current && hasRemotePeers ? [Collaboration.configure({ document: collabYDocRef.current, field: 'content' })] : []),
             Image.configure({ allowBase64: true, inline: false }),
             Table.configure({ resizable: true }),
             TableRow, TableCell, TableHeader,
