@@ -139,17 +139,16 @@ export function MarkdownEditor({
 
     useEffect(() => {
         const willCollab = !!collabServerUrl && !!collabToken
-        console.log('[EDITOR DBG] collab effect', { collabEnabled, willCollab, collabReady })
+        const settingsLoaded = !!currentProject
 
         if (!collabEnabled) {
             if (collabProviderRef.current) {
                 collabProviderRef.current.disconnect()
                 collabProviderRef.current = null
             }
-            // Only set content for truly non-collab projects,
-            // not for collab projects waiting for collabReady.
-            if (!willCollab && editorRef.current && initialHtml) {
-                console.log('[EDITOR DBG] local setContent (non-collab)')
+            // Only set content for truly non-collab projects.
+            // Must wait for settings to load before deciding.
+            if (!willCollab && settingsLoaded && editorRef.current && initialHtml) {
                 editorRef.current.commands.setContent(initialHtml)
             }
             return
@@ -178,7 +177,6 @@ export function MarkdownEditor({
         provider.on('sync', (synced: boolean) => {
             if (!synced) return
             const yContent = collabYDocRef.current.getXmlFragment('content')
-            console.log('[EDITOR DBG] onSync', { synced, yContentLen: yContent.length, hasEditor: !!editorRef.current, initialHtmlLen: typeof initialHtml === 'string' ? initialHtml.length : JSON.stringify(initialHtml).length, willSetContent: yContent.length === 0 })
             if (yContent.length === 0 && initialHtml && editorRef.current) {
                 editorRef.current.commands.setContent(initialHtml)
             }
