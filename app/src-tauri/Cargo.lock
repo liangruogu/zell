@@ -7390,6 +7390,7 @@ dependencies = [
  "tauri-plugin-playwright",
  "tauri-plugin-shell",
  "tempfile",
+ "tokio",
  "undoc",
  "uuid",
 ]

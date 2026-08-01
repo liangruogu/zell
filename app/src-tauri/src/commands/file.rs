@@ -20,7 +20,7 @@ fn files_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, String> {
         .join("files"))
 }
 
-fn mime_from_ext(ext: &str) -> &'static str {
+pub fn mime_from_ext(ext: &str) -> &'static str {
     match ext.to_lowercase().as_str() {
         "png" => "image/png",
         "jpg" | "jpeg" => "image/jpeg",
@@ -36,7 +36,7 @@ fn mime_from_ext(ext: &str) -> &'static str {
     }
 }
 
-fn detect_file_type(ext: &str) -> &'static str {
+pub fn detect_file_type(ext: &str) -> &'static str {
     match ext.to_lowercase().as_str() {
         "pdf" => "pdf",
         "doc" | "docx" => "docx",
