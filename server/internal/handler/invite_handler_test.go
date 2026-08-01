@@ -150,8 +150,8 @@ func TestCollabToggleDeleted(t *testing.T) {
 	}
 
 	notifs, _ := db.GetNotifications("member1")
-	if len(notifs) != 1 {
-		t.Errorf("expected 1 notification for member, got %d", len(notifs))
+	if len(notifs) != 0 {
+		t.Errorf("expected 0 notifications after soft delete (notifications removed), got %d", len(notifs))
 	}
 }
 
