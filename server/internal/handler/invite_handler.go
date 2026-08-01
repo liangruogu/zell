@@ -49,6 +49,7 @@ func (h *InviteHandler) CollabToggle(c *gin.Context) {
 	}
 
 	if !req.Enabled && !req.Deleted {
+		h.db.RemoveAllMembers(pid)
 		h.hub.BroadcastProject(pid, "collab_disabled", gin.H{"project_id": pid})
 	}
 
