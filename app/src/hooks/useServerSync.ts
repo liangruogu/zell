@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSyncStore } from '@/stores/syncStore'
-import { parseProjectSettings, applyProjectConfig } from '@/types/project'
+import { parseProjectSettings, stringifyProjectSettings, applyProjectConfig } from '@/types/project'
 import { invoke } from '@tauri-apps/api/core'
 import { logger } from '@/lib/logger'
 
@@ -60,6 +60,16 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
                         alert(body.code === 'COLLAB_DISABLED' ? '协作已被管理员关闭，即将返回首页'
                             : body.code === 'MEMBER_REMOVED' ? '你已被移出项目，即将返回首页' : '访问被拒绝，即将返回首页')
                     } catch { alert('访问被拒绝，即将返回首页') }
+                    const proj = useProjectStore.getState().currentProject
+                    if (proj) {
+                        const settings = parseProjectSettings(proj.settings)
+                        settings.collabEnabled = false
+                        useProjectStore.getState().updateProject(proj.id, {
+                            name: proj.name, description: proj.description,
+                            background: proj.background,
+                            settings: stringifyProjectSettings(settings),
+                        }).catch(() => {})
+                    }
                     deleteProject(projectId!); window.location.href = '/'; return
                 }
                 if (!res.ok) { setServerOnline(false); useSyncStore.getState().setReadOnly(true); return }
@@ -100,6 +110,20 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
                 }
 
                 if (!syncDoneRef.current) { syncDoneRef.current = true; setCollabReady(true) }
+
+                // Backfill collabEnabled for legacy members
+                const proj = useProjectStore.getState().currentProject
+                if (proj) {
+                    const settings = parseProjectSettings(proj.settings)
+                    if (!settings.collabEnabled) {
+                        settings.collabEnabled = true
+                        useProjectStore.getState().updateProject(proj.id, {
+                            name: proj.name, description: proj.description,
+                            background: proj.background,
+                            settings: stringifyProjectSettings(settings),
+                        }).catch(() => {})
+                    }
+                }
             } catch (e) { logger.error('Failed to sync articles from server', e); setServerOnline(false) }
             finally { syncing = false }
         }
