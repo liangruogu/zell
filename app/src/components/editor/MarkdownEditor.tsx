@@ -138,13 +138,18 @@ export function MarkdownEditor({
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
 
     useEffect(() => {
+        const willCollab = !!collabServerUrl && !!collabToken
+        console.log('[EDITOR DBG] collab effect', { collabEnabled, willCollab, collabReady })
+
         if (!collabEnabled) {
             if (collabProviderRef.current) {
                 collabProviderRef.current.disconnect()
                 collabProviderRef.current = null
             }
-            // In local mode, set content from props into Y.Doc
-            if (editorRef.current && initialHtml) {
+            // Only set content for truly non-collab projects,
+            // not for collab projects waiting for collabReady.
+            if (!willCollab && editorRef.current && initialHtml) {
+                console.log('[EDITOR DBG] local setContent (non-collab)')
                 editorRef.current.commands.setContent(initialHtml)
             }
             return
@@ -173,6 +178,7 @@ export function MarkdownEditor({
         provider.on('sync', (synced: boolean) => {
             if (!synced) return
             const yContent = collabYDocRef.current.getXmlFragment('content')
+            console.log('[EDITOR DBG] onSync', { synced, yContentLen: yContent.length, hasEditor: !!editorRef.current, initialHtmlLen: typeof initialHtml === 'string' ? initialHtml.length : JSON.stringify(initialHtml).length, willSetContent: yContent.length === 0 })
             if (yContent.length === 0 && initialHtml && editorRef.current) {
                 editorRef.current.commands.setContent(initialHtml)
             }
@@ -314,12 +320,10 @@ export function MarkdownEditor({
         if (contentJson) {
             try {
                 const parsed = typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
-                console.log('[EDITOR] initialHtml from json', { hasText: JSON.stringify(parsed).includes('"text"'), len: JSON.stringify(parsed).length })
                 return parsed
             } catch (e) { logger.error('MarkdownEditor: failed to parse content json', e); /* fall through */ }
         }
         const html = markdownToHtml(content || '')
-        console.log('[EDITOR] initialHtml from markdown', { contentLen: (content || '').length, htmlLen: html.length })
         return html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
             return open + body.replace(/\n+$/, '') + close
         })
@@ -333,7 +337,6 @@ export function MarkdownEditor({
             ignoreNextSync.current = true
             const html = editor.getHTML()
             const md = htmlToMarkdown(html)
-            console.log('[EDITOR] onUpdate', { textLen: editor.getText().length, text: editor.getText().slice(0, 40) })
             onChangeRef.current?.(html, md, editor.getJSON())
         },
         []
