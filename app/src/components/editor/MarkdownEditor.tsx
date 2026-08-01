@@ -134,19 +134,17 @@ export function MarkdownEditor({
     const collabToken = ps.token || ''
     const collabEnabled = !!collabServerUrl && !!collabToken && collabReady
     const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
-    const collabYDocRef = useRef<Y.Doc>(new Y.Doc())
+    const collabYDocRef = useRef<Y.Doc | null>(null)
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
-
-    console.log('[EDITOR] render', { contentLen: content.length, hasJson: !!contentJson, editable, collabReady, collabEnabled, currentArticleId })
+    const [collabKey, setCollabKey] = useState(0)
 
     useEffect(() => {
-        console.log('[EDITOR] collab effect', { collabEnabled, collabServerUrl: !!collabServerUrl, collabToken: !!collabToken, currentArticleId })
         if (!collabEnabled) {
             if (collabProviderRef.current) {
                 collabProviderRef.current.disconnect()
                 collabProviderRef.current = null
-                console.log('[EDITOR] collab disabled, provider disconnected')
             }
+            collabYDocRef.current = null
             return
         }
         const article = useKnowledgeStore.getState().currentArticle
@@ -157,24 +155,24 @@ export function MarkdownEditor({
             collabProviderRef.current.disconnect()
             collabProviderRef.current = null
         }
+        const ydoc = new Y.Doc()
+        collabYDocRef.current = ydoc
         const wsBase = collabServerUrl.replace(/^http/, 'ws')
-        const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, collabYDocRef.current, {
+        const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, ydoc, {
             params: { token: collabToken },
         })
         collabProviderRef.current = provider
-        console.log('[EDITOR] WS provider created', { url: `${wsBase}/ws/${projectId}/${article.id}` })
-
-        provider.on('status', (e: any) => { console.log('[EDITOR] WS status', e.status) })
-        provider.on('sync', (synced: boolean) => {
-            const yf = collabYDocRef.current.getXmlFragment('content')
-            console.log('[EDITOR] WS sync', { synced, yContentLen: yf.length, hasEditor: !!editorRef.current })
-        })
         const settings = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
         const displayName = settings.displayName || (settings.serverKey ? 'Owner' : 'Anonymous')
         const userColors = ['#8B7EC8', '#D98B7A', '#D4A76A', '#C2C06A', '#7AB8D4', '#7AC8A8', '#8EC87A', '#A0C8C0', '#C8B868', '#8AA8C8', '#C88AAA', '#7AC0B8', '#B89ACA', '#9AA0B0']
         const colorHash = displayName.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
+
+        // Wait for server sync then activate Collaboration extension
+        provider.on('sync', (synced: boolean) => {
+            if (synced) setCollabKey(k => k + 1)
+        })
 
         return () => {
             provider.awareness.setLocalStateField('cursor', null)
@@ -184,6 +182,7 @@ export function MarkdownEditor({
                     provider.disconnect()
                 }
             } catch (e) { logger.error('MarkdownEditor: failed to disconnect collaboration provider', e) }
+            collabYDocRef.current = null
             collabProviderRef.current = null
         }
     }, [collabEnabled, collabServerUrl, collabToken, currentArticleId])
@@ -342,7 +341,7 @@ export function MarkdownEditor({
             TaskList,
             TaskItem.configure({ nested: true }),
             StarterKit.configure({ history: false, codeBlock: false, link: false }),
-            Collaboration.configure({ document: collabYDocRef.current, field: 'content' }),
+            ...(collabYDocRef.current ? [Collaboration.configure({ document: collabYDocRef.current, field: 'content' })] : []),
             Image.configure({ allowBase64: true, inline: false }),
             Table.configure({ resizable: true }),
             TableRow, TableCell, TableHeader,
@@ -378,22 +377,17 @@ export function MarkdownEditor({
             handlePaste,
             handleDrop,
         },
-    }, [])
+    }, [collabKey])
 
     editorRef.current = editor
 
-    // Restore local content into Y.Doc after Collaboration extension
-    // may have cleared it with empty state during editor creation.
-    const contentRestoredRef = useRef(false)
     useLayoutEffect(() => {
-        if (!editor || !collabYDocRef.current) return
+        if (collabKey === 0 || !editor || !collabYDocRef.current) return
         const yContent = collabYDocRef.current.getXmlFragment('content')
-        if (yContent.length === 0 && initialHtml && !contentRestoredRef.current) {
-            console.log('[EDITOR] useLayoutEffect restoring content to Y.Doc')
+        if (yContent.length === 0) {
             editor.commands.setContent(initialHtml)
-            contentRestoredRef.current = true
         }
-    }, [editor, initialHtml])
+    }, [collabKey])
 
     useTypewriter({ editor, enabled: typewriterEnabled, scrollRef })
 
