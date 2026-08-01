@@ -55,7 +55,6 @@ beforeEach(() => {
     serverRunning: false,
     displayName: '',
     readOnly: false,
-    notifications: null,
   })
 })
 
@@ -86,7 +85,6 @@ describe('PublishSettings', () => {
       serverRunning: false,
       displayName: '',
       readOnly: false,
-      notifications: null,
     })
     render(<PublishSettings />)
     expect(screen.getByText('发布功能需连接协作服务器')).toBeInTheDocument()

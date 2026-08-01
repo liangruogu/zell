@@ -13,7 +13,6 @@ beforeEach(() => {
     serverRunning: false,
     displayName: '',
     readOnly: false,
-    notifications: null,
   })
 })
 
@@ -51,7 +50,6 @@ describe('ServerManager', () => {
       serverRunning: false,
       displayName: '',
       readOnly: false,
-      notifications: null,
     })
     render(<ServerManager />)
     expect(screen.getByDisplayValue('http://localhost:3000')).toBeInTheDocument()
@@ -69,7 +67,6 @@ describe('ServerManager', () => {
       serverRunning: true,
       displayName: '',
       readOnly: false,
-      notifications: null,
     })
     render(<ServerManager />)
     const stopBtn = screen.queryByText('停止服务器')

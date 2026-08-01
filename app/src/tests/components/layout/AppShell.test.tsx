@@ -36,7 +36,6 @@ beforeEach(() => {
     serverRunning: false,
     displayName: '',
     readOnly: false,
-    notifications: null,
   })
   useProjectStore.setState({
     projects: [],
@@ -75,7 +74,6 @@ describe('AppShell', () => {
       connected: false,
       serverRunning: false,
       displayName: '',
-      notifications: null,
     })
     renderAppShell(['/project/p1/knowledge'])
     expect(screen.getByText('与服务器断开连接')).toBeInTheDocument()
@@ -88,7 +86,6 @@ describe('AppShell', () => {
       connected: false,
       serverRunning: false,
       displayName: '',
-      notifications: null,
     })
     renderAppShell(['/project/p1'])
     expect(screen.queryByText('与服务器断开连接')).not.toBeInTheDocument()

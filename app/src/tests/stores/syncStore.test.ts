@@ -27,7 +27,6 @@ beforeEach(() => {
     serverRunning: false,
     displayName: '',
     readOnly: false,
-    notifications: null,
   })
 })
 
@@ -72,46 +71,6 @@ describe('syncStore', () => {
       useSyncStore.getState().setConnected(true)
       useSyncStore.getState().disconnect()
       expect(useSyncStore.getState().connected).toBe(false)
-    })
-  })
-
-  describe('pullNotifications', () => {
-    it('fetches notifications and updates state', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          notifications: [
-            { id: 'n1', type: 'info', data: 'test', is_read: false, created_at: '2024-01-01' },
-          ],
-        }),
-      })
-      globalThis.fetch = fetchMock as any
-
-      await useSyncStore.getState().pullNotifications('p1', 'token123', 'http://localhost')
-
-      expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost/api/v1/projects/p1/notifications',
-        { headers: { Authorization: 'Bearer token123' } },
-      )
-      expect(useSyncStore.getState().notifications).toHaveLength(1)
-    })
-
-    it('does nothing on non-ok response', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({ ok: false })
-      globalThis.fetch = fetchMock as any
-
-      await useSyncStore.getState().pullNotifications('p1', 'token', 'http://localhost')
-
-      expect(useSyncStore.getState().notifications).toBeNull()
-    })
-
-    it('handles fetch error gracefully', async () => {
-      const fetchMock = vi.fn().mockRejectedValue(new Error('Network error'))
-      globalThis.fetch = fetchMock as any
-
-      await useSyncStore.getState().pullNotifications('p1', 'token', 'http://localhost')
-
-      expect(useSyncStore.getState().notifications).toBeNull()
     })
   })
 
