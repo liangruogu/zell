@@ -53,6 +53,50 @@ cd zell/app && pnpm install && pnpm tauri dev
 
 ---
 
+## 运行测试
+
+### 前端单元测试（Vitest）
+
+```bash
+cd app && pnpm test              # 运行全部 291 个测试
+cd app && pnpm test -- --reporter=verbose
+```
+
+### Rust 后端测试
+
+```bash
+cd app/src-tauri && cargo test    # ~51 个测试
+```
+
+### Go 协作服务器测试
+
+```bash
+cd server && go test ./...        # ~145 个测试
+```
+
+### E2E 测试（WebdriverIO）
+
+需要 `tauri-driver` 和 Go 服务器：
+
+```bash
+# 安装 tauri-driver
+cargo install tauri-driver
+
+# 启动 Vite dev server
+cd app && pnpm dev
+
+# 运行 E2E 测试
+cd app
+npx wdio run e2e-tests/wdio.conf.js --grep "@smoke"    # 日常烟雾测试
+npx wdio run e2e-tests/wdio.conf.js --grep "@release"  # 发布前全量测试
+```
+
+### CI 自动运行
+
+`.github/workflows/test.yml` 在每次 push/PR 时自动运行 L1-L3。
+
+---
+
 ## 技术栈
 
 Tauri 2.x / React 19 / TypeScript / Tailwind CSS / TipTap (ProseMirror) / Yjs + y-websocket / Go + Gin / SQLite
