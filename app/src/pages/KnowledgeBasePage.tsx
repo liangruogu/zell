@@ -15,12 +15,13 @@ import { useServerSync } from '@/hooks/useServerSync'
 import { useKnowledgeShortcuts } from '@/hooks/useKnowledgeShortcuts'
 import { useKnowledgeEditor } from '@/hooks/useKnowledgeEditor'
 import { useKnowledgeDragDrop } from '@/hooks/useKnowledgeDragDrop'
-import { parseHeadingTree } from '@/lib/headingTree'
+import { parseHeadingTree, type HeadingNode } from '@/lib/headingTree'
+import { ArticleItem } from '@/components/knowledge/ArticleItem'
+import { OutlineNode } from '@/components/knowledge/OutlineNode'
 import { logger } from '@/lib/logger'
 
 type ListTab = 'files' | 'outline'
 
-import { parseHeadingTree, type HeadingNode } from '@/lib/headingTree'
 
 export default function KnowledgeBasePage() {
     const { id: projectId } = useParams<{ id: string }>()
@@ -211,33 +212,33 @@ export default function KnowledgeBasePage() {
 
                 {/* Editor area */}
                 <div className="flex-1 flex flex-col min-w-0">
-                        {currentArticle ? (
-                            <div className="flex-1 overflow-hidden">
-                                <MarkdownEditor
-                                    key={currentArticle.id}
-                                    content={currentArticle.content}
-                                    contentJson={
-                                        currentArticle.content_json && currentArticle.content_json !== '{}'
-                                            ? (() => { try { return JSON.parse(currentArticle.content_json) } catch (e) { logger.error('Failed to parse article content JSON', e); return null } })()
-                                            : null
-                                    }
-                                    editable={(!isCollab || serverOnline) && collabReady}
-                                    collabReady={collabReady}
-                                    onChange={handleEditorChange}
-                                    onSave={handleImmediateSave}
-                                    placeholder="开始编辑知识库文档..."
-                                    autofocus={false}
-                                    updatedAt={(currentArticle as any).updated_at}
-                                />
+                    {currentArticle ? (
+                        <div className="flex-1 overflow-hidden">
+                            <MarkdownEditor
+                                key={currentArticle.id}
+                                content={currentArticle.content}
+                                contentJson={
+                                    currentArticle.content_json && currentArticle.content_json !== '{}'
+                                        ? (() => { try { return JSON.parse(currentArticle.content_json) } catch (e) { logger.error('Failed to parse article content JSON', e); return null } })()
+                                        : null
+                                }
+                                editable={(!isCollab || serverOnline) && collabReady}
+                                collabReady={collabReady}
+                                onChange={handleEditorChange}
+                                onSave={handleImmediateSave}
+                                placeholder="开始编辑知识库文档..."
+                                autofocus={false}
+                                updatedAt={(currentArticle as any).updated_at}
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center text-gray-400">
+                            <div className="text-center">
+                                <FileText size={48} strokeWidth={1} className="mx-auto mb-3" />
+                                <p className="text-lg">选择或创建一篇文章</p>
                             </div>
-                        ) : (
-                            <div className="flex-1 flex items-center justify-center text-gray-400">
-                                <div className="text-center">
-                                    <FileText size={48} strokeWidth={1} className="mx-auto mb-3" />
-                                    <p className="text-lg">选择或创建一篇文章</p>
-                                </div>
-                            </div>
-                        )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -252,118 +253,5 @@ export default function KnowledgeBasePage() {
                 </div>
             </Dialog>
         </AppShell>
-    )
-}
-
-function ArticleItem({
-    article, isActive, onSelect, onDelete, onRename,
-}: {
-    article: KnowledgeArticle; isActive: boolean
-    onSelect: (a: KnowledgeArticle) => void
-    onDelete: (a: KnowledgeArticle) => void
-    onRename: (a: KnowledgeArticle, newTitle: string) => void
-}) {
-    const [renaming, setRenaming] = useState(false)
-    const [renameValue, setRenameValue] = useState(article.title)
-
-    const handleDoubleClick = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        setRenaming(true)
-        setRenameValue(article.title)
-    }
-
-    const handleRenameSubmit = () => {
-        if (renameValue.trim() && renameValue !== article.title) {
-            onRename(article, renameValue.trim())
-        }
-        setRenaming(false)
-    }
-
-    return (
-        <div
-            className={cn(
-                'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-sm transition-colors select-none',
-                isActive ? 'bg-zell-100 text-zell-700' : 'text-gray-600 hover:bg-gray-50'
-            )}
-            onClick={() => onSelect(article)}
-            onDoubleClick={handleDoubleClick}
-        >
-            <FileText size={14} className="shrink-0 text-gray-400" />
-            {renaming ? (
-                <input
-                    autoFocus
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={handleRenameSubmit}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleRenameSubmit()
-                        if (e.key === 'Escape') { setRenaming(false); setRenameValue(article.title) }
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex-1 px-1 py-0.5 text-sm border border-zell-300 rounded outline-none focus:ring-1 focus:ring-zell-400"
-                />
-            ) : (
-                <span className="truncate flex-1">{article.title}</span>
-            )}
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); onDelete(article) }} className="p-0.5 rounded hover:bg-red-100" title="删除">
-                    <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
-                </button>
-            </div>
-        </div>
-    )
-}
-
-// ---- Outline tree node with expand/collapse ----
-function OutlineNode({ node, depth }: { node: HeadingNode; depth: number }) {
-    const [expanded, setExpanded] = useState(true)
-    const hasChildren = node.children.length > 0
-
-    const scrollToHeading = () => {
-        const editor = document.querySelector('.ProseMirror')
-        if (!editor) return
-        const all = editor.querySelectorAll(`h${node.level}`)
-        // Use data attribute to find correct heading (set by TipTap)
-        if (all.length > 0) {
-            for (const el of all) {
-                if (el.textContent?.trim() === node.text) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    return
-                }
-            }
-            all[0]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
-    }
-
-    return (
-        <>
-            <div
-                className={cn(
-                    'group flex items-center gap-0.5 cursor-pointer text-sm text-gray-600 hover:bg-gray-50 transition-colors select-none',
-                    depth === 0 && 'font-medium py-0.5',
-                    depth >= 1 && 'py-0.5',
-                )}
-                style={{ paddingLeft: `${8 + depth * 14}px` }}
-                onClick={scrollToHeading}
-            >
-                {hasChildren ? (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
-                        className="p-0.5 rounded hover:bg-gray-200 shrink-0"
-                    >
-                        <ChevronRight
-                            size={12}
-                            className={cn('text-gray-400 transition-transform', expanded && 'rotate-90')}
-                        />
-                    </button>
-                ) : (
-                    <span className="w-[18px] shrink-0" />
-                )}
-                <span className="truncate">{node.text}</span>
-            </div>
-            {expanded && hasChildren && node.children.map((child, i) => (
-                <OutlineNode key={i} node={child} depth={depth + 1} />
-            ))}
-        </>
     )
 }
