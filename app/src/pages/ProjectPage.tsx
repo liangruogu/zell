@@ -33,7 +33,7 @@ export default function ProjectPage() {
     const ps = currentProject ? parseProjectSettings(currentProject.settings) : {}
     const hasServer = !!(ps.serverUrl && ps.serverKey)
     const isMember = !!(ps.token && !ps.serverKey)
-    const [sharingEnabled, setSharingEnabled] = useState(false)
+    const sharingEnabled = !!ps.collabEnabled
     const [serverInputUrl, setServerInputUrl] = useState('http://localhost:3000')
     const [serverKey, setServerKey] = useState('')
     const [connecting, setConnecting] = useState(false)
@@ -66,7 +66,6 @@ export default function ProjectPage() {
                     setServerKey(ps.serverKey)
                     setServerUrl(ps.serverUrl)
                     if (ps.collabEnabled) {
-                        setSharingEnabled(true)
                         setConnected(true)
                     }
                 }
@@ -184,7 +183,7 @@ export default function ProjectPage() {
             setConnectFailed(false)
             try {
                 await fetch(`${url}/health`, { signal: AbortSignal.timeout(3000) })
-            } catch (e) { logger.error('Failed to connect to server', e); alert('无法连接到服务器'); setConnecting(false); setSharingEnabled(false); setConnectFailed(true); return }
+            } catch (e) { logger.error('Failed to connect to server', e); alert('无法连接到服务器'); setConnecting(false);  setConnectFailed(true); return }
 
             const ownerToken = crypto.randomUUID()
             const res = await fetch(`${url}/api/v1/projects/${id}/collab`, {
@@ -206,7 +205,6 @@ export default function ProjectPage() {
                         settings: stringifyProjectSettings(ps),
                     })
                     setServerKey('')
-                    setSharingEnabled(false)
                     setConnectFailed(true)
                 } else {
                     alert('开启共享失败：服务器拒绝连接')
@@ -255,7 +253,7 @@ export default function ProjectPage() {
                 settings: stringifyProjectSettings(ps),
             })
         }
-    }, [serverInputUrl, id, currentProject, serverUrl, serverKey, setServerUrl, setConnected, setSharingEnabled, updateProject, fetchCollabData])
+    }, [serverInputUrl, id, currentProject, serverUrl, serverKey, setServerUrl, setConnected, updateProject, fetchCollabData])
 
     const handleKick = useCallback(async (clientId: string, displayName: string) => {
         setKickTarget({ clientId, displayName })
@@ -293,7 +291,6 @@ export default function ProjectPage() {
             settings: stringifyProjectSettings(ps),
         })
         setConnected(false)
-        setSharingEnabled(false)
         setServerOnline(false)
         setServerInputUrl('http://localhost:3000')
         setServerKey('')
@@ -302,7 +299,7 @@ export default function ProjectPage() {
         setConnectFailed(false)
         setServerUrl('')
         useSyncStore.getState().setReadOnly(false)
-    }, [currentProject, id, serverUrl, serverKey, updateProject, setConnected, setSharingEnabled, setServerUrl])
+    }, [currentProject, id, serverUrl, serverKey, updateProject, setConnected, setServerUrl])
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(inviteCode)
@@ -501,7 +498,6 @@ export default function ProjectPage() {
                                             <div className="flex justify-end gap-2">
                                                 <Button size="sm" onClick={() => {
                                                     if (!serverInputUrl.trim() || !serverKey.trim()) return
-                                                    setSharingEnabled(true)
                                                     handleToggleSharing(true)
                                                 }} disabled={connecting || !serverInputUrl.trim() || !serverKey.trim()}>
                                                     {connecting ? '连接中...' : '连接'}
@@ -548,13 +544,11 @@ export default function ProjectPage() {
                                                     <Button size="sm" variant="outline" onClick={() => {
                                                         if (!confirm('确定关闭协作吗？成员将暂时无法编辑。')) return
                                                         handleToggleSharing(false)
-                                                        setSharingEnabled(false)
                                                     }}>
                                                         关闭共享
                                                     </Button>
                                                 ) : (
                                                     <Button size="sm" onClick={() => {
-                                                        setSharingEnabled(true)
                                                         handleToggleSharing(true)
                                                     }} disabled={connecting}>
                                                         {connecting ? '连接中...' : '开启共享'}
