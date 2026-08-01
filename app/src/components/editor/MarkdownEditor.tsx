@@ -134,13 +134,15 @@ export function MarkdownEditor({
     const collabToken = ps.token || ''
     const collabEnabled = !!collabServerUrl && !!collabToken && collabReady
     const currentArticleId = useKnowledgeStore((s) => s.currentArticle?.id)
-    const collabYDocRef = useRef<Y.Doc | null>(null)
+    const collabYDocRef = useRef<Y.Doc>(new Y.Doc())
     const collabProviderRef = useRef<WebsocketProvider | null>(null)
-    const [collabKey, setCollabKey] = useState(0)
 
     useEffect(() => {
         if (!collabEnabled) {
-            collabYDocRef.current = null
+            if (collabProviderRef.current) {
+                collabProviderRef.current.disconnect()
+                collabProviderRef.current = null
+            }
             return
         }
         const article = useKnowledgeStore.getState().currentArticle
@@ -151,10 +153,8 @@ export function MarkdownEditor({
             collabProviderRef.current.disconnect()
             collabProviderRef.current = null
         }
-        const ydoc = new Y.Doc()
-        collabYDocRef.current = ydoc
         const wsBase = collabServerUrl.replace(/^http/, 'ws')
-        const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, ydoc, {
+        const provider = new WebsocketProvider(`${wsBase}/ws`, `${projectId}/${article.id}`, collabYDocRef.current, {
             params: { token: collabToken },
         })
         collabProviderRef.current = provider
@@ -165,8 +165,6 @@ export function MarkdownEditor({
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
 
-        requestAnimationFrame(() => setCollabKey(k => k + 1))
-
         return () => {
             provider.awareness.setLocalStateField('cursor', null)
             try {
@@ -175,7 +173,6 @@ export function MarkdownEditor({
                     provider.disconnect()
                 }
             } catch (e) { logger.error('MarkdownEditor: failed to disconnect collaboration provider', e) }
-            collabYDocRef.current = null
             collabProviderRef.current = null
         }
     }, [collabEnabled, collabServerUrl, collabToken, currentArticleId])
@@ -331,7 +328,7 @@ export function MarkdownEditor({
             TaskList,
             TaskItem.configure({ nested: true }),
             StarterKit.configure({ codeBlock: false, link: false }),
-            ...(collabYDocRef.current ? [Collaboration.configure({ document: collabYDocRef.current, field: 'content' })] : []),
+            Collaboration.configure({ document: collabYDocRef.current, field: 'content' }),
             Image.configure({ allowBase64: true, inline: false }),
             Table.configure({ resizable: true }),
             TableRow, TableCell, TableHeader,
@@ -367,7 +364,7 @@ export function MarkdownEditor({
             handlePaste,
             handleDrop,
         },
-    }, [collabKey])
+    }, [])
 
     editorRef.current = editor
 
