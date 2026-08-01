@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	MsgSyncStep1  = 0
-	MsgSyncStep2  = 1
-	MsgUpdate     = 2
+	MsgSyncStep1 = 0
+	MsgSyncStep2 = 1
+	MsgUpdate    = 2
 )
 
 type Client struct {

@@ -72,6 +72,8 @@ export function MarkdownEditor({
     updatedAt,
     collabReady = true,
 }: MarkdownEditorProps) {
+    console.log('[MarkdownEditor RENDER]', { contentLen: content.length, hasJson: !!contentJson, editable })
+
     const isAIOpen = useAIStore((s) => s.isOpen)
     const openPanel = useAIStore((s) => s.openPanel)
     const onChangeRef = useRef(onChange)
@@ -331,10 +333,12 @@ export function MarkdownEditor({
         if (contentJson) {
             try {
                 const parsed = typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson
+                console.log('[EDITOR INIT] from json', { hasText: JSON.stringify(parsed).includes('"text"') })
                 return parsed
             } catch (e) { logger.error('MarkdownEditor: failed to parse content json', e); /* fall through */ }
         }
         const html = markdownToHtml(content || '')
+        console.log('[EDITOR INIT] from markdown', { contentLen: (content || '').length, htmlLen: html.length })
         return html.replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/gi, (_, open, body, close) => {
             return open + body.replace(/\n+$/, '') + close
         })
@@ -346,7 +350,11 @@ export function MarkdownEditor({
     const handleUpdate = useCallback(
         ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
             if (!editor) return
-            if (initLockRef.current) return
+            if (initLockRef.current) {
+                console.log('[EDITOR UPDATE] blocked by initLock', { textLen: editor.getText().length, chars: editor.getText().slice(0, 20) })
+                return
+            }
+            console.log('[EDITOR UPDATE]', { textLen: editor.getText().length, chars: editor.getText().slice(0, 20) })
             ignoreNextSync.current = true
             const html = editor.getHTML()
             const md = htmlToMarkdown(html)
@@ -389,6 +397,7 @@ export function MarkdownEditor({
         autofocus: autofocus ? 'end' : false,
         onUpdate: handleUpdate,
         onCreate: ({ editor }) => {
+            console.log('[EDITOR ONCREATE]', { htmlLen: editor.getHTML().length, textLen: editor.getText().length })
             // Local init is handled by tryLocalInit after 'sync' event confirms peer count
         },
         editorProps: {
@@ -406,7 +415,11 @@ export function MarkdownEditor({
     useEffect(() => {
         if (!editor) return
         initLockRef.current = true
-        const timer = setTimeout(() => { initLockRef.current = false }, 1000)
+        console.log('[EDITOR LOCK] initLock=true for 1s')
+        const timer = setTimeout(() => {
+            initLockRef.current = false
+            console.log('[EDITOR LOCK] initLock=false unlocked')
+        }, 1000)
         return () => clearTimeout(timer)
     }, [editor])
 
