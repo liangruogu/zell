@@ -341,7 +341,7 @@ export function MarkdownEditor({
         extensions: [
             TaskList,
             TaskItem.configure({ nested: true }),
-            StarterKit.configure({ codeBlock: false, link: false }),
+            StarterKit.configure({ history: false, codeBlock: false, link: false }),
             Collaboration.configure({ document: collabYDocRef.current, field: 'content' }),
             Image.configure({ allowBase64: true, inline: false }),
             Table.configure({ resizable: true }),
@@ -384,12 +384,14 @@ export function MarkdownEditor({
 
     // Restore local content into Y.Doc after Collaboration extension
     // may have cleared it with empty state during editor creation.
+    const contentRestoredRef = useRef(false)
     useLayoutEffect(() => {
         if (!editor || !collabYDocRef.current) return
         const yContent = collabYDocRef.current.getXmlFragment('content')
-        if (yContent.length === 0 && initialHtml) {
+        if (yContent.length === 0 && initialHtml && !contentRestoredRef.current) {
             console.log('[EDITOR] useLayoutEffect restoring content to Y.Doc')
             editor.commands.setContent(initialHtml)
+            contentRestoredRef.current = true
         }
     }, [editor, initialHtml])
 
