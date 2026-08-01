@@ -1,4 +1,3 @@
-import { writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs'
 
 const LOG_FILE = 'zell-app.log'
 
@@ -22,6 +21,7 @@ async function flush(): Promise<void> {
   const content = logs.join('\n') + '\n'
   logs.length = 0
   try {
+    const { writeTextFile, BaseDirectory } = await import('@tauri-apps/plugin-fs')
     await writeTextFile(LOG_FILE, content, {
       append: true,
       baseDir: BaseDirectory.AppData,
