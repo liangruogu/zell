@@ -30,6 +30,11 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
 
   useEffect(() => {
     if (!projectId) return
+    if (!isCollab) {
+      setServerOnline(true)
+      useSyncStore.getState().setReadOnly(false)
+      return
+    }
 
     let ws: WebSocket | null = null
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -205,7 +210,7 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
       if (ws) ws.close()
       if (unsub) unsub()
     }
-  }, [projectId])
+  }, [projectId, isCollab])
 
   return { serverOnline, collabReady, setCollabReady }
 }
