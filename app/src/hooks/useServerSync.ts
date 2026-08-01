@@ -30,9 +30,29 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
 
   useEffect(() => {
     if (!projectId) return
+    const { serverUrl, token, serverKey } = getSettings()
     if (!isCollab) {
       setServerOnline(true)
       useSyncStore.getState().setReadOnly(false)
+      // Try a lightweight check: if server says collab is enabled, update local state
+      if (serverUrl && (token || serverKey)) {
+        fetch(`${serverUrl}/api/v1/projects/${projectId}/articles`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : { 'X-Server-Key': serverKey },
+        }).then(async (res) => {
+          if (res.ok) {
+            const proj = useProjectStore.getState().currentProject
+            if (proj) {
+              const s = parseProjectSettings(proj.settings)
+              s.collabEnabled = true
+              useProjectStore.getState().updateProject(proj.id, {
+                name: proj.name, description: proj.description,
+                background: proj.background,
+                settings: stringifyProjectSettings(s),
+              }).catch(() => {})
+            }
+          }
+        }).catch(() => {})
+      }
       return
     }
 
@@ -70,7 +90,7 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
                             settings: stringifyProjectSettings(settings),
                         }).catch(() => {})
                     }
-                    deleteProject(projectId!); window.location.href = '/'; return
+                    window.location.href = '/'; return
                 }
                 if (!res.ok) { setServerOnline(false); useSyncStore.getState().setReadOnly(true); return }
                 setServerOnline(true)
