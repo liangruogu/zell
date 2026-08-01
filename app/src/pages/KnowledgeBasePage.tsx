@@ -8,14 +8,13 @@ import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { parseProjectSettings } from '@/types/project'
 import { ResizablePanel, useResizablePanel } from '@/components/layout/ResizablePanel'
-import type { KnowledgeArticle } from '@/types/knowledge'
-import { Plus, FileText, Trash2, Search, X, ListTree, ChevronRight, Upload } from 'lucide-react'
+import { Plus, FileText, Search, X, ListTree, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerSync } from '@/hooks/useServerSync'
 import { useKnowledgeShortcuts } from '@/hooks/useKnowledgeShortcuts'
 import { useKnowledgeEditor } from '@/hooks/useKnowledgeEditor'
 import { useKnowledgeDragDrop } from '@/hooks/useKnowledgeDragDrop'
-import { parseHeadingTree, type HeadingNode } from '@/lib/headingTree'
+import { parseHeadingTree } from '@/lib/headingTree'
 import { ArticleItem } from '@/components/knowledge/ArticleItem'
 import { OutlineNode } from '@/components/knowledge/OutlineNode'
 import { logger } from '@/lib/logger'
@@ -67,6 +66,12 @@ export default function KnowledgeBasePage() {
         parseHeadingTree(editorMd || currentArticle?.content || ''),
         [editorMd, currentArticle?.content])
 
+
+    const editorJson = useMemo(() => {
+        const raw = currentArticle?.content_json
+        if (!raw || raw === '{}') return null
+        try { return JSON.parse(raw) } catch (e) { logger.error('Failed to parse article content JSON', e); return null }
+    }, [currentArticle?.content_json])
 
     return (
         <AppShell>
@@ -217,11 +222,7 @@ export default function KnowledgeBasePage() {
                             <MarkdownEditor
                                 key={currentArticle.id}
                                 content={currentArticle.content}
-                                contentJson={
-                                    currentArticle.content_json && currentArticle.content_json !== '{}'
-                                        ? (() => { try { return JSON.parse(currentArticle.content_json) } catch (e) { logger.error('Failed to parse article content JSON', e); return null } })()
-                                        : null
-                                }
+                                contentJson={editorJson}
                                 editable={(!isCollab || serverOnline) && collabReady}
                                 collabReady={collabReady}
                                 onChange={handleEditorChange}
