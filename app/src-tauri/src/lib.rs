@@ -1,6 +1,6 @@
 mod commands;
 mod crypto;
-mod db;
+pub mod db;
 
 use crate::commands::server::ServerState;
 use tauri::Manager;
