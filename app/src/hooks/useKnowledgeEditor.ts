@@ -50,6 +50,13 @@ export function useKnowledgeEditor({ projectId, currentArticle, onContentChange 
 
   const handleCreate = useCallback(async () => {
     if (!projectId || !newTitle.trim()) return
+    const exists = useKnowledgeStore.getState().articles.some(
+      a => a.title.toLowerCase() === newTitle.trim().toLowerCase()
+    )
+    if (exists) {
+      alert('同名文章已存在，请更换名称')
+      return
+    }
     const article = await createArticle(projectId, newTitle.trim(), "")
     setNewTitle(''); setShowCreate(false)
     setCurrentArticle(article)
@@ -81,6 +88,13 @@ export function useKnowledgeEditor({ projectId, currentArticle, onContentChange 
   }, [currentArticle, updateArticle, syncToServer])
 
   const handleRename = useCallback((article: KnowledgeArticle, newTitle: string) => {
+    const exists = useKnowledgeStore.getState().articles.some(
+      a => a.id !== article.id && a.title.toLowerCase() === newTitle.toLowerCase()
+    )
+    if (exists) {
+      alert('同名文章已存在，请更换名称')
+      return
+    }
     updateArticle(article.id, newTitle, article.content)
   }, [updateArticle])
 

@@ -183,7 +183,7 @@ export default function ProjectPage() {
             setConnectFailed(false)
             try {
                 await fetch(`${url}/health`, { signal: AbortSignal.timeout(3000) })
-            } catch (e) { logger.error('Failed to connect to server', e); alert('无法连接到服务器'); setConnecting(false);  setConnectFailed(true); return }
+            } catch (e) { logger.error('Failed to connect to server', e); alert('无法连接到服务器'); setConnecting(false); setConnectFailed(true); return }
 
             const ownerToken = crypto.randomUUID()
             const res = await fetch(`${url}/api/v1/projects/${id}/collab`, {

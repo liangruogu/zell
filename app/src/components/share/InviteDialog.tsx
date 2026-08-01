@@ -73,6 +73,7 @@ export function InviteDialog({ open, onOpenChange, projectId }: InviteDialogProp
                   token: data.token,
                   displayName: data.display_name,
                   role: 'member',
+                  collabEnabled: true,
                 }),
               })
             } catch (e) {
