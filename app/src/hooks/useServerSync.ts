@@ -29,10 +29,8 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
     const syncDoneRef = useRef(false)
 
   useEffect(() => {
-    console.log('[sync] effect running', { projectId, isCollab })
     if (!projectId) return
     if (!isCollab) {
-      console.log('[sync] isCollab=false, skipping')
       setServerOnline(true)
       useSyncStore.getState().setReadOnly(false)
       return
@@ -133,7 +131,6 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
     function connect() {
       if (stopped) return
       const { serverUrl, token } = getSettings()
-      console.log('[sync] connect() called', { serverUrl: !!serverUrl, hasToken: !!token, projectId })
       if (!serverUrl) return
             const wsBase = serverUrl.replace(/^http/, 'ws')
             const wsUrl = `${wsBase}/ws/${projectId}/__notifications__${token ? '?token=' + encodeURIComponent(token) : ''}`
@@ -189,7 +186,6 @@ export function useServerSync({ projectId, isCollab, deleteProject }: UseServerS
 
     function trySetup() {
       const { serverUrl } = getSettings()
-      console.log('[sync] trySetup', { hasServerUrl: !!serverUrl, projectSubscribed })
       if (!serverUrl) return
             projectSubscribed = true
             syncProjectInfoFromServer()

@@ -38,7 +38,8 @@ export default function KnowledgeBasePage() {
     const [editorMd, setEditorMd] = useState('')
 
     const psCollab = parseProjectSettings(useProjectStore(s => s.currentProject?.settings) || '{}')
-    const isCollab = !!psCollab.collabEnabled
+    const isCollab = !!(psCollab.collabEnabled ?? (psCollab.token || psCollab.serverKey))
+    console.log('[KB] isCollab', { isCollab, collabEnabled: psCollab.collabEnabled, hasToken: !!psCollab.token, hasServerKey: !!psCollab.serverKey, settings: psCollab })
     const { serverOnline, collabReady } = useServerSync({ projectId, isCollab, deleteProject })
 
     useEffect(() => {
