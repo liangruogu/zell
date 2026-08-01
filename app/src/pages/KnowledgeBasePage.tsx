@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { MarkdownEditor } from '@/components/editor/MarkdownEditor'
@@ -13,258 +13,59 @@ import { Plus, FileText, Trash2, Search, X, ListTree, ChevronRight, Upload } fro
 import { cn } from '@/lib/utils'
 import { useServerSync } from '@/hooks/useServerSync'
 import { useKnowledgeShortcuts } from '@/hooks/useKnowledgeShortcuts'
+import { useKnowledgeEditor } from '@/hooks/useKnowledgeEditor'
+import { useKnowledgeDragDrop } from '@/hooks/useKnowledgeDragDrop'
+import { parseHeadingTree } from '@/lib/headingTree'
 import { logger } from '@/lib/logger'
 
 type ListTab = 'files' | 'outline'
 
-interface HeadingNode {
-    level: number
-    text: string
-    line: number
-    children: HeadingNode[]
-}
-
-function buildHeadingTree(headings: { level: number; text: string; line: number }[]): HeadingNode[] {
-    const roots: HeadingNode[] = []
-    const stack: HeadingNode[] = []
-    for (const h of headings) {
-        const node: HeadingNode = { ...h, children: [] }
-        while (stack.length > 0 && stack[stack.length - 1].level >= h.level) {
-            stack.pop()
-        }
-        if (stack.length === 0) {
-            roots.push(node)
-        } else {
-            stack[stack.length - 1].children.push(node)
-        }
-        stack.push(node)
-    }
-    return roots
-}
+import { parseHeadingTree, type HeadingNode } from '@/lib/headingTree'
 
 export default function KnowledgeBasePage() {
     const { id: projectId } = useParams<{ id: string }>()
     const { fetchProject } = useProjectStore()
     const deleteProject = useProjectStore(s => s.deleteProject)
-    const {
-        articles, currentArticle, loading,
-        fetchArticles, createArticle, updateArticle, deleteArticle, setCurrentArticle,
-    } = useKnowledgeStore()
+    const { articles, currentArticle, loading, fetchArticles, setCurrentArticle } = useKnowledgeStore()
     const panel = useResizablePanel(224, 120, 400, 80, 'zell_panel_knowledge')
 
-    const [showCreate, setShowCreate] = useState(false)
-    const [newTitle, setNewTitle] = useState('')
     const [searchQuery, setSearchQuery] = useState('')
     const [showSearch, setShowSearch] = useState(false)
-    const [deleteTarget, setDeleteTarget] = useState<KnowledgeArticle | null>(null)
     const [listTab, setListTab] = useState<ListTab>('files')
     const listTabRef = useRef<ListTab>('files')
     const setListTabSafe = (tab: ListTab) => { setListTab(tab); listTabRef.current = tab }
-    const [isDragOver, setIsDragOver] = useState(false)
-    const dragCounter = useRef(0)
-    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const searchInputRef = useRef<HTMLInputElement>(null)
     const [editorMd, setEditorMd] = useState('')
+
     const psCollab = parseProjectSettings(useProjectStore(s => s.currentProject?.settings) || '{}')
     const isCollab = !!psCollab.collabEnabled
     const { serverOnline, collabReady } = useServerSync({ projectId, isCollab, deleteProject })
 
     useEffect(() => {
-        if (projectId) {
-            fetchProject(projectId)
-            fetchArticles(projectId)
-        }
+        if (projectId) { fetchProject(projectId); fetchArticles(projectId) }
     }, [projectId, fetchProject, fetchArticles])
 
-    // Keyboard shortcuts
     useKnowledgeShortcuts({
-        panel,
-        setListTab,
+        panel, setListTab,
         focusSearch: () => { setTimeout(() => searchInputRef.current?.focus(), 50) },
-        showSearch,
-        setShowSearch,
-        setSearchQuery,
+        showSearch, setShowSearch, setSearchQuery,
     })
 
-    const syncToServer = useCallback((aid: string, title: string, content: string, contentJson: string, isNew = false) => {
-        const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
-        const serverUrl = ps.serverUrl
-        const serverKey = ps.serverKey
-        const token = ps.token
-        if (!serverUrl || !projectId) return
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`
-        } else if (serverKey) {
-            headers['X-Server-Key'] = serverKey
-        } else {
-            return
-        }
-        const url = `${serverUrl}/api/v1/projects/${projectId}/articles${isNew ? '' : '/' + aid}`
-        fetch(url, {
-            method: isNew ? 'POST' : 'PUT',
-            headers,
-            body: JSON.stringify({ id: aid, project_id: projectId, title, content, content_json: contentJson }),
-        }).catch((e) => { logger.error('Failed to sync article to server', e) })
-    }, [projectId])
+    const { newTitle, setNewTitle, showCreate, setShowCreate, deleteTarget, setDeleteTarget,
+        handleCreate, handleEditorChange, handleImmediateSave, handleRename, confirmDelete, handleDelete
+    } = useKnowledgeEditor({ projectId, currentArticle, onContentChange: setEditorMd })
 
-    const handleCreate = useCallback(async () => {
-        if (!projectId || !newTitle.trim()) return
-        const mdContent = ""
-        const article = await createArticle(projectId, newTitle.trim(), mdContent)
-        setNewTitle('')
-        setShowCreate(false)
-        setCurrentArticle(article)
-        syncToServer(article.id, article.title, mdContent, '{}', true)
-    }, [projectId, newTitle, createArticle, setCurrentArticle, syncToServer])
-
-    const handleEditorChange = useCallback(
-        (_html: string, markdown: string, json?: any) => {
-            setEditorMd(markdown)
-            if (!currentArticle) return
-            if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-            saveTimerRef.current = setTimeout(() => {
-                const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
-                if (markdown === currentArticle.content && contentJson === (currentArticle.content_json || '{}')) return
-                updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
-                syncToServer(currentArticle.id, currentArticle.title, markdown, contentJson)
-            }, 800)
-        },
-        [currentArticle, updateArticle, projectId]
-    )
-    const handleImmediateSave = useCallback((_html: string, markdown: string, json?: any) => {
-        if (!currentArticle) return
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        const contentJson = json ? JSON.stringify(json) : currentArticle.content_json || '{}'
-        if (markdown === currentArticle.content && contentJson === (currentArticle.content_json || '{}')) return
-        updateArticle(currentArticle.id, currentArticle.title, markdown, contentJson)
-        syncToServer(currentArticle.id, currentArticle.title, markdown, contentJson)
-    }, [currentArticle, updateArticle, syncToServer])
-
-    const handleRename = useCallback((article: KnowledgeArticle, newTitle: string) => {
-        updateArticle(article.id, newTitle, article.content)
-    }, [updateArticle])
-
-    const confirmDelete = useCallback((article: KnowledgeArticle) => {
-        setDeleteTarget(article)
-    }, [])
-
-    const handleDelete = useCallback(async () => {
-        if (!deleteTarget) return
-        const ps = parseProjectSettings(useProjectStore.getState().currentProject?.settings || '{}')
-        const serverUrl = ps.serverUrl
-        const token = ps.token
-        const serverKey = ps.serverKey
-        if (serverUrl && projectId) {
-            const headers: Record<string, string> = {}
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`
-            } else if (serverKey) {
-                headers['X-Server-Key'] = serverKey
-            }
-            if (headers['Authorization'] || headers['X-Server-Key']) {
-                try {
-                    const res = await fetch(`${serverUrl}/api/v1/projects/${projectId}/articles/${deleteTarget.id}`, {
-                        method: 'DELETE',
-                        headers,
-                    })
-                    if (!res.ok) {
-                        logger.error('Server failed to delete article', new Error(`HTTP ${res.status}`))
-                        return
-                    }
-                } catch (e) {
-                    logger.error('Failed to delete article on server', e)
-                    return
-                }
-            }
-        }
-        await deleteArticle(deleteTarget.id)
-        setDeleteTarget(null)
-    }, [deleteTarget, deleteArticle, projectId])
-
-    // Drag-and-drop file import
-    const handleDragOver = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (listTabRef.current !== 'files') return
-        if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-            setIsDragOver(true)
-        }
-    }, [listTab])
-
-    const handleDragEnter = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        dragCounter.current++
-        if (listTabRef.current === 'files' && e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-            setIsDragOver(true)
-        }
-    }, [listTab])
-
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        dragCounter.current--
-        if (dragCounter.current <= 0) {
-            dragCounter.current = 0
-            setIsDragOver(false)
-        }
-    }, [])
-
-    const handleDrop = useCallback(async (e: React.DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        dragCounter.current = 0
-        setIsDragOver(false)
-        if (!projectId) return
-        const files = e.dataTransfer.files
-        for (const file of Array.from(files)) {
-            if (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.type === 'text/markdown') {
-                const text = await file.text()
-                let title = file.name.replace(/\.(md|markdown)$/i, '')
-                // Auto-rename if duplicate exists
-                const existingNames = articles.map((a) => a.title.toLowerCase())
-                let suffix = 1
-                let candidate = title
-                while (existingNames.includes(candidate.toLowerCase())) {
-                    candidate = `${title} (${suffix})`
-                    suffix++
-                }
-                title = candidate
-                const article = await createArticle(projectId, title, text)
-                setCurrentArticle(article)
-            }
-        }
-    }, [projectId, articles, createArticle, setCurrentArticle])
+    const { isDragOver, handleDragOver, handleDragEnter, handleDragLeave, handleDrop } =
+        useKnowledgeDragDrop({ projectId, listTab })
 
     const filteredArticles = searchQuery
         ? articles.filter((a) => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
         : articles
 
-    // Parse headings into tree structure
-    const headingTree = useMemo(() => {
-        const md = editorMd || currentArticle?.content || ''
-        const lines = md.split('\n')
-        const flat: { level: number; text: string; line: number }[] = []
-        lines.forEach((line, i) => {
-            const match = line.match(/^(#{1,6})\s+(.+)/)
-            if (match) {
-                // Strip markdown formatting for display
-                let text = match[2].trim()
-                text = text.replace(/\*\*(.+?)\*\*/g, '$1')     // bold
-                text = text.replace(/__(.+?)__/g, '$1')          // bold
-                text = text.replace(/\*(.+?)\*/g, '$1')          // italic
-                text = text.replace(/_(.+?)_/g, '$1')            // italic
-                text = text.replace(/~~(.+?)~~/g, '$1')          // strikethrough
-                text = text.replace(/`(.+?)`/g, '$1')            // inline code
-                text = text.replace(/\[(.+?)\]\(.+?\)/g, '$1')   // links
-                text = text.replace(/!\[.+?\]\(.+?\)/g, '')      // images
-                text = text.replace(/^>\s*/, '')                  // blockquote
-                flat.push({ level: match[1].length, text, line: i })
-            }
-        })
-        return buildHeadingTree(flat)
-    }, [editorMd, currentArticle?.content])
+    const headingTree = useMemo(() =>
+        parseHeadingTree(editorMd || currentArticle?.content || ''),
+        [editorMd, currentArticle?.content])
+
 
     return (
         <AppShell>
