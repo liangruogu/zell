@@ -169,9 +169,18 @@ export function MarkdownEditor({
         const userColor = userColors[colorHash % userColors.length]
         provider.awareness.setLocalStateField('user', { name: displayName, color: userColor })
 
-        // Wait for server sync then activate Collaboration extension
+        // After server sync completes, initialise Y.Doc from local content if empty
+        const initDoneRef = { current: false }
         provider.on('sync', (synced: boolean) => {
-            if (synced) setCollabKey(k => k + 1)
+            if (!synced || initDoneRef.current) return
+            const yContent = ydoc.getXmlFragment('content')
+            if (yContent.length === 0) {
+                setCollabKey(k => k + 1)
+                initDoneRef.current = true
+            } else {
+                setCollabKey(k => k + 1)
+                initDoneRef.current = true
+            }
         })
 
         return () => {
@@ -365,7 +374,7 @@ export function MarkdownEditor({
             markdownLinkExt,
             keyboardExt,
         ],
-        content: initialHtml,
+        content: collabYDocRef.current ? undefined : initialHtml,
         editable: editable,
         autofocus: autofocus ? 'end' : false,
         onUpdate: handleUpdate,
@@ -382,9 +391,9 @@ export function MarkdownEditor({
     editorRef.current = editor
 
     useLayoutEffect(() => {
-        if (collabKey === 0 || !editor || !collabYDocRef.current) return
+        if (!editor || !collabYDocRef.current) return
         const yContent = collabYDocRef.current.getXmlFragment('content')
-        if (yContent.length === 0) {
+        if (yContent.length === 0 && initialHtml) {
             editor.commands.setContent(initialHtml)
         }
     }, [collabKey])
