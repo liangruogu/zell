@@ -7,6 +7,7 @@ Zell 将文档编辑、设计画布和演示文稿整合在同一个工作空间
 ---
 
 ## 功能
+![Example](./app/assets/example.png)
 
 ### 文档协作
 所见即所得的 Markdown 编辑器，支持表格、任务列表、代码块、数学公式。全文搜索，一键导出 PDF/DOCX/HTML。自托管服务器 + 邀请码，团队成员可实时协同编辑同一篇文档。
@@ -15,40 +16,42 @@ Zell 将文档编辑、设计画布和演示文稿整合在同一个工作空间
 选中文档一键发布为网页，适合用作团队知识库或个人博客。
 
 ### 外部资源
-管理链接和本地文件（PDF、Word、图片），自动提取 PDF 文本。
+管理链接和本地文件（PDF、Word、图片），自动提取 PDF 文本。(开发中...)
 
 ### AI 助手
 接入 OpenAI 兼容 API（DeepSeek、Ollama 等），AI 可搜索你的知识库、读取文档内容、辅助写作。
 
 ### 设计画布（开发中）
 - **PPT** — 自研幻灯片编辑器，可发布为网页预览
-- **Mood** — AI 创意画布，用于头脑风暴和视觉探索
+- **Mood** — AI 创意画布，用于头脑风暴、AIGC 工作
 - **UI** — 原型设计工具
 
 ---
 
-## 安装
+## 使用方式
+软件分为前端和服务端即支持自托管部署, 软件可跨平台运行(MacOS需自行打包), 服务端也跨平台(Go Server)
 
-从 [Releases](https://github.com/liangruogu/zell/releases) 下载对应平台的安装包：**Windows** `.msi`、**Linux** `.deb` / `.AppImage`。
-
----
-
-## 自托管协作服务器
-
-```bash
-cd server && go mod tidy && go build -o zell-server
-./zell-server   # 控制台输出服务器密钥
-```
-
-在桌面端 → 项目概览 → 填入地址和密钥 → 连接 → 复制邀请码分享给团队。
-
----
+1. [Releases](https://github.com/liangruogu/zell/releases) 下载对应平台的客户端与server可执行文件 
+2. 在服务器上运行server可执行文件并`复制密钥`
+3. 新建项目后在首页的项目服务器配置密钥栏里输入密钥并点击开始共享
+4. 复制生成好的邀请码
+5. 另一个客户端（其他成员）点击`加入项目`输入：
+    - 服务器ip与端口（一般是3000端口，需开放端口）
+    - 项目的邀请码
+    - 你想要的名字（不可重复）
+    - 无法重复加入项目
 
 ## 从源码构建
-
+前端
 ```bash
 git clone https://github.com/liangruogu/zell.git
 cd zell/app && pnpm install && pnpm tauri dev
+```
+
+后端共享服务
+```bash
+cd server && go mod tidy && go build -o zell-server
+./zell-server   # 控制台输出服务器密钥
 ```
 
 ---
@@ -72,23 +75,6 @@ cd app/src-tauri && cargo test    # ~51 个测试
 
 ```bash
 cd server && go test ./...        # ~145 个测试
-```
-
-### E2E 测试（WebdriverIO）
-
-需要 `tauri-driver` 和 Go 服务器：
-
-```bash
-# 安装 tauri-driver
-cargo install tauri-driver
-
-# 启动 Vite dev server
-cd app && pnpm dev
-
-# 运行 E2E 测试
-cd app
-npx wdio run e2e-tests/wdio.conf.js --grep "@smoke"    # 日常烟雾测试
-npx wdio run e2e-tests/wdio.conf.js --grep "@release"  # 发布前全量测试
 ```
 
 ### CI 自动运行
